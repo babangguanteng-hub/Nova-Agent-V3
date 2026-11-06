@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bubbleRoot"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_bubble_cyber"
+    android:padding="16dp"
+    android:gravity="center"
+    android:elevation="8dp">
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="NOVA: SIAP"
+        android:textColor="#00E5FF"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- Kontrol Standar (Mic & Stop) -->
+    <LinearLayout
+        android:id="@+id/llStandardControls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/btnMic"
+            android:layout_width="60dp"
+            android:layout_height="50dp"
+            android:text="🎤"
+            android:textSize="18sp"
+            android:backgroundTint="#4CAF50"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="60dp"
+            android:layout_height="50dp"
+            android:text="⏹️"
+            android:textSize="18sp"
+            android:backgroundTint="#F44336" />
+    </LinearLayout>
+
+    <!-- Kontrol Darurat (Konfirmasi Pengguna) - Awalnya Sembunyi -->
+    <LinearLayout
+        android:id="@+id/llConfirmationControls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btnAllow"
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:text="IZINKAN"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:backgroundTint="#4CAF50"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/btnDeny"
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:text="TOLAK"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:backgroundTint="#F44336" />
+    </LinearLayout>
+
+</LinearLayout>
