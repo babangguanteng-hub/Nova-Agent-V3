@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.novaagent.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.novaagent.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "3.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // ML Kit untuk Sistem Penglihatan AI (OCR)
+    implementation 'com.google.mlkit:text-recognition:16.0.0'
+    
+    // Jaringan untuk terhubung ke Groq AI (Retrofit & Gson)
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+}
