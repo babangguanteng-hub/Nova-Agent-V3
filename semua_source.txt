@@ -1088,6 +1088,8 @@ import android.provider.Settings;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -1098,15 +1100,9 @@ import androidx.security.crypto.MasterKey;
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
-/**
- * Layar Konfigurasi (Refactored: Resolusi H002)
- * Menggunakan EncryptedSharedPreferences untuk mengamankan API Key dari eksploitasi root.
- */
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    
-    private MediaProjectionManager projectionManager;
     private SharedPreferences encryptedPrefs;
 
     @Override
@@ -1117,120 +1113,89 @@ public class MainActivity extends AppCompatActivity {
         initSecurePrefs();
         requestBasicPermissions();
 
-        // Bind UI
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+        RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
-        Button btnAccessibility = findViewById(R.id.btnAccessibility);
-        Button btnOverlay = findViewById(R.id.btnOverlay);
-        Button btnStart = findViewById(R.id.btnStart);
 
-        // Load API Key (sekarang dibaca dari brankas terenkripsi)
         if (encryptedPrefs != null) {
             apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
+            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+            if (savedModel.equals("llama-3.1-70b-versatile")) ((RadioButton) findViewById(R.id.rbLlama70b)).setChecked(true);
+            else if (savedModel.equals("mixtral-8x7b-32768")) ((RadioButton) findViewById(R.id.rbMixtral)).setChecked(true);
+            else ((RadioButton) findViewById(R.id.rbLlama8b)).setChecked(true);
         }
 
-        // Simpan API Key
         btnSaveKey.setOnClickListener(v -> {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
             } else if (encryptedPrefs != null) {
-                encryptedPrefs.edit().putString("groq_api_key", key).apply();
-                Toast.makeText(this, "API Key Disimpan dengan Aman (AES-256)!", Toast.LENGTH_SHORT).show();
+                String selectedModel = "llama-3.1-8b-instant";
+                int checkedId = rgModel.getCheckedRadioButtonId();
+                if (checkedId == R.id.rbLlama70b) selectedModel = "llama-3.1-70b-versatile";
+                else if (checkedId == R.id.rbMixtral) selectedModel = "mixtral-8x7b-32768";
+                
+                encryptedPrefs.edit()
+                    .putString("groq_api_key", key)
+                    .putString("groq_model", selectedModel)
+                    .apply();
+                Toast.makeText(this, "Konfigurasi & Model Disimpan!", Toast.LENGTH_SHORT).show();
             }
         });
 
-        btnAccessibility.setOnClickListener(v -> {
-            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-            startActivity(intent);
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
             Toast.makeText(this, "Cari 'Nova Otonom AI' dan Aktifkan", Toast.LENGTH_LONG).show();
         });
 
-        btnOverlay.setOnClickListener(v -> {
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
             if (!Settings.canDrawOverlays(this)) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
             } else {
                 Toast.makeText(this, "Izin Mengambang Sudah Aktif!", Toast.LENGTH_SHORT).show();
             }
         });
 
-        btnStart.setOnClickListener(v -> checkPermissionsAndStart());
+        findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
     }
 
     private void initSecurePrefs() {
         try {
-            MasterKey masterKey = new MasterKey.Builder(this)
-                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                    .build();
-
-            encryptedPrefs = EncryptedSharedPreferences.create(
-                    this,
-                    "nova_secure_config",
-                    masterKey,
-                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            );
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal membuat EncryptedSharedPreferences. Fallback dicegah demi keamanan.", e);
-            Toast.makeText(this, "Kesalahan Keamanan Perangkat! Gagal mengunci Brankas.", Toast.LENGTH_LONG).show();
-        }
+            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+        } catch (Exception e) {}
     }
 
     private void requestBasicPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            String[] perms;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                perms = new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS};
-            } else {
-                perms = new String[]{Manifest.permission.RECORD_AUDIO};
-            }
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(perms, 101);
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
             }
         }
     }
 
     private void checkPermissionsAndStart() {
-        if (encryptedPrefs == null) return;
-        
-        String key = encryptedPrefs.getString("groq_api_key", "");
-        if (key.isEmpty()) {
+        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }
-
         if (!Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "Harap berikan Izin Mengambang (Overlay)!", Toast.LENGTH_LONG).show();
             return;
         }
-
-        projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if (projectionManager != null) {
-            startActivityForResult(projectionManager.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
-        }
+        MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+        if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            if (resultCode == RESULT_OK && data != null) {
-                Intent serviceIntent = new Intent(this, NovaForegroundService.class);
-                serviceIntent.putExtra("code", resultCode);
-                serviceIntent.putExtra("data", data);
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(serviceIntent);
-                } else {
-                    startService(serviceIntent);
-                }
-                
-                Toast.makeText(this, "Nova Diaktifkan!", Toast.LENGTH_SHORT).show();
-                finish();
-            } else {
-                Toast.makeText(this, "Izin rekam layar wajib diberikan untuk melihat AI!", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == REQUEST_MEDIA_PROJECTION && resultCode == RESULT_OK && data != null) {
+            Intent intent = new Intent(this, NovaForegroundService.class);
+            intent.putExtra("code", resultCode); intent.putExtra("data", data);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent);
+            Toast.makeText(this, "Nova Diaktifkan!", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
 }
@@ -1315,82 +1280,147 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.media.AudioManager;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import com.novaagent.app.R;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.core.di.ServiceLocator;
+import com.novaagent.app.core.engine.AutonomousLoopEngine;
+import com.novaagent.app.services.foreground.NovaForegroundService;
+import java.util.ArrayList;
 
-/**
- * 10x KOMPLEKSITAS: VIEW MURNI (DUMB COMPONENT).
- * UI ini sekarang 100% bodoh. Ia tidak tahu menahu soal SpeechRecognizer.
- * Ia hanya mendengarkan status dari EventBus dan menganimasikan Jelly.
- */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
     private View bubbleView;
     private ImageView jellyBall;
-    private LinearLayout panelExpand;
-    private TextView tvStatus;
-    
+    private ImageView btnClose;
     private boolean isAdded = false;
+    private boolean isListeningMode = true;
+    private boolean isMicMutedBySystem = false;
+    private SpeechRecognizer speechRecognizer;
+    private Intent speechIntent;
     private AnimatorSet pulseAnimator;
-    private AnimatorSet speakingAnimator;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
+        setupSpeechRecognizer();
+    }
+
+    private void playUISound(int soundEffectType) {
+        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
+    }
+
+    private void setupSpeechRecognizer() {
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
+        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
+
+        speechRecognizer.setRecognitionListener(new RecognitionListener() {
+            @Override public void onReadyForSpeech(Bundle params) { jellyBall.setAlpha(1.0f); }
+            @Override public void onBeginningOfSpeech() { }
+            @Override public void onRmsChanged(float rmsdB) {}
+            @Override public void onBufferReceived(byte[] buffer) {}
+            @Override public void onEndOfSpeech() { }
+            
+            @Override public void onError(int error) { 
+                if (isListeningMode && !isMicMutedBySystem) {
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (isListeningMode && !isMicMutedBySystem) speechRecognizer.startListening(speechIntent);
+                    }, 500);
+                }
+            }
+            
+            @Override public void onResults(Bundle results) {
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    String command = matches.get(0);
+                    try {
+                        AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
+                        if (engine != null) engine.startTask(command);
+                    } catch (Exception e) {}
+                } else if (isListeningMode && !isMicMutedBySystem) {
+                    speechRecognizer.startListening(speechIntent);
+                }
+            }
+            @Override public void onPartialResults(Bundle partialResults) {}
+            @Override public void onEvent(int eventType, Bundle params) {}
+        });
     }
 
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBall = bubbleView.findViewById(R.id.jellyBall);
-        panelExpand = bubbleView.findViewById(R.id.panelExpand);
-        tvStatus = bubbleView.findViewById(R.id.tvStatus);
+        btnClose = bubbleView.findViewById(R.id.btnClose);
 
         startJellyPulseAnimation();
 
-        jellyBall.setOnClickListener(v -> panelExpand.setVisibility(panelExpand.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
-
-        bubbleView.findViewById(R.id.btnStop).setOnClickListener(v -> {
-            setStatus("NOVA TIDUR");
-            jellyBall.setAlpha(0.3f);
-            panelExpand.setVisibility(View.GONE);
-            if (pulseAnimator != null) pulseAnimator.pause();
-            
-            // Matikan Audio Director
-            try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch (Exception e) {}
-            try { ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
+        // Logika Klik Close (Matikan Total)
+        btnClose.setOnClickListener(v -> {
+            playUISound(AudioManager.FX_KEYPRESS_DELETE);
+            isListeningMode = false;
+            context.stopService(new Intent(context, NovaForegroundService.class)); // Matikan service secara bersih
         });
 
-        // Logika Drag
+        // Logika Klik Jelly (Tidur / Bangun)
+        jellyBall.setOnClickListener(v -> {
+            playUISound(AudioManager.FX_KEY_CLICK);
+            isListeningMode = !isListeningMode;
+            if (isListeningMode) {
+                jellyBall.setAlpha(1.0f);
+                if (pulseAnimator != null) pulseAnimator.resume();
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            } else {
+                jellyBall.setAlpha(0.3f);
+                if (pulseAnimator != null) pulseAnimator.pause();
+                if (speechRecognizer != null) speechRecognizer.stopListening();
+                try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
+            }
+        });
+
+        // Smart Drag (Bebas lag, tidak mengganggu klik)
         jellyBall.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
+            private boolean isDragging = false;
+            
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        isDragging = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
-                        return false;
+                        return false; 
                     case MotionEvent.ACTION_MOVE:
-                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
+                        int diffX = (int) (event.getRawX() - initialTouchX);
+                        int diffY = (int) (event.getRawY() - initialTouchY);
+                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
+                        params.x = initialX + diffX;
+                        params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
                         return true;
+                    case MotionEvent.ACTION_UP:
+                        return isDragging; // Jika diseret, klik dibatalkan. Jika tidak, klik jalan.
                 }
                 return false;
             }
@@ -1406,39 +1436,19 @@ public class FloatingBubbleView implements EventBus.EventListener {
         pulseAnimator.playTogether(scaleX, scaleY);
         pulseAnimator.start();
     }
-    
-    private void triggerSpeakingAnimation() {
-        if (speakingAnimator == null) {
-            ObjectAnimator rotate = ObjectAnimator.ofFloat(jellyBall, "rotation", 0f, 360f);
-            rotate.setRepeatCount(ValueAnimator.INFINITE);
-            rotate.setDuration(800);
-            speakingAnimator = new AnimatorSet();
-            speakingAnimator.play(rotate);
-        }
-        speakingAnimator.start();
-    }
-    
-    private void stopSpeakingAnimation() {
-        if (speakingAnimator != null) {
-            speakingAnimator.cancel();
-            jellyBall.setRotation(0f);
-        }
-    }
-
-    private void setStatus(String text) {
-        tvStatus.post(() -> tvStatus.setText(text));
-    }
 
     public void show() {
         if (isAdded) return;
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
-        try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
+        try { windowManager.addView(bubbleView, params); isAdded = true; speechRecognizer.startListening(speechIntent); } catch (Exception e) {}
     }
 
     public void remove() {
+        isListeningMode = false;
         if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
+        if (speechRecognizer != null) speechRecognizer.destroy();
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -1446,21 +1456,14 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
-            setStatus("NOVA: " + state);
-            
-            // Reaksi UI terhadap status sistem
-            bubbleView.post(() -> {
-                if ("LISTENING_READY".equals(state)) {
-                    stopSpeakingAnimation();
-                    jellyBall.setAlpha(1.0f);
-                } else if ("USER_SPEAKING".equals(state)) {
-                    jellyBall.setScaleX(1.3f); jellyBall.setScaleY(1.3f); // Telinga membesar
-                } else if (state.startsWith("PERINTAH")) {
-                    jellyBall.setScaleX(1.0f); jellyBall.setScaleY(1.0f);
-                } else if ("NOVA_SPEAKING_START".equals(state)) { // Dipicu oleh NovaAudioDirector
-                    triggerSpeakingAnimation();
-                }
-            });
+            if ("NOVA_SPEAKING_START".equals(state)) {
+                isMicMutedBySystem = true;
+                speechRecognizer.stopListening();
+                jellyBall.animate().rotationBy(360f).setDuration(1000).start(); 
+            } else if ("RESUME_LISTENING".equals(state)) {
+                isMicMutedBySystem = false;
+                if (isListeningMode) bubbleView.post(() -> speechRecognizer.startListening(speechIntent));
+            }
         }
     }
 }
@@ -2809,7 +2812,7 @@ import okhttp3.Response;
 public class GroqNetworkClient {
     private static final String TAG = "GroqNetworkClient";
     private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL_NAME = "llama-3.1-8b-instant";
+    
     
     private final OkHttpClient client;
     private final Context context;
@@ -2839,7 +2842,7 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", MODEL_NAME);
+            payload.put("model", getSecureModelName());
             payload.put("temperature", 0.3); // Rendah untuk akurasi tindakan layar
             payload.put("messages", messages);
 
@@ -2898,6 +2901,14 @@ public class GroqNetworkClient {
         } catch (Exception e) { return ""; }
     }
 }
+    private String getSecureModelName() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
+    }
+}
 
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
@@ -2936,11 +2947,11 @@ FILE: ./app/src/main/res/layout/activity_main.xml
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="NOVA AGENT V2"
+        android:text="NOVA AGENT 5.0"
         android:textSize="28sp"
         android:textStyle="bold"
         android:textColor="#00E5FF"
-        android:layout_marginBottom="24dp"/>
+        android:layout_marginBottom="16dp"/>
 
     <EditText
         android:id="@+id/apiKeyInput"
@@ -2954,11 +2965,49 @@ FILE: ./app/src/main/res/layout/activity_main.xml
         android:inputType="textPassword"
         android:layout_marginBottom="12dp"/>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pilih Model AI (Groq):"
+        android:textColor="#00E5FF"
+        android:layout_marginBottom="8dp"
+        android:textStyle="bold"/>
+
+    <RadioGroup
+        android:id="@+id/rgModel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+        
+        <RadioButton
+            android:id="@+id/rbLlama8b"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Llama 3.1 8B (Super Cepat)"
+            android:textColor="#FFFFFF"
+            android:checked="true"/>
+            
+        <RadioButton
+            android:id="@+id/rbLlama70b"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Llama 3.1 70B (Sangat Pintar)"
+            android:textColor="#FFFFFF"/>
+            
+        <RadioButton
+            android:id="@+id/rbMixtral"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mixtral 8x7B (Seimbang)"
+            android:textColor="#FFFFFF"/>
+    </RadioGroup>
+
     <Button
         android:id="@+id/btnSaveKey"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="SIMPAN API KEY"
+        android:text="SIMPAN KONFIGURASI"
         android:backgroundTint="#00E5FF"
         android:textColor="#000000"
         android:layout_marginBottom="24dp"/>
@@ -3005,47 +3054,28 @@ FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
     android:layout_height="wrap_content"
     android:padding="8dp">
 
-    <!-- Wujud Virus Jelly -->
+    <!-- Wujud Virus Jelly Cerdas -->
     <ImageView
         android:id="@+id/jellyBall"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:layout_gravity="center"
         android:background="@drawable/bg_jelly_bubble"
         android:src="@android:drawable/ic_btn_speak_now"
         android:padding="12dp"
         android:elevation="8dp" />
 
-    <!-- Panel Informasi (Tersembunyi, Muncul jika Jelly diketuk) -->
-    <LinearLayout
-        android:id="@+id/panelExpand"
-        android:layout_width="200dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="70dp"
-        android:layout_gravity="center_vertical"
-        android:background="@drawable/bg_bubble_cyber"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:visibility="gone"
-        android:elevation="8dp">
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MENDENGARKAN..."
-            android:textColor="#00E5FF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <Button
-            android:id="@+id/btnStop"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="#F44336"
-            android:text="TIDUR (CLOSE)"
-            android:textSize="10sp" />
-    </LinearLayout>
+    <!-- Tombol Close (X) Kecil di Pojok Kanan Atas -->
+    <ImageView
+        android:id="@+id/btnClose"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/bg_close_btn"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:tint="#FFFFFF"
+        android:padding="4dp"
+        android:elevation="10dp" />
 </FrameLayout>
 
 ==================================================
@@ -3087,6 +3117,15 @@ FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_close_btn.xml
+==================================================
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#FF3B30" />
+    <stroke android:width="1dp" android:color="#FFFFFF" />
+</shape>
 
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_background.xml

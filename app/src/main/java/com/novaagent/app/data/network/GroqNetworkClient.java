@@ -27,7 +27,7 @@ import okhttp3.Response;
 public class GroqNetworkClient {
     private static final String TAG = "GroqNetworkClient";
     private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL_NAME = "llama-3.1-8b-instant";
+    
     
     private final OkHttpClient client;
     private final Context context;
@@ -57,7 +57,7 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", MODEL_NAME);
+            payload.put("model", getSecureModelName());
             payload.put("temperature", 0.3); // Rendah untuk akurasi tindakan layar
             payload.put("messages", messages);
 
@@ -114,5 +114,13 @@ public class GroqNetworkClient {
             SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
             return prefs.getString("groq_api_key", "").trim();
         } catch (Exception e) { return ""; }
+    }
+}
+    private String getSecureModelName() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }
