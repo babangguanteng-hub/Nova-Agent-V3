@@ -4,6 +4,9 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,14 +21,26 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Memberikan Izin Eksekusi pada Gradle Wrapper Lokal
+    - name: Memberikan Izin Eksekusi pada Gradle
       run: chmod +x gradlew
 
-    - name: Merakit APK Android (Assemble Debug)
-      run: ./gradlew assembleDebug --stacktrace --no-daemon
+    - name: Merakit APK dan Menangkap Log
+      run: |
+        echo "=== LAPORAN DETEKTIF NOVA ===" > laporan_error.txt
+        ./gradlew assembleDebug --stacktrace >> laporan_error.txt 2>&1
 
-    - name: Menyimpan Hasil APK
+    - name: Menyimpan Hasil APK (Jika Sukses)
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: Nova-Agent-V3-APK
         path: app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Mengirim Laporan Error ke Repo (Jika Gagal)
+      if: failure()
+      run: |
+        git config --global user.name "Robot Detektif"
+        git config --global user.email "actions@github.com"
+        git add laporan_error.txt
+        git commit -m "🚨 Laporan error tertangkap!" || true
+        git push origin main
