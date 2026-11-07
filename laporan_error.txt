@@ -33,7 +33,13 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
+
 > Task :app:processDebugMainManifest
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/AndroidManifest.xml:10:5-65 Warning:
+	Element uses-permission#android.permission.CAMERA at AndroidManifest.xml:10:5-65 duplicated with element declared at AndroidManifest.xml:8:5-65
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/AndroidManifest.xml:11:5-80 Warning:
+	Element uses-permission#android.permission.MODIFY_AUDIO_SETTINGS at AndroidManifest.xml:11:5-80 duplicated with element declared at AndroidManifest.xml:9:5-80
+
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
@@ -42,21 +48,30 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:compressDebugAssets
-> Task :app:mergeDebugJavaResource
 > Task :app:mergeDebugJniLibFolders
-> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugJavaResource
 > Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugResources
+> Task :app:mergeDebugNativeLibs
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeExtDexDebug
+> Task :app:mergeLibDexDebug
 
-> Task :app:compileDebugJavaWithJavac FAILED
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:50: error: illegal character: '\'
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libmlkit_google_ocr_pipeline.so.
+
+> Task :app:processDebugResources
+> Task :app:validateSigningDebug
+
+> Task :app:compileDebugJavaWithJavac
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:54: error: illegal character: '\'
         audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
                                                     ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:50: error: ';' expected
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:54: error: ';' expected
         audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
                                                                      ^
 2 errors
+
+> Task :app:compileDebugJavaWithJavac FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -260,4 +275,4 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 
 
 BUILD FAILED in 1m 20s
-22 actionable tasks: 22 executed
+26 actionable tasks: 26 executed
