@@ -3,6 +3,8 @@ package com.novaagent.app.infrastructure.injector;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
+import android.hardware.camera2.CameraManager;
+import android.media.AudioManager;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -89,6 +91,14 @@ public class SystemActionInjector {
                     
                 }, 1000);
                 return; // Return awal agar tidak memicu ACTION_EXECUTED ganda
+            case "toggle_flashlight":
+                toggleFlashlight(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_volume":
+                setAudioVolume(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
@@ -138,5 +148,27 @@ public class SystemActionInjector {
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 400)); // Geser selama 400ms
         return service.dispatchGesture(builder.build(), null, null);
+    }
+    // --- PLUGIN OTOMATISASI PERANGKAT ---
+    private boolean isFlashlightOn = false;
+    private void toggleFlashlight(Context context) {
+        try {
+            android.hardware.camera2.CameraManager camManager = (android.hardware.camera2.CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+            if (camManager != null) {
+                String cameraId = camManager.getCameraIdList()[0];
+                isFlashlightOn = !isFlashlightOn;
+                camManager.setTorchMode(cameraId, isFlashlightOn);
+            }
+        } catch (Exception e) { Log.e(TAG, "Gagal akses senter", e); }
+    }
+
+    private void setAudioVolume(Context context, String direction) {
+        try {
+            android.media.AudioManager audioManager = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                int adjust = direction.contains("up") || direction.contains("naik") ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+                audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, adjust, android.media.AudioManager.FLAG_SHOW_UI);
+            }
+        } catch (Exception e) {}
     }
 }
