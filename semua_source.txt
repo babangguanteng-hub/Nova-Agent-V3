@@ -1,6 +1,6 @@
-==================================================
+
 FILE: ./app/src/main/AndroidManifest.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -51,9 +51,9 @@ FILE: ./app/src/main/AndroidManifest.xml
     </application>
 </manifest>
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/EventBus.java
-==================================================
+
 package com.novaagent.app.core.bus;
 
 import android.os.Handler;
@@ -137,9 +137,9 @@ public class EventBus {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java
-==================================================
+
 package com.novaagent.app.core.bus;
 
 /**
@@ -175,9 +175,9 @@ public class AgentEvent {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java
-==================================================
+
 package com.novaagent.app.core.proactive;
 
 import android.util.Log;
@@ -219,9 +219,9 @@ public class ProactiveTriggerEngine {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java
-==================================================
+
 package com.novaagent.app.core.vision;
 
 import com.novaagent.app.data.model.UnifiedScreenContext;
@@ -254,9 +254,9 @@ public class SemanticVisionEngine {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java
-==================================================
+
 package com.novaagent.app.core.engine;
 
 import android.os.Handler;
@@ -318,12 +318,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
-        // INTERSEP: Mode Pemantauan Latar Belakang (Proactive)
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
-            // Contoh parsing kotor: "Pantau kata Beli"
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
-                // Buat aksi dummy untuk diklik jika ketemu (bisa dikembangkan AI lebih lanjut)
                 try {
                     ActionCommandDto triggerAct = new ActionCommandDto("{\"action\":\"tap\",\"textToType\":\"" + keyword + "\"}");
                     proactiveEngine.setWatchTrigger(keyword, triggerAct);
@@ -332,14 +329,43 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // FASE 8: OFFLINE SURVIVAL MODE
         String lowerTask = task.toLowerCase();
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara).*")) {
+
+        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar & Obrolan Keren)
+        if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
+            speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
+        } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
+            speak("Saya diciptakan oleh Babang Ganteng, sang visioner sejati."); return;
+        } else if (lowerTask.contains("jam berapa") || lowerTask.contains("waktu")) {
+            speak("Sekarang menunjukan jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date())); return;
+        } else if (lowerTask.contains("hari apa") || lowerTask.contains("tanggal")) {
+            speak("Hari ini " + new java.text.SimpleDateFormat("EEEE, dd MMMM yyyy").format(new java.util.Date())); return;
+        } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
+            speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
+        } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
+            speak("Halo bos! Nova siap meluncur dan melayani perintah Anda."); return;
+        } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
+            speak("Nova bisa ngobrol offline, buka semua aplikasi, ngatur senter, wifi, bluetooth, dan mengontrol penuh layar bos."); return;
+        }
+
+        // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
+        if (lowerTask.startsWith("buka ")) {
+            String app = lowerTask.substring(5).trim();
+            try {
+                ActionCommandDto openCmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + app + "\"}");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, openCmd));
+                speak("Membuka " + app);
+            } catch(Exception e){}
+            return;
+        }
+
+        // 3. Skil Kontrol Panel Android / Perangkat Keras
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri).*")) {
             Log.i(TAG, "Mode Offline (Survival) Terpicu!");
             try {
                 ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Siap."));
+                speak("Siap bos, langsung dieksekusi.");
             } catch (Exception e) {}
             return;
         }
@@ -380,7 +406,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     
-                    // SELALU jalankan evaluasi Proactive (Jika ada trigger aktif)
                     resolveDependencies();
                     proactiveEngine.evaluateScreen(newContext);
 
@@ -394,7 +419,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                             failedActionToReport = lastCommandExecuted.action;
                             if (consecutiveFailures >= 3) {
                                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain."));
+                                speak("Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain.");
                                 stopTask();
                                 return;
                             }
@@ -406,7 +431,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     lastScreenContext = newContext;
                     stepCount++;
                     if (stepCount > 15) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Misi terlalu panjang. Saya berhenti."));
+                        speak("Misi terlalu panjang. Saya berhenti.");
                         stopTask();
                         return;
                     }
@@ -417,7 +442,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     if (flatUiText.equals(lastFlatUiText)) { return; }
                     lastFlatUiText = flatUiText;
 
-                    // MATA DEWA: Ekstrak makna semantik sebelum dikirim ke AI
                     String enrichedSemantics = visionEngine.extractSemantics(newContext);
                     processWithAI(enrichedSemantics, failedActionToReport);
                     break;
@@ -445,6 +469,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         } catch (Exception e) {}
     }
 
+    private void speak(String text) {
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, text));
+    }
+
     private void processWithAI(String uiContextString, String failedAction) {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
         
@@ -454,7 +482,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 if (!isRunning) return;
                 if ("done".equalsIgnoreCase(cmd.action)) {
                     if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
+                        speak(cmd.speech);
                     }
                     stopTask();
                 } else {
@@ -467,16 +495,16 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             public void onConfusion(String errorMessage) {
                 if (!isRunning) return;
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, errorMessage));
+                speak(errorMessage);
                 stopTask();
             }
         });
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java
-==================================================
+
 package com.novaagent.app.core.engine;
 
 import com.novaagent.app.data.model.ActionCommandDto;
@@ -596,9 +624,9 @@ public class ActionVerificationScore {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java
-==================================================
+
 package com.novaagent.app.core.engine;
 
 import android.util.Log;
@@ -666,9 +694,9 @@ public class SafetyPolicyEngine {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java
-==================================================
+
 package com.novaagent.app.core.audio;
 
 import android.content.Context;
@@ -856,9 +884,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java
-==================================================
+
 package com.novaagent.app.core.brain;
 
 import android.content.Context;
@@ -942,9 +970,9 @@ public class NovaBrainEngine {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java
-==================================================
+
 package com.novaagent.app.core.brain;
 
 import org.json.JSONArray;
@@ -996,9 +1024,9 @@ public class ConversationMemory {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java
-==================================================
+
 package com.novaagent.app.core.di;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -1048,9 +1076,9 @@ public class ServiceLocator {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/core/state/AgentState.java
-==================================================
+
 package com.novaagent.app.core.state;
 
 /**
@@ -1070,9 +1098,9 @@ public enum AgentState {
     ERROR
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/ui/config/MainActivity.java
-==================================================
+
 package com.novaagent.app.ui.config;
 
 import android.Manifest;
@@ -1200,9 +1228,9 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java
-==================================================
+
 package com.novaagent.app.ui.bubble;
 
 import android.os.Handler;
@@ -1271,17 +1299,20 @@ public class BubbleViewModel implements EventBus.EventListener {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
-==================================================
+
 package com.novaagent.app.ui.bubble;
 
 import android.animation.AnimatorSet;
+import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -1290,6 +1321,7 @@ import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -1308,11 +1340,16 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
     private View bubbleView;
-    private ImageView jellyBall;
-    private ImageView btnClose;
+    private ImageView jellyBg;
+    private ImageView jellyFace;
+    
+    private View closeTargetView;
+    private WindowManager.LayoutParams closeParams;
+    
     private boolean isAdded = false;
-    private boolean isListeningMode = true;
-    private boolean isMicMutedBySystem = false;
+    private boolean isListeningMode = true; 
+    private boolean isMicMutedBySystem = false; 
+
     private SpeechRecognizer speechRecognizer;
     private Intent speechIntent;
     private AnimatorSet pulseAnimator;
@@ -1322,12 +1359,23 @@ public class FloatingBubbleView implements EventBus.EventListener {
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
+        initCloseTarget();
         setupSpeechRecognizer();
     }
 
     private void playUISound(int soundEffectType) {
         AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
+    }
+
+    private void initCloseTarget() {
+        closeTargetView = LayoutInflater.from(context).inflate(R.layout.layout_close_target, null);
+        int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+        closeParams = new WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+        closeParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        closeParams.y = 150;
     }
 
     private void setupSpeechRecognizer() {
@@ -1337,7 +1385,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
 
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { jellyBall.setAlpha(1.0f); }
+            @Override public void onReadyForSpeech(Bundle params) { bubbleView.setAlpha(1.0f); }
             @Override public void onBeginningOfSpeech() { }
             @Override public void onRmsChanged(float rmsdB) {}
             @Override public void onBufferReceived(byte[] buffer) {}
@@ -1370,47 +1418,42 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
-        jellyBall = bubbleView.findViewById(R.id.jellyBall);
-        btnClose = bubbleView.findViewById(R.id.btnClose);
+        jellyBg = bubbleView.findViewById(R.id.jellyBg);
+        jellyFace = bubbleView.findViewById(R.id.jellyFace);
 
         startJellyPulseAnimation();
 
-        // Logika Klik Close (Matikan Total)
-        btnClose.setOnClickListener(v -> {
-            playUISound(AudioManager.FX_KEYPRESS_DELETE);
-            isListeningMode = false;
-            context.stopService(new Intent(context, NovaForegroundService.class)); // Matikan service secara bersih
-        });
-
-        // Logika Klik Jelly (Tidur / Bangun)
-        jellyBall.setOnClickListener(v -> {
+        bubbleView.setOnClickListener(v -> {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                jellyBall.setAlpha(1.0f);
+                bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
-                jellyBall.setAlpha(0.3f);
+                bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
                 if (speechRecognizer != null) speechRecognizer.stopListening();
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
 
-        // Smart Drag (Bebas lag, tidak mengganggu klik)
-        jellyBall.setOnTouchListener(new View.OnTouchListener() {
+        bubbleView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
             private boolean isDragging = false;
             
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
+                DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+                
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         isDragging = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
+                        if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
                         return false; 
+                        
                     case MotionEvent.ACTION_MOVE:
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
@@ -1418,9 +1461,24 @@ public class FloatingBubbleView implements EventBus.EventListener {
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
+                        
+                        if (params.y > metrics.heightPixels - 500) {
+                            closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                            closeTargetView.setAlpha(1.0f);
+                        } else {
+                            closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                            closeTargetView.setAlpha(0.7f);
+                        }
                         return true;
+                        
                     case MotionEvent.ACTION_UP:
-                        return isDragging; // Jika diseret, klik dibatalkan. Jika tidak, klik jalan.
+                        if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
+                        if (params.y > metrics.heightPixels - 500) {
+                            playUISound(AudioManager.FX_KEYPRESS_DELETE);
+                            isListeningMode = false;
+                            context.stopService(new Intent(context, NovaForegroundService.class));
+                        }
+                        return isDragging;
                 }
                 return false;
             }
@@ -1428,12 +1486,32 @@ public class FloatingBubbleView implements EventBus.EventListener {
     }
 
     private void startJellyPulseAnimation() {
-        ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBall, "scaleX", 1f, 1.15f, 1f);
-        ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBall, "scaleY", 1f, 1.05f, 1f);
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.15f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.05f, 1f);
+        ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.15f, 1f);
+        ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.05f, 1f);
+
+        ValueAnimator colorAnim = ValueAnimator.ofObject(new ArgbEvaluator(), 
+            Color.parseColor("#CC00E5FF"), Color.parseColor("#CCFF00E5"), 
+            Color.parseColor("#CCE5FF00"), Color.parseColor("#CC00FF73"), 
+            Color.parseColor("#CC00E5FF"));
+            
+        colorAnim.addUpdateListener(anim -> {
+            if (jellyBg.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) jellyBg.getBackground()).setColor((int) anim.getAnimatedValue());
+            }
+        });
+
         scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
+        scaleFaceX.setRepeatCount(ValueAnimator.INFINITE); scaleFaceY.setRepeatCount(ValueAnimator.INFINITE);
+        colorAnim.setRepeatCount(ValueAnimator.INFINITE);
+        
         scaleX.setDuration(1200); scaleY.setDuration(1200);
+        scaleFaceX.setDuration(1200); scaleFaceY.setDuration(1200);
+        colorAnim.setDuration(4500); 
+
         pulseAnimator = new AnimatorSet();
-        pulseAnimator.playTogether(scaleX, scaleY);
+        pulseAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY, colorAnim);
         pulseAnimator.start();
     }
 
@@ -1459,7 +1537,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
             if ("NOVA_SPEAKING_START".equals(state)) {
                 isMicMutedBySystem = true;
                 speechRecognizer.stopListening();
-                jellyBall.animate().rotationBy(360f).setDuration(1000).start(); 
+                jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
             } else if ("RESUME_LISTENING".equals(state)) {
                 isMicMutedBySystem = false;
                 if (isListeningMode) bubbleView.post(() -> speechRecognizer.startListening(speechIntent));
@@ -1468,9 +1546,9 @@ public class FloatingBubbleView implements EventBus.EventListener {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/NovaApplication.java
-==================================================
+
 package com.novaagent.app;
 
 import android.app.Application;
@@ -1498,9 +1576,9 @@ public class NovaApplication extends Application {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java
-==================================================
+
 package com.novaagent.app.infrastructure.system;
 
 import android.content.Context;
@@ -1588,9 +1666,9 @@ public class RecoveryManager implements EventBus.EventListener {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java
-==================================================
+
 package com.novaagent.app.infrastructure.system;
 
 import android.os.Handler;
@@ -1695,9 +1773,9 @@ public class NovaWatchdog implements EventBus.EventListener {
     };
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java
-==================================================
+
 package com.novaagent.app.infrastructure.injector;
 
 import android.accessibilityservice.AccessibilityService;
@@ -1831,18 +1909,30 @@ public class SystemActionInjector {
                     int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
                     audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
                 }
-            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet")) {
+            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet") || lowerCmd.contains("data")) {
                 Intent panelIntent = new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
                 panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(panelIntent);
+            } else if (lowerCmd.contains("bluetooth")) {
+                Intent btIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+                btIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(btIntent);
+            } else if (lowerCmd.contains("hotspot")) {
+                Intent hsIntent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                hsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(hsIntent);
+            } else if (lowerCmd.contains("kamera") || lowerCmd.contains("camera")) {
+                if (!openAppByName(context, "kamera")) openAppByName(context, "camera");
+            } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
+                if (!openAppByName(context, "galeri")) openAppByName(context, "gallery");
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java
-==================================================
+
 package com.novaagent.app.infrastructure.ocr;
 
 import android.graphics.Bitmap;
@@ -1908,9 +1998,9 @@ public class MlKitOcrEngine {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java
-==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.graphics.Rect;
@@ -1967,9 +2057,9 @@ public class NodeCompactor {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java
-==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.accessibilityservice.AccessibilityService;
@@ -2119,9 +2209,9 @@ public class NovaAccessibilityService extends AccessibilityService {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java
-==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -2178,9 +2268,9 @@ public class NodeScanner {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java
-==================================================
+
 package com.novaagent.app.services.foreground;
 
 import android.content.Context;
@@ -2331,9 +2421,9 @@ public class MediaProjectionWrapper {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java
-==================================================
+
 package com.novaagent.app.services.foreground;
 
 import android.app.Notification;
@@ -2467,9 +2557,9 @@ public class NovaForegroundService extends Service {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java
-==================================================
+
 package com.novaagent.app.data.model;
 
 /**
@@ -2493,9 +2583,9 @@ public class ActionVerificationResult {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java
-==================================================
+
 package com.novaagent.app.data.model;
 
 import org.json.JSONException;
@@ -2543,9 +2633,9 @@ public class ActionCommandDto {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java
-==================================================
+
 package com.novaagent.app.data.model;
 
 import java.util.ArrayList;
@@ -2615,9 +2705,9 @@ public class UnifiedScreenContext {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java
-==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.graphics.Bitmap;
@@ -2687,9 +2777,9 @@ public class ScreenCache {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/NodeCache.java
-==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.os.SystemClock;
@@ -2727,9 +2817,9 @@ public class NodeCache {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java
-==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.util.Log;
@@ -2780,9 +2870,9 @@ public class ObjectPool<T> {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
-==================================================
+
 package com.novaagent.app.data.network;
 
 import android.content.Context;
@@ -2805,14 +2895,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * 10x KOMPLEKSITAS: NETWORK LAYER ABSTRACTION.
- * Fokus mutlak pada pengiriman HTTP, validasi API Key, dan Error Handling (Retry Logic).
- */
 public class GroqNetworkClient {
     private static final String TAG = "GroqNetworkClient";
     private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    
     
     private final OkHttpClient client;
     private final Context context;
@@ -2843,7 +2928,7 @@ public class GroqNetworkClient {
         try {
             JSONObject payload = new JSONObject();
             payload.put("model", getSecureModelName());
-            payload.put("temperature", 0.3); // Rendah untuk akurasi tindakan layar
+            payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
@@ -2885,7 +2970,7 @@ public class GroqNetworkClient {
     private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry); // 1.5s, 3s, 6s
+            long delay = 1500 * (long) Math.pow(2, currentRetry);
             Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
@@ -2900,7 +2985,7 @@ public class GroqNetworkClient {
             return prefs.getString("groq_api_key", "").trim();
         } catch (Exception e) { return ""; }
     }
-}
+
     private String getSecureModelName() {
         try {
             MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
@@ -2910,9 +2995,9 @@ public class GroqNetworkClient {
     }
 }
 
-==================================================
+
 FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
-==================================================
+
 package com.novaagent.app.data.repository;
 
 public class PromptRegistry {
@@ -2932,9 +3017,26 @@ public class PromptRegistry {
     }
 }
 
-==================================================
+
+FILE: ./app/src/main/res/layout/layout_close_target.xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="75dp"
+    android:layout_height="75dp"
+    android:background="@drawable/bg_close_btn"
+    android:padding="18dp"
+    android:elevation="12dp">
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:tint="#FFFFFF" />
+</FrameLayout>
+
+
 FILE: ./app/src/main/res/layout/activity_main.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -3044,43 +3146,34 @@ FILE: ./app/src/main/res/layout/activity_main.xml
         android:textColor="#FFFFFF"/>
 </LinearLayout>
 
-==================================================
+
 FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/bubbleRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:padding="8dp">
-
-    <!-- Wujud Virus Jelly Cerdas -->
     <ImageView
-        android:id="@+id/jellyBall"
-        android:layout_width="55dp"
-        android:layout_height="55dp"
+        android:id="@+id/jellyBg"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
         android:layout_gravity="center"
         android:background="@drawable/bg_jelly_bubble"
-        android:src="@android:drawable/ic_btn_speak_now"
-        android:padding="12dp"
         android:elevation="8dp" />
-
-    <!-- Tombol Close (X) Kecil di Pojok Kanan Atas -->
     <ImageView
-        android:id="@+id/btnClose"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_gravity="top|end"
-        android:background="@drawable/bg_close_btn"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:tint="#FFFFFF"
-        android:padding="4dp"
-        android:elevation="10dp" />
+        android:id="@+id/jellyFace"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_jelly_face"
+        android:elevation="9dp" />
 </FrameLayout>
 
-==================================================
+
 FILE: ./app/src/main/res/xml/accessibility_service_config.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
@@ -3090,9 +3183,9 @@ FILE: ./app/src/main/res/xml/accessibility_service_config.xml
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100" />
 
-==================================================
+
 FILE: ./app/src/main/res/xml/device_admin_receiver.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
@@ -3100,36 +3193,36 @@ FILE: ./app/src/main/res/xml/device_admin_receiver.xml
     </uses-policies>
 </device-admin>
 
-==================================================
+
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>
 
-==================================================
+
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>
 
-==================================================
+
 FILE: ./app/src/main/res/drawable/bg_close_btn.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#FF3B30" />
     <stroke android:width="1dp" android:color="#FFFFFF" />
 </shape>
 
-==================================================
+
 FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
@@ -3137,9 +3230,9 @@ FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
     <path android:fillColor="#121212" android:pathData="M0,0h108v108h-108z"/>
 </vector>
 
-==================================================
+
 FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
@@ -3148,9 +3241,9 @@ FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
     <stroke android:width="2dp" android:color="#00E5FF" /> <!-- Garis Cyan -->
 </shape>
 
-==================================================
+
 FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
-==================================================
+
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -3177,18 +3270,37 @@ FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
         android:pathData="M54,54m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"/>
 </vector>
 
-==================================================
+
+FILE: ./app/src/main/res/drawable/ic_jelly_face.xml
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="60dp"
+    android:height="60dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Mata Kiri -->
+    <path android:fillColor="#FFFFFF" android:pathData="M35,45 m-6,0 a6,6 0,1,1 12,0 a6,6 0,1,1 -12,0" />
+    <!-- Mata Kanan -->
+    <path android:fillColor="#FFFFFF" android:pathData="M65,45 m-6,0 a6,6 0,1,1 12,0 a6,6 0,1,1 -12,0" />
+    <!-- Pipi Merona -->
+    <path android:fillColor="#88FF4081" android:pathData="M22,55 m-5,0 a5,3 0,1,1 10,0 a5,3 0,1,1 -10,0" />
+    <path android:fillColor="#88FF4081" android:pathData="M78,55 m-5,0 a5,3 0,1,1 10,0 a5,3 0,1,1 -10,0" />
+    <!-- Mulut Imut (Lengkung) -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M42,62 Q50,72 58,62" />
+</vector>
+
+
 FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#CC00E5FF" />
     <stroke android:width="2dp" android:color="#FFFFFF" />
 </shape>
 
-==================================================
+
 FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
-==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
@@ -3201,9 +3313,9 @@ FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
           android:strokeLineJoin="round"/>
 </vector>
 
-==================================================
+
 FILE: ./app/build.gradle
-==================================================
+
 plugins {
     id 'com.android.application'
 }
@@ -3251,15 +3363,15 @@ dependencies {
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
 }
 
-==================================================
+
 FILE: ./settings.gradle
-==================================================
+
 include ':app'
 rootProject.name = "NovaAgent"
 
-==================================================
+
 FILE: ./build.gradle
-==================================================
+
 buildscript {
     repositories {
         google()

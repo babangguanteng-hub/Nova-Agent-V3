@@ -20,14 +20,9 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * 10x KOMPLEKSITAS: NETWORK LAYER ABSTRACTION.
- * Fokus mutlak pada pengiriman HTTP, validasi API Key, dan Error Handling (Retry Logic).
- */
 public class GroqNetworkClient {
     private static final String TAG = "GroqNetworkClient";
     private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    
     
     private final OkHttpClient client;
     private final Context context;
@@ -58,7 +53,7 @@ public class GroqNetworkClient {
         try {
             JSONObject payload = new JSONObject();
             payload.put("model", getSecureModelName());
-            payload.put("temperature", 0.3); // Rendah untuk akurasi tindakan layar
+            payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
@@ -100,7 +95,7 @@ public class GroqNetworkClient {
     private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry); // 1.5s, 3s, 6s
+            long delay = 1500 * (long) Math.pow(2, currentRetry);
             Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
@@ -115,7 +110,7 @@ public class GroqNetworkClient {
             return prefs.getString("groq_api_key", "").trim();
         } catch (Exception e) { return ""; }
     }
-}
+
     private String getSecureModelName() {
         try {
             MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();

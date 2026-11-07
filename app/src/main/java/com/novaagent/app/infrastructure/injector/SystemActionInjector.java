@@ -131,10 +131,22 @@ public class SystemActionInjector {
                     int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
                     audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
                 }
-            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet")) {
+            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet") || lowerCmd.contains("data")) {
                 Intent panelIntent = new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
                 panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(panelIntent);
+            } else if (lowerCmd.contains("bluetooth")) {
+                Intent btIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+                btIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(btIntent);
+            } else if (lowerCmd.contains("hotspot")) {
+                Intent hsIntent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
+                hsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(hsIntent);
+            } else if (lowerCmd.contains("kamera") || lowerCmd.contains("camera")) {
+                if (!openAppByName(context, "kamera")) openAppByName(context, "camera");
+            } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
+                if (!openAppByName(context, "galeri")) openAppByName(context, "gallery");
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }

@@ -4,27 +4,18 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:padding="8dp">
-
-    <!-- Wujud Virus Jelly Cerdas -->
     <ImageView
-        android:id="@+id/jellyBall"
-        android:layout_width="55dp"
-        android:layout_height="55dp"
+        android:id="@+id/jellyBg"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
         android:layout_gravity="center"
         android:background="@drawable/bg_jelly_bubble"
-        android:src="@android:drawable/ic_btn_speak_now"
-        android:padding="12dp"
         android:elevation="8dp" />
-
-    <!-- Tombol Close (X) Kecil di Pojok Kanan Atas -->
     <ImageView
-        android:id="@+id/btnClose"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_gravity="top|end"
-        android:background="@drawable/bg_close_btn"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:tint="#FFFFFF"
-        android:padding="4dp"
-        android:elevation="10dp" />
+        android:id="@+id/jellyFace"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_jelly_face"
+        android:elevation="9dp" />
 </FrameLayout>

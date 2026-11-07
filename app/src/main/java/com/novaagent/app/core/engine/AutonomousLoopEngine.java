@@ -59,12 +59,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
-        // INTERSEP: Mode Pemantauan Latar Belakang (Proactive)
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
-            // Contoh parsing kotor: "Pantau kata Beli"
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
-                // Buat aksi dummy untuk diklik jika ketemu (bisa dikembangkan AI lebih lanjut)
                 try {
                     ActionCommandDto triggerAct = new ActionCommandDto("{\"action\":\"tap\",\"textToType\":\"" + keyword + "\"}");
                     proactiveEngine.setWatchTrigger(keyword, triggerAct);
@@ -73,14 +70,43 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // FASE 8: OFFLINE SURVIVAL MODE
         String lowerTask = task.toLowerCase();
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara).*")) {
+
+        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar & Obrolan Keren)
+        if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
+            speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
+        } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
+            speak("Saya diciptakan oleh Babang Ganteng, sang visioner sejati."); return;
+        } else if (lowerTask.contains("jam berapa") || lowerTask.contains("waktu")) {
+            speak("Sekarang menunjukan jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date())); return;
+        } else if (lowerTask.contains("hari apa") || lowerTask.contains("tanggal")) {
+            speak("Hari ini " + new java.text.SimpleDateFormat("EEEE, dd MMMM yyyy").format(new java.util.Date())); return;
+        } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
+            speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
+        } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
+            speak("Halo bos! Nova siap meluncur dan melayani perintah Anda."); return;
+        } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
+            speak("Nova bisa ngobrol offline, buka semua aplikasi, ngatur senter, wifi, bluetooth, dan mengontrol penuh layar bos."); return;
+        }
+
+        // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
+        if (lowerTask.startsWith("buka ")) {
+            String app = lowerTask.substring(5).trim();
+            try {
+                ActionCommandDto openCmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + app + "\"}");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, openCmd));
+                speak("Membuka " + app);
+            } catch(Exception e){}
+            return;
+        }
+
+        // 3. Skil Kontrol Panel Android / Perangkat Keras
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri).*")) {
             Log.i(TAG, "Mode Offline (Survival) Terpicu!");
             try {
                 ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Siap."));
+                speak("Siap bos, langsung dieksekusi.");
             } catch (Exception e) {}
             return;
         }
@@ -121,7 +147,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     
-                    // SELALU jalankan evaluasi Proactive (Jika ada trigger aktif)
                     resolveDependencies();
                     proactiveEngine.evaluateScreen(newContext);
 
@@ -135,7 +160,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                             failedActionToReport = lastCommandExecuted.action;
                             if (consecutiveFailures >= 3) {
                                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain."));
+                                speak("Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain.");
                                 stopTask();
                                 return;
                             }
@@ -147,7 +172,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     lastScreenContext = newContext;
                     stepCount++;
                     if (stepCount > 15) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Misi terlalu panjang. Saya berhenti."));
+                        speak("Misi terlalu panjang. Saya berhenti.");
                         stopTask();
                         return;
                     }
@@ -158,7 +183,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     if (flatUiText.equals(lastFlatUiText)) { return; }
                     lastFlatUiText = flatUiText;
 
-                    // MATA DEWA: Ekstrak makna semantik sebelum dikirim ke AI
                     String enrichedSemantics = visionEngine.extractSemantics(newContext);
                     processWithAI(enrichedSemantics, failedActionToReport);
                     break;
@@ -186,6 +210,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         } catch (Exception e) {}
     }
 
+    private void speak(String text) {
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, text));
+    }
+
     private void processWithAI(String uiContextString, String failedAction) {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
         
@@ -195,7 +223,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 if (!isRunning) return;
                 if ("done".equalsIgnoreCase(cmd.action)) {
                     if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
+                        speak(cmd.speech);
                     }
                     stopTask();
                 } else {
@@ -208,7 +236,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             public void onConfusion(String errorMessage) {
                 if (!isRunning) return;
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, errorMessage));
+                speak(errorMessage);
                 stopTask();
             }
         });
