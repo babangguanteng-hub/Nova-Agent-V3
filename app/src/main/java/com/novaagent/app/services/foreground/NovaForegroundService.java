@@ -51,7 +51,8 @@ public class NovaForegroundService extends Service {
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
-        audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
+        audioDirector = new NovaAudioDirector(this);
+        locator.register(NovaAudioDirector.class, audioDirector);
 
         // 3. Hidupkan Otak AI (Sekarang instansiasi murni tanpa parameter Context)
         loopEngine = new AutonomousLoopEngine();
