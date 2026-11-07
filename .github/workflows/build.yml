@@ -3,11 +3,11 @@ name: Build Nova Agent APK
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: # Mengizinkan build manual jika diperlukan
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Robot GitHub menggunakan Linux Ubuntu
+    runs-on: ubuntu-latest
 
     steps:
     - name: Mengambil Source Code
@@ -19,10 +19,11 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Menggunakan Mesin Gradle 8.4 (Versi yang Cocok)
+      run: gradle wrapper --gradle-version 8.4
+
     - name: Merakit APK Android (Assemble Debug)
-      run: |
-        gradle wrapper
-        ./gradlew assembleDebug
+      run: ./gradlew assembleDebug
 
     - name: Menyimpan Hasil APK
       uses: actions/upload-artifact@v4
