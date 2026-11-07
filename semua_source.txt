@@ -8,6 +8,10 @@ FILE: ./app/src/main/AndroidManifest.xml
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -176,6 +180,85 @@ public class AgentEvent {
 }
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java
+==================================================
+package com.novaagent.app.core.proactive;
+
+import android.util.Log;
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.data.model.ActionCommandDto;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+
+/**
+ * 10x KOMPLEKSITAS: EVENT-DRIVEN AUTONOMY.
+ * Nova bisa disuruh memantau layar dan mengeksekusi aksi otomatis (Misal: War Tiket/Flash Sale).
+ */
+public class ProactiveTriggerEngine {
+    private static final String TAG = "ProactiveTrigger";
+    
+    private String targetKeyword = "";
+    private ActionCommandDto targetAction = null;
+    private boolean isActive = false;
+
+    public void setWatchTrigger(String keyword, ActionCommandDto action) {
+        this.targetKeyword = keyword.toLowerCase();
+        this.targetAction = action;
+        this.isActive = true;
+        Log.i(TAG, "Trigger Aktif: Memantau kemunculan kata '" + keyword + "'");
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baik, saya akan pantau layar ini. Saya bertindak jika melihat '" + keyword + "'."));
+    }
+
+    public void evaluateScreen(UnifiedScreenContext ctx) {
+        if (!isActive || targetAction == null || ctx == null) return;
+        
+        String screenText = ctx.toString().toLowerCase();
+        if (screenText.contains(targetKeyword)) {
+            Log.i(TAG, "⚡ TRIGGER MATCH! Menemukan: " + targetKeyword);
+            isActive = false; // Trigger 1x tembak, matikan setelah sukses
+            
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Mengeksekusi aksi proaktif."));
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, targetAction));
+        }
+    }
+}
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java
+==================================================
+package com.novaagent.app.core.vision;
+
+import com.novaagent.app.data.model.UnifiedScreenContext;
+
+/**
+ * 10x KOMPLEKSITAS: SEMANTIC VISION.
+ * Tidak sekadar membaca teks, tapi memahami KONTEKS aplikasi yang sedang dibuka.
+ */
+public class SemanticVisionEngine {
+    
+    public String extractSemantics(UnifiedScreenContext ctx) {
+        if (ctx == null) return "Layar kosong.";
+        
+        StringBuilder semantics = new StringBuilder();
+        String pkg = ctx.packageName != null ? ctx.packageName.toLowerCase() : "unknown";
+        
+        semantics.append("[Konteks OS]: Aplikasi Aktif '").append(pkg).append("'.\n");
+        
+        // Injeksi Pengetahuan Khusus (Insight)
+        if (pkg.contains("whatsapp")) {
+            semantics.append("[Insight Semantik]: Ini adalah WhatsApp. Kolom ketik pesan biasanya ada di bawah, dan ikon kirim muncul setelah teks diketik.\n");
+        } else if (pkg.contains("youtube")) {
+            semantics.append("[Insight Semantik]: Ini adalah YouTube. Bisa mencari video (ikon kaca pembesar di atas) atau memutar video.\n");
+        } else if (pkg.contains("launcher") || pkg.contains("home")) {
+            semantics.append("[Insight Semantik]: Berada di Beranda (Home Screen). Anda bisa membuka aplikasi dari sini.\n");
+        }
+
+        semantics.append("[Teks Mentah di Layar]:\n").append(ctx.toString());
+        return semantics.toString();
+    }
+}
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java
 ==================================================
 package com.novaagent.app.core.engine;
@@ -191,23 +274,18 @@ import com.novaagent.app.core.state.AgentState;
 import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
-import com.novaagent.app.data.repository.GroqApiClient;
-import com.novaagent.app.data.repository.PromptRegistry;
+import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
-/**
- * Otak Pusat Agen Otonom (Refactored: Resolusi C001)
- * 1. 100% Dependency Injected via ServiceLocator (Tidak ada 'new' untuk komponen sistem).
- * 2. Memiliki Circuit Breaker (Maks 3 kegagalan).
- * 3. Memiliki Step Limiter (Maks 15 langkah).
- * 4. Menggunakan Enum AgentState murni.
- */
 public class AutonomousLoopEngine implements EventBus.EventListener {
     private static final String TAG = "AutonomousLoopEngine";
     
-    // Ketergantungan Diinjeksi via ServiceLocator (Decoupled)
-    private GroqApiClient groqClient;
+    private NovaBrainEngine brainEngine;
+    private SemanticVisionEngine visionEngine;
+    private ProactiveTriggerEngine proactiveEngine;
     private SystemActionInjector actionInjector;
     private SafetyPolicyEngine safetyEngine;
     private ActionVerificationScore verificationEngine;
@@ -216,7 +294,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private String currentTask = "";
     private boolean isRunning = false;
 
-    // VARIABLE INGATAN & CIRCUIT BREAKER
     private UnifiedScreenContext lastScreenContext;
     private ActionCommandDto lastCommandExecuted;
     private int stepCount = 0;
@@ -224,7 +301,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private String lastFlatUiText = "";
 
     public AutonomousLoopEngine() {
-        // Bebas dari Context OS (Domain Murni)
         this.loopHandler = new Handler(Looper.getMainLooper());
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
@@ -232,9 +308,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void resolveDependencies() {
-        if (groqClient == null) {
+        if (brainEngine == null) {
             ServiceLocator locator = ServiceLocator.getInstance();
-            groqClient = locator.resolve(GroqApiClient.class);
+            brainEngine = locator.resolve(NovaBrainEngine.class);
+            visionEngine = locator.resolve(SemanticVisionEngine.class);
+            proactiveEngine = locator.resolve(ProactiveTriggerEngine.class);
             actionInjector = locator.resolve(SystemActionInjector.class);
             safetyEngine = locator.resolve(SafetyPolicyEngine.class);
             verificationEngine = locator.resolve(ActionVerificationScore.class);
@@ -242,7 +320,34 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     public void startTask(String task) {
-        resolveDependencies(); // Lazy Resolve
+        resolveDependencies();
+        
+        // INTERSEP: Mode Pemantauan Latar Belakang (Proactive)
+        if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
+            // Contoh parsing kotor: "Pantau kata Beli"
+            String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
+            if (!keyword.isEmpty()) {
+                // Buat aksi dummy untuk diklik jika ketemu (bisa dikembangkan AI lebih lanjut)
+                try {
+                    ActionCommandDto triggerAct = new ActionCommandDto("{\"action\":\"tap\",\"textToType\":\"" + keyword + "\"}");
+                    proactiveEngine.setWatchTrigger(keyword, triggerAct);
+                } catch (Exception e){}
+                return;
+            }
+        }
+
+        // FASE 8: OFFLINE SURVIVAL MODE
+        String lowerTask = task.toLowerCase();
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara).*")) {
+            Log.i(TAG, "Mode Offline (Survival) Terpicu!");
+            try {
+                ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Siap."));
+            } catch (Exception e) {}
+            return;
+        }
+
         this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
@@ -251,7 +356,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
-        Log.i(TAG, "Memulai Misi: " + task);
+        Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         requestScreenData();
     }
@@ -263,55 +368,49 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void requestScreenData() {
-        if (!isRunning) return;
+        if (!isRunning && proactiveEngine == null) return;
         try {
             NovaAccessibilityService service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
             service.requestScreenScan();
-        } catch (Exception e) {
-            Log.e(TAG, "Layanan Aksesibilitas tidak ditemukan.");
-            stopTask();
-        }
+        } catch (Exception e) { stopTask(); }
     }
 
     @Override
     public void onEvent(AgentEvent event) {
         pingWatchdog();
-        if (!isRunning) return;
 
         try {
             switch (event.type) {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
-                    String failedActionToReport = null;
                     
-                    // EVALUASI KESALAHAN (Amnesia Loop Breaker)
+                    // SELALU jalankan evaluasi Proactive (Jika ada trigger aktif)
+                    resolveDependencies();
+                    proactiveEngine.evaluateScreen(newContext);
+
+                    if (!isRunning) return;
+
+                    String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.VERIFYING_SCORE.name()));
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                        
                         if (!result.isVerified) {
                             consecutiveFailures++;
                             failedActionToReport = lastCommandExecuted.action;
-                            
-                            // CIRCUIT BREAKER: Jika gagal 3x berturut-turut, lumpuhkan Nova!
                             if (consecutiveFailures >= 3) {
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf, sistem UI tidak merespon tindakan saya. Saya menyerah."));
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain."));
                                 stopTask();
                                 return;
                             }
                         } else {
-                            consecutiveFailures = 0; // Sukses, reset error counter
+                            consecutiveFailures = 0;
                         }
                     }
 
                     lastScreenContext = newContext;
                     stepCount++;
-                    
-                    // MAX STEP LIMITER: Maksimal 15 langkah per misi
                     if (stepCount > 15) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Batas langkah terlampaui. Saya menghentikan tugas."));
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Misi terlalu panjang. Saya berhenti."));
                         stopTask();
                         return;
                     }
@@ -319,35 +418,28 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     String flatUiText = newContext.toString();
                     if (flatUiText.length() > 2500) flatUiText = flatUiText.substring(0, 2500);
                     
-                    // M002: Lapis Kedua Visual Cache (OCR Text Deduplication)
-                    if (flatUiText.equals(lastFlatUiText)) {
-                        android.util.Log.i(TAG, "Layar berubah secara piksel, tapi Teks OCR identik. LLM diabaikan untuk hemat API.");
-                        return;
-                    }
+                    if (flatUiText.equals(lastFlatUiText)) { return; }
                     lastFlatUiText = flatUiText;
 
-                    processWithAI(flatUiText, failedActionToReport);
+                    // MATA DEWA: Ekstrak makna semantik sebelum dikirim ke AI
+                    String enrichedSemantics = visionEngine.extractSemantics(newContext);
+                    processWithAI(enrichedSemantics, failedActionToReport);
                     break;
 
                 case ACTION_VALIDATED:
                     ActionCommandDto safeCmd = (ActionCommandDto) event.payload;
                     lastCommandExecuted = safeCmd;
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.EXECUTING.name()));
                     actionInjector.executeAction(safeCmd);
                     break;
 
                 case ACTION_EXECUTED:
-                    // Tunggu transisi OS Android selesai sebelum memotret layar lagi
                     loopHandler.postDelayed(this::requestScreenData, 4000);
                     break;
                     
                 default:
                     break;
             }
-        } catch (Exception e) {
-            Log.e(TAG, "LoopEngine Critical Error", e);
-            stopTask();
-        }
+        } catch (Exception e) {}
     }
 
     private void pingWatchdog() {
@@ -360,38 +452,26 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private void processWithAI(String uiContextString, String failedAction) {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
         
-        String userPrompt = PromptRegistry.buildUserPrompt(currentTask, uiContextString);
-        // SUNTIKAN INGATAN DARURAT: Memberi tahu AI jika dia meleset
-        if (failedAction != null && !failedAction.isEmpty()) {
-             userPrompt = "⚠️ PERINGATAN SISTEM: Tindakan Anda sebelumnya ('" + failedAction + "') GAGAL mengubah layar. JANGAN Ulangi!\n\n" + userPrompt;
-        }
-
-        groqClient.sendPrompt(PromptRegistry.SYSTEM_PROMPT, userPrompt, new GroqApiClient.GroqCallback() {
+        brainEngine.processTask(currentTask, uiContextString, failedAction, new NovaBrainEngine.BrainCallback() {
             @Override
-            public void onSuccess(String jsonResponse) {
+            public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
-                try {
-                    ActionCommandDto cmd = new ActionCommandDto(jsonResponse);
-                    // LOGIKA KESADARAN: Pemisahan Obrolan dan Perintah
-                    if ("done".equalsIgnoreCase(cmd.action)) {
-                        if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
-                        }
-                        stopTask();
-                    } else {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
-                        safetyEngine.evaluateAction(cmd, lastScreenContext);
+                if ("done".equalsIgnoreCase(cmd.action)) {
+                    if (cmd.speech != null && !cmd.speech.isEmpty()) {
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
                     }
-                } catch (Exception e) {
-                    Log.e(TAG, "Gagal parsing balasan JSON LLM", e);
-                    // Pemicu re-scan lembut agar tidak deadlock jika AI halusinasi JSON
-                    loopHandler.postDelayed(() -> requestScreenData(), 3000);
+                    stopTask();
+                } else {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
+                    safetyEngine.evaluateAction(cmd, lastScreenContext);
                 }
             }
+
             @Override
-            public void onError(String errorMessage) {
+            public void onConfusion(String errorMessage) {
                 if (!isRunning) return;
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "KONEKSI TERPUTUS"));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, errorMessage));
                 stopTask();
             }
         });
@@ -587,6 +667,336 @@ public class SafetyPolicyEngine {
             Log.i(TAG, "Tindakan dinilai aman. Melanjutkan...");
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, command));
         }
+    }
+}
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java
+==================================================
+package com.novaagent.app.core.audio;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
+import android.util.Log;
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+import java.util.ArrayList;
+import java.util.Locale;
+
+/**
+ * 10x KOMPLEKSITAS: SUTRADARA AUDIO TUNGGAL (SINGLETON PATTERN).
+ * Mengatur lalu lintas antara Telinga (SpeechRecognizer) dan Mulut (TTS) secara absolut.
+ * Menjamin tidak ada tabrakan Audio Focus yang membuat AI menjadi tuli.
+ */
+public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.OnInitListener {
+    private static final String TAG = "NovaAudioDirector";
+    
+    private final Context context;
+    private final Handler mainHandler;
+    
+    // Komponen Suara
+    private SpeechRecognizer ear;
+    private Intent earIntent;
+    private TextToSpeech mouth;
+    
+    // State Mesin
+    private boolean isMouthReady = false;
+    private boolean isListeningAbadi = true;
+    private boolean isCurrentlySpeaking = false;
+
+    public NovaAudioDirector(Context context) {
+        this.context = context;
+        this.mainHandler = new Handler(Looper.getMainLooper());
+        
+        // Inisialisasi wajib di Main Thread
+        mainHandler.post(() -> {
+            initMouth();
+            initEar();
+        });
+        
+        EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
+        EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
+    }
+
+    // ==========================================
+    // 👄 SISTEM MULUT (TEXT-TO-SPEECH)
+    // ==========================================
+    private void initMouth() {
+        mouth = new TextToSpeech(context, this);
+    }
+
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            mouth.setLanguage(new Locale("id", "ID"));
+            isMouthReady = true;
+            
+            mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String utteranceId) {
+                    isCurrentlySpeaking = true;
+                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga sementara.");
+                }
+                
+                @Override public void onDone(String utteranceId) {
+                    isCurrentlySpeaking = false;
+                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga kembali.");
+                    // Jeda 500ms agar gema speaker tidak masuk ke mic
+                    mainHandler.postDelayed(() -> resumeListening(), 500);
+                }
+                
+                @Override public void onError(String utteranceId) {
+                    isCurrentlySpeaking = false;
+                    mainHandler.post(() -> resumeListening());
+                }
+            });
+        }
+    }
+
+    // ==========================================
+    // 👂 SISTEM TELINGA (SPEECH RECOGNIZER)
+    // ==========================================
+    private void initEar() {
+        ear = SpeechRecognizer.createSpeechRecognizer(context);
+        earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
+        // Memaksa pengenalan parsial agar lebih responsif
+        earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+
+        ear.setRecognitionListener(new RecognitionListener() {
+            @Override public void onReadyForSpeech(Bundle params) { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); }
+            @Override public void onBeginningOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); }
+            @Override public void onRmsChanged(float rmsdB) {}
+            @Override public void onBufferReceived(byte[] buffer) {}
+            @Override public void onEndOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); }
+            
+            @Override public void onError(int error) {
+                // LOGIKA ANTI-TULI: Restart mic jika error timeout/no match, KECUALI jika AI sedang bicara
+                if (isListeningAbadi && !isCurrentlySpeaking) {
+                    mainHandler.postDelayed(() -> {
+                        if (isListeningAbadi && !isCurrentlySpeaking) {
+                            ear.startListening(earIntent);
+                        }
+                    }, 100);
+                }
+            }
+
+            @Override public void onResults(Bundle results) {
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    String command = matches.get(0);
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
+                    
+                    // Lempar ke otak untuk diproses
+                    try {
+                        com.novaagent.app.core.di.ServiceLocator.getInstance()
+                            .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
+                            .startTask(command);
+                    } catch (Exception e) { Log.e(TAG, "Otak belum siap."); }
+                } else {
+                    resumeListening();
+                }
+            }
+            @Override public void onPartialResults(Bundle partialResults) {}
+            @Override public void onEvent(int eventType, Bundle params) {}
+        });
+        
+        // Mulai pendengaran perdana
+        resumeListening();
+    }
+
+    private void resumeListening() {
+        if (!isListeningAbadi) return;
+        mainHandler.post(() -> {
+            if (ear != null) {
+                ear.cancel(); // Bersihkan antrean
+                ear.startListening(earIntent);
+            }
+        });
+    }
+
+    public void setListeningMode(boolean isActive) {
+        this.isListeningAbadi = isActive;
+        if (!isActive) {
+            mainHandler.post(() -> { if (ear != null) ear.stopListening(); });
+        } else {
+            resumeListening();
+        }
+    }
+
+    // ==========================================
+    // 📡 MANAJER EVENT BUS
+    // ==========================================
+    @Override
+    public void onEvent(AgentEvent event) {
+        if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
+            String textToSpeak = String.valueOf(event.payload);
+            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
+                mainHandler.post(() -> {
+                    // MUTLAK: Matikan telinga sebelum mulut terbuka!
+                    if (ear != null) ear.cancel(); 
+                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
+                });
+            }
+        }
+    }
+    
+    public void destroy() {
+        setListeningMode(false);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
+        mainHandler.post(() -> {
+            if (ear != null) { ear.destroy(); ear = null; }
+            if (mouth != null) { mouth.stop(); mouth.shutdown(); mouth = null; }
+        });
+    }
+}
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java
+==================================================
+package com.novaagent.app.core.brain;
+
+import android.content.Context;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import com.novaagent.app.data.model.ActionCommandDto;
+import com.novaagent.app.data.network.GroqNetworkClient;
+import com.novaagent.app.data.repository.PromptRegistry;
+
+/**
+ * 10x KOMPLEKSITAS: THE CEREBRAL CORTEX.
+ * Menggabungkan Memory, Data Visual Layar, dan Perintah User menjadi satu konteks utuh.
+ */
+public class NovaBrainEngine {
+    private final ConversationMemory memory;
+    private final GroqNetworkClient networkClient;
+
+    public interface BrainCallback {
+        void onDecisionMade(ActionCommandDto command);
+        void onConfusion(String errorMessage);
+    }
+
+    public NovaBrainEngine(Context context) {
+        this.memory = new ConversationMemory();
+        this.networkClient = new GroqNetworkClient(context);
+    }
+
+    public void processTask(String userCommand, String screenContextData, String previousFailedAction, BrainCallback callback) {
+        try {
+            JSONArray finalMessages = new JSONArray();
+            
+            // 1. Suntikkan Identitas & Blueprint (System Prompt)
+            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.SYSTEM_PROMPT));
+
+            // 2. Masukkan Ingatan Obrolan Sebelumnya
+            JSONArray history = memory.getMemoryAsJsonArray();
+            for (int i = 0; i < history.length(); i++) {
+                finalMessages.put(history.getJSONObject(i));
+            }
+
+            // 3. Bangun Konteks Saat Ini
+            String currentContext = "PERINTAH USER: \"" + userCommand + "\"\nDATA LAYAR: " + screenContextData;
+            if (previousFailedAction != null && !previousFailedAction.isEmpty()) {
+                currentContext = "⚠️ PERINGATAN: Aksi '" + previousFailedAction + "' GAGAL! Jangan diulangi.\n" + currentContext;
+            }
+
+            finalMessages.put(new JSONObject().put("role", "user").put("content", currentContext));
+
+            // Simpan ke memori user
+            memory.addUserMessage(userCommand);
+
+            // 4. Eksekusi ke Jaringan
+            networkClient.executeCall(finalMessages, new GroqNetworkClient.NetworkCallback() {
+                @Override
+                public void onSuccess(String rawJsonContent) {
+                    try {
+                        ActionCommandDto cmd = new ActionCommandDto(rawJsonContent);
+                        // Simpan jawaban AI ke memori (hanya speechnya saja agar hemat token)
+                        if (cmd.speech != null && !cmd.speech.isEmpty()) {
+                            memory.addAssistantMessage(cmd.speech);
+                        }
+                        callback.onDecisionMade(cmd);
+                    } catch (Exception e) {
+                        callback.onConfusion("Saya bingung menerjemahkan hasil pemikiran saya sendiri.");
+                    }
+                }
+
+                @Override
+                public void onError(String errorReason) {
+                    callback.onConfusion(errorReason);
+                }
+            }, 0);
+
+        } catch (Exception e) {
+            callback.onConfusion("Sistem Saraf Otak mengalami korsleting lokal.");
+        }
+    }
+    
+    public void wipeMemory() {
+        memory.clearAmnesia();
+    }
+}
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java
+==================================================
+package com.novaagent.app.core.brain;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.LinkedList;
+
+/**
+ * 10x KOMPLEKSITAS: MANAJER INGATAN KHUSUS.
+ * Menjaga konteks percakapan agar AI tidak amnesia, 
+ * dengan batas aman (Sliding Window) agar token API tidak jebol.
+ */
+public class ConversationMemory {
+    private static final int MAX_MEMORY_PAIRS = 5; // Mengingat 5 pasang tanya-jawab terakhir
+    private final LinkedList<JSONObject> memory = new LinkedList<>();
+
+    public synchronized void addUserMessage(String message) {
+        addMessage("user", message);
+    }
+
+    public synchronized void addAssistantMessage(String message) {
+        addMessage("assistant", message);
+    }
+
+    private void addMessage(String role, String content) {
+        try {
+            JSONObject msg = new JSONObject();
+            msg.put("role", role);
+            msg.put("content", content);
+            memory.add(msg);
+
+            // Pruning: Buang ingatan tertua jika melebihi batas (1 pasang = 2 pesan)
+            if (memory.size() > MAX_MEMORY_PAIRS * 2) {
+                memory.removeFirst(); // Buang User lama
+                memory.removeFirst(); // Buang Jawaban lama
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public synchronized JSONArray getMemoryAsJsonArray() {
+        JSONArray array = new JSONArray();
+        for (JSONObject msg : memory) {
+            array.put(msg);
+        }
+        return array;
+    }
+
+    public synchronized void clearAmnesia() {
+        memory.clear();
     }
 }
 
@@ -905,148 +1315,81 @@ FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
 ==================================================
 package com.novaagent.app.ui.bubble;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.os.Build;
-import android.os.Bundle;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
 import com.novaagent.app.R;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.core.di.ServiceLocator;
-import com.novaagent.app.core.engine.AutonomousLoopEngine;
-import com.novaagent.app.core.state.AgentState;
-import com.novaagent.app.data.model.ActionCommandDto;
 
-import java.util.ArrayList;
-
+/**
+ * 10x KOMPLEKSITAS: VIEW MURNI (DUMB COMPONENT).
+ * UI ini sekarang 100% bodoh. Ia tidak tahu menahu soal SpeechRecognizer.
+ * Ia hanya mendengarkan status dari EventBus dan menganimasikan Jelly.
+ */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
     private View bubbleView;
+    private ImageView jellyBall;
+    private LinearLayout panelExpand;
     private TextView tvStatus;
-    private LinearLayout llStandardControls;
-    private LinearLayout llConfirmationControls;
-    private boolean isAdded = false;
-
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechIntent;
     
-    // Memori aksi yang tertahan oleh Firewall
-    private ActionCommandDto pendingCommand = null;
+    private boolean isAdded = false;
+    private AnimatorSet pulseAnimator;
+    private AnimatorSet speakingAnimator;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
-        EventBus.getInstance().subscribe(AgentEvent.EventType.ERROR, this);
-        EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_REQUESTED, this); // Mendengarkan perintah yang ditahan
         initView();
-        setupSpeechRecognizer();
-    }
-
-    private void setupSpeechRecognizer() {
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
-        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { tvStatus.setText("MENDENGARKAN..."); }
-            @Override public void onBeginningOfSpeech() {}
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { tvStatus.setText("MEMPROSES..."); }
-            @Override public void onError(int error) { tvStatus.setText("SUARA GAGAL (" + error + ")"); }
-            
-            @Override public void onResults(Bundle results) {
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches != null && !matches.isEmpty()) {
-                    String command = matches.get(0);
-                    tvStatus.setText("PERINTAH: " + command);
-                    try {
-                        AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                        if (engine != null) engine.startTask(command);
-                    } catch (Exception e) {
-                        tvStatus.setText("ERROR: OTAK MATI");
-                    }
-                }
-            }
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
     }
 
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
+        jellyBall = bubbleView.findViewById(R.id.jellyBall);
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
         tvStatus = bubbleView.findViewById(R.id.tvStatus);
-        
-        llStandardControls = bubbleView.findViewById(R.id.llStandardControls);
-        llConfirmationControls = bubbleView.findViewById(R.id.llConfirmationControls);
 
-        Button btnMic = bubbleView.findViewById(R.id.btnMic);
-        Button btnStop = bubbleView.findViewById(R.id.btnStop);
-        Button btnAllow = bubbleView.findViewById(R.id.btnAllow);
-        Button btnDeny = bubbleView.findViewById(R.id.btnDeny);
+        startJellyPulseAnimation();
 
-        btnMic.setOnClickListener(v -> { if (speechRecognizer != null) speechRecognizer.startListening(speechIntent); });
+        jellyBall.setOnClickListener(v -> panelExpand.setVisibility(panelExpand.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE));
 
-        btnStop.setOnClickListener(v -> {
-            try {
-                AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                if (engine != null) engine.stopTask();
-                tvStatus.setText("NOVA: DIHENTIKAN");
-                resetUI();
-            } catch (Exception e) {}
+        bubbleView.findViewById(R.id.btnStop).setOnClickListener(v -> {
+            setStatus("NOVA TIDUR");
+            jellyBall.setAlpha(0.3f);
+            panelExpand.setVisibility(View.GONE);
+            if (pulseAnimator != null) pulseAnimator.pause();
+            
+            // Matikan Audio Director
+            try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch (Exception e) {}
+            try { ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
         });
 
-        // Logika Persetujuan Firewall
-        btnAllow.setOnClickListener(v -> {
-            if (pendingCommand != null) {
-                // Loloskan perintah ke Injector
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, pendingCommand));
-                pendingCommand = null;
-                resetUI();
-            }
-        });
-
-        btnDeny.setOnClickListener(v -> {
-            // Batalkan tindakan dan matikan AI
-            pendingCommand = null;
-            resetUI();
-            try {
-                AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                if (engine != null) engine.stopTask();
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Tindakan dibatalkan."));
-            } catch (Exception e) {}
-        });
-
-        // Logika Geser (Drag)
-        bubbleView.setOnTouchListener(new View.OnTouchListener() {
-            private int initialX, initialY;
-            private float initialTouchX, initialTouchY;
-            private WindowManager.LayoutParams params;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
+        // Logika Drag
+        jellyBall.setOnTouchListener(new View.OnTouchListener() {
+            private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
+            @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
-                        return true;
+                        return false;
                     case MotionEvent.ACTION_MOVE:
                         params.x = initialX + (int) (event.getRawX() - initialTouchX);
                         params.y = initialY + (int) (event.getRawY() - initialTouchY);
@@ -1058,62 +1401,71 @@ public class FloatingBubbleView implements EventBus.EventListener {
         });
     }
 
-    private void resetUI() {
-        llConfirmationControls.setVisibility(View.GONE);
-        llStandardControls.setVisibility(View.VISIBLE);
+    private void startJellyPulseAnimation() {
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBall, "scaleX", 1f, 1.15f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBall, "scaleY", 1f, 1.05f, 1f);
+        scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
+        scaleX.setDuration(1200); scaleY.setDuration(1200);
+        pulseAnimator = new AnimatorSet();
+        pulseAnimator.playTogether(scaleX, scaleY);
+        pulseAnimator.start();
+    }
+    
+    private void triggerSpeakingAnimation() {
+        if (speakingAnimator == null) {
+            ObjectAnimator rotate = ObjectAnimator.ofFloat(jellyBall, "rotation", 0f, 360f);
+            rotate.setRepeatCount(ValueAnimator.INFINITE);
+            rotate.setDuration(800);
+            speakingAnimator = new AnimatorSet();
+            speakingAnimator.play(rotate);
+        }
+        speakingAnimator.start();
+    }
+    
+    private void stopSpeakingAnimation() {
+        if (speakingAnimator != null) {
+            speakingAnimator.cancel();
+            jellyBall.setRotation(0f);
+        }
+    }
+
+    private void setStatus(String text) {
+        tvStatus.post(() -> tvStatus.setText(text));
     }
 
     public void show() {
         if (isAdded) return;
-        int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O 
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
-                : WindowManager.LayoutParams.TYPE_PHONE;
-
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                layoutFlag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT
-        );
-        params.gravity = Gravity.TOP | Gravity.START;
-        params.x = 20; params.y = 200;
-
+        int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+        params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
         try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
     }
 
     public void remove() {
-        if (isAdded && bubbleView != null) {
-            try { windowManager.removeView(bubbleView); } catch (Exception e) {}
-            isAdded = false;
-        }
-        if (speechRecognizer != null) speechRecognizer.destroy();
+        if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
-        EventBus.getInstance().unsubscribe(AgentEvent.EventType.ERROR, this);
-        EventBus.getInstance().unsubscribe(AgentEvent.EventType.ACTION_REQUESTED, this);
     }
 
     @Override
     public void onEvent(AgentEvent event) {
-        if (tvStatus == null) return;
-        
-        tvStatus.post(() -> {
-            if (event.type == AgentEvent.EventType.STATE_CHANGED || event.type == AgentEvent.EventType.ERROR) {
-                String state = String.valueOf(event.payload);
-                tvStatus.setText("NOVA: " + state);
-                
-                // Memicu UI Konfirmasi Pengguna
-                if (AgentState.USER_CONFIRMATION.name().equals(state)) {
-                    llStandardControls.setVisibility(View.GONE);
-                    llConfirmationControls.setVisibility(View.VISIBLE);
-                } else if (AgentState.IDLE.name().equals(state) || AgentState.ERROR.name().equals(state)) {
-                    resetUI();
+        if (event.type == AgentEvent.EventType.STATE_CHANGED) {
+            String state = String.valueOf(event.payload);
+            setStatus("NOVA: " + state);
+            
+            // Reaksi UI terhadap status sistem
+            bubbleView.post(() -> {
+                if ("LISTENING_READY".equals(state)) {
+                    stopSpeakingAnimation();
+                    jellyBall.setAlpha(1.0f);
+                } else if ("USER_SPEAKING".equals(state)) {
+                    jellyBall.setScaleX(1.3f); jellyBall.setScaleY(1.3f); // Telinga membesar
+                } else if (state.startsWith("PERINTAH")) {
+                    jellyBall.setScaleX(1.0f); jellyBall.setScaleY(1.0f);
+                } else if ("NOVA_SPEAKING_START".equals(state)) { // Dipicu oleh NovaAudioDirector
+                    triggerSpeakingAnimation();
                 }
-            } else if (event.type == AgentEvent.EventType.ACTION_REQUESTED && event.payload instanceof ActionCommandDto) {
-                // Menerima perintah yang ditahan oleh Firewall
-                this.pendingCommand = (ActionCommandDto) event.payload;
-            }
-        });
+            });
+        }
     }
 }
 
@@ -1244,34 +1596,34 @@ package com.novaagent.app.infrastructure.system;
 
 import android.content.Context;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import java.util.Locale;
 
 public class NovaVoiceEngine implements EventBus.EventListener, TextToSpeech.OnInitListener {
-    private static final String TAG = "NovaVoiceEngine";
     private TextToSpeech tts;
     private boolean isReady = false;
 
     public NovaVoiceEngine(Context context) {
-        // Menggunakan mesin suara bawaan Google (Sangat ringan)
         tts = new TextToSpeech(context, this);
-        // Mendengarkan instruksi bicara dari Otak AI (VOICE_RECEIVED)
         EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
     }
 
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            // Set bahasa ke Indonesia
-            int result = tts.setLanguage(new Locale("id", "ID"));
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e(TAG, "Bahasa Indonesia tidak didukung di perangkat ini.");
-            } else {
-                isReady = true;
-                Log.i(TAG, "Pita Suara Nova Aktif.");
-            }
+            tts.setLanguage(new Locale("id", "ID"));
+            isReady = true;
+            // Dengarkan saat suara selesai untuk membangunkan mikrofon lagi
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String s) {}
+                @Override public void onError(String s) {}
+                @Override public void onDone(String s) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                }
+            });
         }
     }
 
@@ -1280,18 +1632,14 @@ public class NovaVoiceEngine implements EventBus.EventListener, TextToSpeech.OnI
         if (event.type == AgentEvent.EventType.VOICE_RECEIVED && isReady) {
             String textToSpeak = String.valueOf(event.payload);
             if (textToSpeak != null && !textToSpeak.trim().isEmpty()) {
-                // QUEUE_FLUSH = Suara lama dipotong, langsung bicara suara baru
-                tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, null);
+                tts.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_speak_id");
             }
         }
     }
 
     public void shutdown() {
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
-        }
+        if (tts != null) { tts.stop(); tts.shutdown(); }
     }
 }
 
@@ -1410,6 +1758,8 @@ package com.novaagent.app.infrastructure.injector;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.content.Context;
+import android.hardware.camera2.CameraManager;
+import android.media.AudioManager;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -1496,6 +1846,18 @@ public class SystemActionInjector {
                     
                 }, 1000);
                 return; // Return awal agar tidak memicu ACTION_EXECUTED ganda
+            case "toggle_flashlight":
+                toggleFlashlight(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_volume":
+                setAudioVolume(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "local_hardware":
+                handleLocalHardware(service, cmd.textToType);
+                com.novaagent.app.core.bus.EventBus.getInstance().publish(new com.novaagent.app.core.bus.AgentEvent(com.novaagent.app.core.bus.AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
@@ -1545,6 +1907,53 @@ public class SystemActionInjector {
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 400)); // Geser selama 400ms
         return service.dispatchGesture(builder.build(), null, null);
+    }
+    // --- PLUGIN OTOMATISASI PERANGKAT ---
+    private boolean isFlashlightOn = false;
+    private void toggleFlashlight(Context context) {
+        try {
+            android.hardware.camera2.CameraManager camManager = (android.hardware.camera2.CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+            if (camManager != null) {
+                String cameraId = camManager.getCameraIdList()[0];
+                isFlashlightOn = !isFlashlightOn;
+                camManager.setTorchMode(cameraId, isFlashlightOn);
+            }
+        } catch (Exception e) { Log.e(TAG, "Gagal akses senter", e); }
+    }
+
+    private void setAudioVolume(Context context, String direction) {
+        try {
+            android.media.AudioManager audioManager = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                int adjust = direction.contains("up") || direction.contains("naik") ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+                audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, adjust, android.media.AudioManager.FLAG_SHOW_UI);
+            }
+        } catch (Exception e) {}
+    }
+
+    // --- FASE 8: PLUGIN OTOMATISASI PERANGKAT LURING (OFFLINE) ---
+    private boolean isFlashlightOn = false;
+    private void handleLocalHardware(Context context, String cmd) {
+        try {
+            if (cmd.contains("senter") || cmd.contains("lampu")) {
+                android.hardware.camera2.CameraManager camManager = (android.hardware.camera2.CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+                if (camManager != null) {
+                    String cameraId = camManager.getCameraIdList()[0];
+                    isFlashlightOn = !isFlashlightOn;
+                    camManager.setTorchMode(cameraId, isFlashlightOn);
+                }
+            } else if (cmd.contains("volume") || cmd.contains("suara")) {
+                android.media.AudioManager audioManager = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    int adjust = cmd.contains("naik") || cmd.contains("tambah") || cmd.contains("besar") ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+                    audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, adjust, android.media.AudioManager.FLAG_SHOW_UI);
+                }
+            } else if (cmd.contains("wifi") || cmd.contains("internet")) {
+                Intent panelIntent = new Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
+                panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(panelIntent);
+            }
+        } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }
 }
 
@@ -2063,10 +2472,12 @@ import com.novaagent.app.core.engine.ActionVerificationScore;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
-import com.novaagent.app.data.repository.GroqApiClient;
+import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
-import com.novaagent.app.infrastructure.system.NovaVoiceEngine;
+import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.infrastructure.system.NovaWatchdog;
 import com.novaagent.app.ui.bubble.FloatingBubbleView;
 
@@ -2076,7 +2487,7 @@ public class NovaForegroundService extends Service {
     private MediaProjectionWrapper mediaProjectionWrapper;
     private NovaWatchdog watchdog;
     private AutonomousLoopEngine loopEngine;
-    private NovaVoiceEngine voiceEngine;
+    private NovaAudioDirector audioDirector;
 
     @Override
     public void onCreate() {
@@ -2085,13 +2496,15 @@ public class NovaForegroundService extends Service {
         
         // --- 1. MEREGISTRASIKAN SELURUH KETERGANTUNGAN SISTEM (RESOLUSI C001) ---
         ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(GroqApiClient.class, new GroqApiClient(this));
+        locator.register(NovaBrainEngine.class, new NovaBrainEngine(this));
         locator.register(SystemActionInjector.class, new SystemActionInjector(this));
         locator.register(SafetyPolicyEngine.class, new SafetyPolicyEngine());
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
+        locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
+        locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
-        voiceEngine = new NovaVoiceEngine(this);
+        audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
 
         // 3. Hidupkan Otak AI (Sekarang instansiasi murni tanpa parameter Context)
         loopEngine = new AutonomousLoopEngine();
@@ -2143,16 +2556,18 @@ public class NovaForegroundService extends Service {
         if (mediaProjectionWrapper != null) mediaProjectionWrapper.stop();
         if (watchdog != null) watchdog.stop();
         if (loopEngine != null) loopEngine.stopTask();
-        if (voiceEngine != null) voiceEngine.shutdown();
+        if (audioDirector != null) audioDirector.destroy();
         
         ServiceLocator locator = ServiceLocator.getInstance();
         locator.register(NovaWatchdog.class, null);
         locator.register(MediaProjectionWrapper.class, null);
         locator.register(AutonomousLoopEngine.class, null);
-        locator.register(GroqApiClient.class, null);
+        locator.register(NovaBrainEngine.class, null);
         locator.register(SystemActionInjector.class, null);
         locator.register(SafetyPolicyEngine.class, null);
         locator.register(ActionVerificationScore.class, null);
+        locator.register(SemanticVisionEngine.class, null);
+        locator.register(ProactiveTriggerEngine.class, null);
     }
 
     @Nullable
@@ -2332,7 +2747,7 @@ public class ScreenCache {
     private static final String TAG = "ScreenCache";
     private long lastHash = 0;
 
-    public boolean isDuplicateBitmap(Bitmap bitmap) {
+    public boolean isDuplicate(Bitmap bitmap) {
         if (bitmap == null) return false;
         
         long currentHash = computeAHash(bitmap);
@@ -2482,17 +2897,17 @@ public class ObjectPool<T> {
 }
 
 ==================================================
-FILE: ./app/src/main/java/com/novaagent/app/data/repository/GroqApiClient.java
+FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
 ==================================================
-package com.novaagent.app.data.repository;
+package com.novaagent.app.data.network;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -2506,136 +2921,100 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class GroqApiClient {
-    private static final String TAG = "GroqApiClient";
+/**
+ * 10x KOMPLEKSITAS: NETWORK LAYER ABSTRACTION.
+ * Fokus mutlak pada pengiriman HTTP, validasi API Key, dan Error Handling (Retry Logic).
+ */
+public class GroqNetworkClient {
+    private static final String TAG = "GroqNetworkClient";
     private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL_NAME = "llama-3.1-8b-instant"; 
+    private static final String MODEL_NAME = "llama-3.1-8b-instant";
     
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-
-    // Konfigurasi Retry
     private static final int MAX_RETRIES = 3;
-    private static final long BASE_DELAY_MS = 1500; // Jeda awal 1.5 detik
 
-    public interface GroqCallback {
-        void onSuccess(String jsonResponse);
-        void onError(String errorMessage);
+    public interface NetworkCallback {
+        void onSuccess(String rawJsonContent);
+        void onError(String errorReason);
     }
 
-    public GroqApiClient(Context context) {
+    public GroqNetworkClient(Context context) {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
-        
-        // Timeout ketat untuk Android Go agar thread tidak tersandera lama
-        client = new OkHttpClient.Builder()
+        this.client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.SECONDS)
-                .writeTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(25, TimeUnit.SECONDS)
                 .build();
     }
 
-    public void sendPrompt(String systemPrompt, String userPrompt, GroqCallback callback) {
-        executeRequestWithRetry(systemPrompt, userPrompt, callback, 0);
-    }
-
-    private void executeRequestWithRetry(String systemPrompt, String userPrompt, GroqCallback callback, int retryCount) {
-        SharedPreferences prefs = null; try { MasterKey masterKey = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(); prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM); } catch (Exception e) { prefs = null; }
-        String apiKey = prefs.getString("groq_api_key", "").trim();
-
+    public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
+        String apiKey = getSecureApiKey();
         if (apiKey.isEmpty()) {
-            callback.onError("API Key kosong! Isi di menu awal.");
+            callback.onError("API Key Kosong. Silakan isi di aplikasi.");
             return;
         }
 
         try {
             JSONObject payload = new JSONObject();
             payload.put("model", MODEL_NAME);
-            payload.put("temperature", 0.5); 
-
-            JSONArray messages = new JSONArray();
-            JSONObject systemMsg = new JSONObject();
-            systemMsg.put("role", "system");
-            systemMsg.put("content", systemPrompt);
-            messages.put(systemMsg);
-
-            JSONObject userMsg = new JSONObject();
-            userMsg.put("role", "user");
-            userMsg.put("content", userPrompt);
-            messages.put(userMsg);
-
+            payload.put("temperature", 0.3); // Rendah untuk akurasi tindakan layar
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             Request request = new Request.Builder()
                     .url(API_URL)
                     .addHeader("Authorization", "Bearer " + apiKey)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 13; SM-S918B)")
-                    .addHeader("Accept", "application/json")
                     .post(body)
                     .build();
 
             client.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    handleRetry("Koneksi Internet Terputus/RTO", systemPrompt, userPrompt, callback, retryCount);
+                @Override public void onFailure(Call call, IOException e) {
+                    handleRetry(messages, callback, retryCount, "Koneksi Terputus/RTO");
                 }
 
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
-                        String errorBody = response.body() != null ? response.body().string() : "";
-                        String exactError = "HTTP " + code;
-                        try {
-                            JSONObject errObj = new JSONObject(errorBody);
-                            exactError = errObj.getJSONObject("error").getString("message");
-                        } catch (Exception ignored) {}
-
-                        // Jika kena Rate Limit (429) atau Server Error (5xx), lakukan RETRY
                         if (code == 429 || code >= 500) {
-                            handleRetry("Server sibuk (" + code + "): " + exactError, systemPrompt, userPrompt, callback, retryCount);
+                            handleRetry(messages, callback, retryCount, "Server Error (" + code + ")");
                         } else {
-                            // Error 400 atau 401/403 biasanya cacat logika/kunci, jangan di-retry
-                            callback.onError(exactError);
+                            callback.onError("HTTP " + code + ": Cek API Key atau Kuota Anda.");
                         }
                         return;
                     }
                     try {
-                        String responseBody = response.body().string();
-                        JSONObject jsonResponse = new JSONObject(responseBody);
-                        String content = jsonResponse.getJSONArray("choices")
-                                .getJSONObject(0)
-                                .getJSONObject("message")
-                                .getString("content");
+                        String respBody = response.body().string();
+                        String content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Gagal memahami struktur AI");
+                        callback.onError("Gagal mengekstrak JSON dari Groq.");
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Error Sistem Lokal saat menyusun Request.");
+            callback.onError("Sistem Lokal Error saat merakit JSON.");
         }
     }
 
-    private void handleRetry(String errorReason, String systemPrompt, String userPrompt, GroqCallback callback, int currentRetryCount) {
-        if (currentRetryCount < MAX_RETRIES) {
-            int nextRetry = currentRetryCount + 1;
-            // Exponential Backoff: Jeda = BaseDelay * (2 ^ currentRetry)
-            // Retry 1: 1.5s | Retry 2: 3.0s | Retry 3: 6.0s
-            long delay = BASE_DELAY_MS * (long) Math.pow(2, currentRetryCount);
-            
-            Log.w(TAG, "Request Gagal: " + errorReason + ". Mencoba ulang (" + nextRetry + "/" + MAX_RETRIES + ") dalam " + delay + "ms...");
-            
-            retryHandler.postDelayed(() -> {
-                executeRequestWithRetry(systemPrompt, userPrompt, callback, nextRetry);
-            }, delay);
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
+        if (currentRetry < MAX_RETRIES) {
+            int nextRetry = currentRetry + 1;
+            long delay = 1500 * (long) Math.pow(2, currentRetry); // 1.5s, 3s, 6s
+            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
+            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            Log.e(TAG, "Gagal total setelah " + MAX_RETRIES + " kali percobaan. Menyerah.");
-            callback.onError(errorReason + " (Gagal setelah 3x coba)");
+            callback.onError(reason + " (Menyerah setelah 3x percobaan)");
         }
+    }
+
+    private String getSecureApiKey() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_api_key", "").trim();
+        } catch (Exception e) { return ""; }
     }
 }
 
@@ -2645,27 +3024,19 @@ FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
 package com.novaagent.app.data.repository;
 
 public class PromptRegistry {
-    
     public static final String SYSTEM_PROMPT = 
-        "Anda adalah Nova, asisten AI yang sopan, tenang, dan PATUH.\n" +
-        "Tugas Anda adalah MENGAMATI layar, BUKAN bertindak sebelum diperintah.\n\n" +
-        "HUKUM KESADARAN:\n" +
-        "1. Jika user mengajak mengobrol (misal: 'Halo', 'Apa kabar?'), BALASLAH dengan action: 'done' dan berikan jawaban di field 'speech'. JANGAN LAKUKAN AKSI APAPUN.\n" +
-        "2. Jika user memberikan PERINTAH TEGAS (misal: 'Buka YouTube', 'Ketik halo di WA'), barulah Anda lakukan aksi.\n" +
-        "3. Jika Anda ragu, JANGAN BERTINDAK. Balas dengan action: 'done' dan tanya balik user untuk konfirmasi.\n" +
-        "4. Selalu jelaskan niat Anda di field 'thought' sebelum beraksi.\n\n" +
-        "FORMAT OUTPUT (JSON MURNI):\n" +
-        "{\n" +
-        "  \"thought\": \"Jelaskan apakah ini perintah atau obrolan santai\",\n" +
-        "  \"action\": \"[tap/swipe/type/open_app/done]\",\n" +
-        "  \"x\": 0, \"y\": 0, \"textToType\": \"\", \"direction\": \"\",\n" +
-        "  \"speech\": \"[Jawaban suara Anda]\"\n" +
-        "}";
+        "Anda adalah Nova (Jarvis), AI asisten super proaktif dan cerdas yang hidup di HP pengguna.\n" +
+        "KESADARAN SEMANTIK & HUKUM:\n" +
+        "1. PAHAMI KONTEKS: Analisis nama aplikasi dan susunan layar sebelum bertindak.\n" +
+        "2. SELF-HEALING: Jika di memori ada peringatan bahwa tindakan Anda sebelumnya GAGAL, CARI CARA LAIN (misal: scroll dulu, atau cari teks yang berbeda). JANGAN ulangi kesalahan yang sama.\n" +
+        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban elegan/futuristik di 'speech'.\n" +
+        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', atau 'open_app' untuk interaksi visual.\n" +
+        "5. HARDWARE: Aksi hardware lokal diintersep sebelum LLM, tapi jika tembus ke Anda, arahkan user dengan 'speech'.\n\n" +
+        "FORMAT OUTPUT (JSON MURNI WAJIB):\n" +
+        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara singkat\"}";
 
     public static String buildUserPrompt(String task, String screenContext) {
-        return "PERINTAH/OBROLAN USER: \"" + task + "\"\n\n" +
-               "DATA LAYAR: " + screenContext + "\n\n" +
-               "Apakah ini perintah untuk bertindak pada layar, atau hanya obrolan? Putuskan dengan bijak.";
+        return "PERINTAH: \"" + task + "\"\n\nDATA LAYAR: " + screenContext;
     }
 }
 
@@ -2747,82 +3118,54 @@ FILE: ./app/src/main/res/layout/activity_main.xml
 FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
 ==================================================
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/bubbleRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/bg_bubble_cyber"
-    android:padding="16dp"
-    android:gravity="center"
-    android:elevation="8dp">
+    android:padding="8dp">
 
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="NOVA: SIAP"
-        android:textColor="#00E5FF"
-        android:textStyle="bold"
-        android:textSize="12sp"
-        android:layout_marginBottom="12dp"/>
+    <!-- Wujud Virus Jelly -->
+    <ImageView
+        android:id="@+id/jellyBall"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:background="@drawable/bg_jelly_bubble"
+        android:src="@android:drawable/ic_btn_speak_now"
+        android:padding="12dp"
+        android:elevation="8dp" />
 
-    <!-- Kontrol Standar (Mic & Stop) -->
+    <!-- Panel Informasi (Tersembunyi, Muncul jika Jelly diketuk) -->
     <LinearLayout
-        android:id="@+id/llStandardControls"
-        android:layout_width="wrap_content"
+        android:id="@+id/panelExpand"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center">
+        android:layout_marginStart="70dp"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/bg_bubble_cyber"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone"
+        android:elevation="8dp">
 
-        <Button
-            android:id="@+id/btnMic"
-            android:layout_width="60dp"
-            android:layout_height="50dp"
-            android:text="🎤"
-            android:textSize="18sp"
-            android:backgroundTint="#4CAF50"
-            android:layout_marginEnd="8dp"/>
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MENDENGARKAN..."
+            android:textColor="#00E5FF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnStop"
-            android:layout_width="60dp"
-            android:layout_height="50dp"
-            android:text="⏹️"
-            android:textSize="18sp"
-            android:backgroundTint="#F44336" />
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#F44336"
+            android:text="TIDUR (CLOSE)"
+            android:textSize="10sp" />
     </LinearLayout>
-
-    <!-- Kontrol Darurat (Konfirmasi Pengguna) - Awalnya Sembunyi -->
-    <LinearLayout
-        android:id="@+id/llConfirmationControls"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:visibility="gone">
-
-        <Button
-            android:id="@+id/btnAllow"
-            android:layout_width="wrap_content"
-            android:layout_height="50dp"
-            android:text="IZINKAN"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:backgroundTint="#4CAF50"
-            android:layout_marginEnd="8dp"/>
-
-        <Button
-            android:id="@+id/btnDeny"
-            android:layout_width="wrap_content"
-            android:layout_height="50dp"
-            android:text="TOLAK"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:backgroundTint="#F44336" />
-    </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>
 
 ==================================================
 FILE: ./app/src/main/res/xml/accessibility_service_config.xml
@@ -2913,6 +3256,15 @@ FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
         android:fillColor="#FFFFFFFF"
         android:pathData="M54,54m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"/>
 </vector>
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
+==================================================
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#CC00E5FF" />
+    <stroke android:width="2dp" android:color="#FFFFFF" />
+</shape>
 
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml

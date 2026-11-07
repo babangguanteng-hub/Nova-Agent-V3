@@ -11,23 +11,18 @@ import com.novaagent.app.core.state.AgentState;
 import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
-import com.novaagent.app.data.repository.GroqApiClient;
-import com.novaagent.app.data.repository.PromptRegistry;
+import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
-/**
- * Otak Pusat Agen Otonom (Refactored: Resolusi C001)
- * 1. 100% Dependency Injected via ServiceLocator (Tidak ada 'new' untuk komponen sistem).
- * 2. Memiliki Circuit Breaker (Maks 3 kegagalan).
- * 3. Memiliki Step Limiter (Maks 15 langkah).
- * 4. Menggunakan Enum AgentState murni.
- */
 public class AutonomousLoopEngine implements EventBus.EventListener {
     private static final String TAG = "AutonomousLoopEngine";
     
-    // Ketergantungan Diinjeksi via ServiceLocator (Decoupled)
-    private GroqApiClient groqClient;
+    private NovaBrainEngine brainEngine;
+    private SemanticVisionEngine visionEngine;
+    private ProactiveTriggerEngine proactiveEngine;
     private SystemActionInjector actionInjector;
     private SafetyPolicyEngine safetyEngine;
     private ActionVerificationScore verificationEngine;
@@ -36,7 +31,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private String currentTask = "";
     private boolean isRunning = false;
 
-    // VARIABLE INGATAN & CIRCUIT BREAKER
     private UnifiedScreenContext lastScreenContext;
     private ActionCommandDto lastCommandExecuted;
     private int stepCount = 0;
@@ -44,7 +38,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private String lastFlatUiText = "";
 
     public AutonomousLoopEngine() {
-        // Bebas dari Context OS (Domain Murni)
         this.loopHandler = new Handler(Looper.getMainLooper());
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
@@ -52,9 +45,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void resolveDependencies() {
-        if (groqClient == null) {
+        if (brainEngine == null) {
             ServiceLocator locator = ServiceLocator.getInstance();
-            groqClient = locator.resolve(GroqApiClient.class);
+            brainEngine = locator.resolve(NovaBrainEngine.class);
+            visionEngine = locator.resolve(SemanticVisionEngine.class);
+            proactiveEngine = locator.resolve(ProactiveTriggerEngine.class);
             actionInjector = locator.resolve(SystemActionInjector.class);
             safetyEngine = locator.resolve(SafetyPolicyEngine.class);
             verificationEngine = locator.resolve(ActionVerificationScore.class);
@@ -62,7 +57,34 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     public void startTask(String task) {
-        resolveDependencies(); // Lazy Resolve
+        resolveDependencies();
+        
+        // INTERSEP: Mode Pemantauan Latar Belakang (Proactive)
+        if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
+            // Contoh parsing kotor: "Pantau kata Beli"
+            String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
+            if (!keyword.isEmpty()) {
+                // Buat aksi dummy untuk diklik jika ketemu (bisa dikembangkan AI lebih lanjut)
+                try {
+                    ActionCommandDto triggerAct = new ActionCommandDto("{\"action\":\"tap\",\"textToType\":\"" + keyword + "\"}");
+                    proactiveEngine.setWatchTrigger(keyword, triggerAct);
+                } catch (Exception e){}
+                return;
+            }
+        }
+
+        // FASE 8: OFFLINE SURVIVAL MODE
+        String lowerTask = task.toLowerCase();
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara).*")) {
+            Log.i(TAG, "Mode Offline (Survival) Terpicu!");
+            try {
+                ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Siap."));
+            } catch (Exception e) {}
+            return;
+        }
+
         this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
@@ -71,7 +93,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
-        Log.i(TAG, "Memulai Misi: " + task);
+        Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         requestScreenData();
     }
@@ -83,55 +105,49 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void requestScreenData() {
-        if (!isRunning) return;
+        if (!isRunning && proactiveEngine == null) return;
         try {
             NovaAccessibilityService service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
             service.requestScreenScan();
-        } catch (Exception e) {
-            Log.e(TAG, "Layanan Aksesibilitas tidak ditemukan.");
-            stopTask();
-        }
+        } catch (Exception e) { stopTask(); }
     }
 
     @Override
     public void onEvent(AgentEvent event) {
         pingWatchdog();
-        if (!isRunning) return;
 
         try {
             switch (event.type) {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
-                    String failedActionToReport = null;
                     
-                    // EVALUASI KESALAHAN (Amnesia Loop Breaker)
+                    // SELALU jalankan evaluasi Proactive (Jika ada trigger aktif)
+                    resolveDependencies();
+                    proactiveEngine.evaluateScreen(newContext);
+
+                    if (!isRunning) return;
+
+                    String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.VERIFYING_SCORE.name()));
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                        
                         if (!result.isVerified) {
                             consecutiveFailures++;
                             failedActionToReport = lastCommandExecuted.action;
-                            
-                            // CIRCUIT BREAKER: Jika gagal 3x berturut-turut, lumpuhkan Nova!
                             if (consecutiveFailures >= 3) {
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf, sistem UI tidak merespon tindakan saya. Saya menyerah."));
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain."));
                                 stopTask();
                                 return;
                             }
                         } else {
-                            consecutiveFailures = 0; // Sukses, reset error counter
+                            consecutiveFailures = 0;
                         }
                     }
 
                     lastScreenContext = newContext;
                     stepCount++;
-                    
-                    // MAX STEP LIMITER: Maksimal 15 langkah per misi
                     if (stepCount > 15) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Batas langkah terlampaui. Saya menghentikan tugas."));
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Misi terlalu panjang. Saya berhenti."));
                         stopTask();
                         return;
                     }
@@ -139,35 +155,28 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     String flatUiText = newContext.toString();
                     if (flatUiText.length() > 2500) flatUiText = flatUiText.substring(0, 2500);
                     
-                    // M002: Lapis Kedua Visual Cache (OCR Text Deduplication)
-                    if (flatUiText.equals(lastFlatUiText)) {
-                        android.util.Log.i(TAG, "Layar berubah secara piksel, tapi Teks OCR identik. LLM diabaikan untuk hemat API.");
-                        return;
-                    }
+                    if (flatUiText.equals(lastFlatUiText)) { return; }
                     lastFlatUiText = flatUiText;
 
-                    processWithAI(flatUiText, failedActionToReport);
+                    // MATA DEWA: Ekstrak makna semantik sebelum dikirim ke AI
+                    String enrichedSemantics = visionEngine.extractSemantics(newContext);
+                    processWithAI(enrichedSemantics, failedActionToReport);
                     break;
 
                 case ACTION_VALIDATED:
                     ActionCommandDto safeCmd = (ActionCommandDto) event.payload;
                     lastCommandExecuted = safeCmd;
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.EXECUTING.name()));
                     actionInjector.executeAction(safeCmd);
                     break;
 
                 case ACTION_EXECUTED:
-                    // Tunggu transisi OS Android selesai sebelum memotret layar lagi
                     loopHandler.postDelayed(this::requestScreenData, 4000);
                     break;
                     
                 default:
                     break;
             }
-        } catch (Exception e) {
-            Log.e(TAG, "LoopEngine Critical Error", e);
-            stopTask();
-        }
+        } catch (Exception e) {}
     }
 
     private void pingWatchdog() {
@@ -180,38 +189,26 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private void processWithAI(String uiContextString, String failedAction) {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
         
-        String userPrompt = PromptRegistry.buildUserPrompt(currentTask, uiContextString);
-        // SUNTIKAN INGATAN DARURAT: Memberi tahu AI jika dia meleset
-        if (failedAction != null && !failedAction.isEmpty()) {
-             userPrompt = "⚠️ PERINGATAN SISTEM: Tindakan Anda sebelumnya ('" + failedAction + "') GAGAL mengubah layar. JANGAN Ulangi!\n\n" + userPrompt;
-        }
-
-        groqClient.sendPrompt(PromptRegistry.SYSTEM_PROMPT, userPrompt, new GroqApiClient.GroqCallback() {
+        brainEngine.processTask(currentTask, uiContextString, failedAction, new NovaBrainEngine.BrainCallback() {
             @Override
-            public void onSuccess(String jsonResponse) {
+            public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
-                try {
-                    ActionCommandDto cmd = new ActionCommandDto(jsonResponse);
-                    // LOGIKA KESADARAN: Pemisahan Obrolan dan Perintah
-                    if ("done".equalsIgnoreCase(cmd.action)) {
-                        if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
-                        }
-                        stopTask();
-                    } else {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
-                        safetyEngine.evaluateAction(cmd, lastScreenContext);
+                if ("done".equalsIgnoreCase(cmd.action)) {
+                    if (cmd.speech != null && !cmd.speech.isEmpty()) {
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
                     }
-                } catch (Exception e) {
-                    Log.e(TAG, "Gagal parsing balasan JSON LLM", e);
-                    // Pemicu re-scan lembut agar tidak deadlock jika AI halusinasi JSON
-                    loopHandler.postDelayed(() -> requestScreenData(), 3000);
+                    stopTask();
+                } else {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
+                    safetyEngine.evaluateAction(cmd, lastScreenContext);
                 }
             }
+
             @Override
-            public void onError(String errorMessage) {
+            public void onConfusion(String errorMessage) {
                 if (!isRunning) return;
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "KONEKSI TERPUTUS"));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, errorMessage));
                 stopTask();
             }
         });

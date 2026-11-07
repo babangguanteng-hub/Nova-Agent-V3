@@ -99,6 +99,10 @@ public class SystemActionInjector {
                 setAudioVolume(service, cmd.textToType);
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 return;
+            case "local_hardware":
+                handleLocalHardware(service, cmd.textToType);
+                com.novaagent.app.core.bus.EventBus.getInstance().publish(new com.novaagent.app.core.bus.AgentEvent(com.novaagent.app.core.bus.AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
@@ -170,5 +174,30 @@ public class SystemActionInjector {
                 audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, adjust, android.media.AudioManager.FLAG_SHOW_UI);
             }
         } catch (Exception e) {}
+    }
+
+    // --- FASE 8: PLUGIN OTOMATISASI PERANGKAT LURING (OFFLINE) ---
+    private boolean isFlashlightOn = false;
+    private void handleLocalHardware(Context context, String cmd) {
+        try {
+            if (cmd.contains("senter") || cmd.contains("lampu")) {
+                android.hardware.camera2.CameraManager camManager = (android.hardware.camera2.CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+                if (camManager != null) {
+                    String cameraId = camManager.getCameraIdList()[0];
+                    isFlashlightOn = !isFlashlightOn;
+                    camManager.setTorchMode(cameraId, isFlashlightOn);
+                }
+            } else if (cmd.contains("volume") || cmd.contains("suara")) {
+                android.media.AudioManager audioManager = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    int adjust = cmd.contains("naik") || cmd.contains("tambah") || cmd.contains("besar") ? android.media.AudioManager.ADJUST_RAISE : android.media.AudioManager.ADJUST_LOWER;
+                    audioManager.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, adjust, android.media.AudioManager.FLAG_SHOW_UI);
+                }
+            } else if (cmd.contains("wifi") || cmd.contains("internet")) {
+                Intent panelIntent = new Intent(android.provider.Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
+                panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(panelIntent);
+            }
+        } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }
 }

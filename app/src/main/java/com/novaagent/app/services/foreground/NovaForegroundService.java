@@ -19,7 +19,9 @@ import com.novaagent.app.core.engine.ActionVerificationScore;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
-import com.novaagent.app.data.repository.GroqApiClient;
+import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
 import com.novaagent.app.core.audio.NovaAudioDirector;
@@ -41,10 +43,12 @@ public class NovaForegroundService extends Service {
         
         // --- 1. MEREGISTRASIKAN SELURUH KETERGANTUNGAN SISTEM (RESOLUSI C001) ---
         ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(GroqApiClient.class, new GroqApiClient(this));
+        locator.register(NovaBrainEngine.class, new NovaBrainEngine(this));
         locator.register(SystemActionInjector.class, new SystemActionInjector(this));
         locator.register(SafetyPolicyEngine.class, new SafetyPolicyEngine());
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
+        locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
+        locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
         audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
@@ -105,10 +109,12 @@ public class NovaForegroundService extends Service {
         locator.register(NovaWatchdog.class, null);
         locator.register(MediaProjectionWrapper.class, null);
         locator.register(AutonomousLoopEngine.class, null);
-        locator.register(GroqApiClient.class, null);
+        locator.register(NovaBrainEngine.class, null);
         locator.register(SystemActionInjector.class, null);
         locator.register(SafetyPolicyEngine.class, null);
         locator.register(ActionVerificationScore.class, null);
+        locator.register(SemanticVisionEngine.class, null);
+        locator.register(ProactiveTriggerEngine.class, null);
     }
 
     @Nullable
