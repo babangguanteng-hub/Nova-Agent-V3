@@ -3,7 +3,6 @@ name: Build Nova Agent APK
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
 
 jobs:
   build:
@@ -11,22 +10,22 @@ jobs:
 
     steps:
     - name: Mengambil Source Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Menyiapkan Java JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Menggunakan Mesin Gradle 8.4 (Versi yang Cocok)
-      run: gradle wrapper --gradle-version 8.4
+    - name: Memberikan Izin Eksekusi pada Gradle Wrapper Lokal
+      run: chmod +x gradlew
 
     - name: Merakit APK Android (Assemble Debug)
-      run: ./gradlew assembleDebug --stacktrace
+      run: ./gradlew assembleDebug --stacktrace --no-daemon
 
     - name: Menyimpan Hasil APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
-        name: NovaAgent-V3-APK
+        name: Nova-Agent-V3-APK
         path: app/build/outputs/apk/debug/app-debug.apk
