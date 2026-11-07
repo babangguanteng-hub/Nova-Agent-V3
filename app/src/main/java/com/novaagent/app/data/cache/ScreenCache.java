@@ -11,7 +11,7 @@ public class ScreenCache {
     private static final String TAG = "ScreenCache";
     private long lastHash = 0;
 
-    public boolean isDuplicateBitmap(Bitmap bitmap) {
+    public boolean isDuplicate(Bitmap bitmap) {
         if (bitmap == null) return false;
         
         long currentHash = computeAHash(bitmap);

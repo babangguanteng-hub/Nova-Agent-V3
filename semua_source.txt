@@ -2541,7 +2541,7 @@ public class GroqApiClient {
     }
 
     private void executeRequestWithRetry(String systemPrompt, String userPrompt, GroqCallback callback, int retryCount) {
-        SharedPreferences try { MasterKey masterKey = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(); prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM); } catch (Exception e) { prefs = null; }
+        SharedPreferences prefs = null; try { MasterKey masterKey = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(); prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM); } catch (Exception e) { prefs = null; }
         String apiKey = prefs.getString("groq_api_key", "").trim();
 
         if (apiKey.isEmpty()) {
@@ -2928,4 +2928,79 @@ FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
           android:strokeLineCap="round"
           android:strokeLineJoin="round"/>
 </vector>
+
+==================================================
+FILE: ./app/build.gradle
+==================================================
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.novaagent.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.novaagent.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "3.0"
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    
+    // ML Kit untuk Sistem Penglihatan AI (OCR)
+    implementation 'com.google.mlkit:text-recognition:16.0.0'
+    
+    // Jaringan untuk terhubung ke Groq AI (Retrofit & Gson)
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+}
+
+==================================================
+FILE: ./settings.gradle
+==================================================
+include ':app'
+rootProject.name = "NovaAgent"
+
+==================================================
+FILE: ./build.gradle
+==================================================
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.2'
+    }
+}
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
 

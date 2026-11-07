@@ -29,9 +29,8 @@ public class GroqApiClient {
     private final Context context;
     private final Handler retryHandler;
 
-    // Konfigurasi Retry
     private static final int MAX_RETRIES = 3;
-    private static final long BASE_DELAY_MS = 1500; // Jeda awal 1.5 detik
+    private static final long BASE_DELAY_MS = 1500;
 
     public interface GroqCallback {
         void onSuccess(String jsonResponse);
@@ -42,7 +41,6 @@ public class GroqApiClient {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
         
-        // Timeout ketat untuk Android Go agar thread tidak tersandera lama
         client = new OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(20, TimeUnit.SECONDS)
@@ -55,8 +53,15 @@ public class GroqApiClient {
     }
 
     private void executeRequestWithRetry(String systemPrompt, String userPrompt, GroqCallback callback, int retryCount) {
-        SharedPreferences prefs = null; try { MasterKey masterKey = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(); prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM); } catch (Exception e) { prefs = null; }
-        String apiKey = prefs.getString("groq_api_key", "").trim();
+        SharedPreferences prefs = null;
+        try { 
+            MasterKey masterKey = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(); 
+            prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM); 
+        } catch (Exception e) { 
+            Log.e(TAG, "Brankas kunci gagal dibuka", e);
+        }
+        
+        String apiKey = prefs != null ? prefs.getString("groq_api_key", "").trim() : "";
 
         if (apiKey.isEmpty()) {
             callback.onError("API Key kosong! Isi di menu awal.");
@@ -93,7 +98,7 @@ public class GroqApiClient {
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    handleRetry("Koneksi Internet Terputus/RTO", systemPrompt, userPrompt, callback, retryCount);
+                    handleRetry("Koneksi Internet Terputus", systemPrompt, userPrompt, callback, retryCount);
                 }
 
                 @Override
@@ -107,11 +112,9 @@ public class GroqApiClient {
                             exactError = errObj.getJSONObject("error").getString("message");
                         } catch (Exception ignored) {}
 
-                        // Jika kena Rate Limit (429) atau Server Error (5xx), lakukan RETRY
                         if (code == 429 || code >= 500) {
                             handleRetry("Server sibuk (" + code + "): " + exactError, systemPrompt, userPrompt, callback, retryCount);
                         } else {
-                            // Error 400 atau 401/403 biasanya cacat logika/kunci, jangan di-retry
                             callback.onError(exactError);
                         }
                         return;
@@ -137,8 +140,6 @@ public class GroqApiClient {
     private void handleRetry(String errorReason, String systemPrompt, String userPrompt, GroqCallback callback, int currentRetryCount) {
         if (currentRetryCount < MAX_RETRIES) {
             int nextRetry = currentRetryCount + 1;
-            // Exponential Backoff: Jeda = BaseDelay * (2 ^ currentRetry)
-            // Retry 1: 1.5s | Retry 2: 3.0s | Retry 3: 6.0s
             long delay = BASE_DELAY_MS * (long) Math.pow(2, currentRetryCount);
             
             Log.w(TAG, "Request Gagal: " + errorReason + ". Mencoba ulang (" + nextRetry + "/" + MAX_RETRIES + ") dalam " + delay + "ms...");
