@@ -33,43 +33,36 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
-
 > Task :app:processDebugMainManifest
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/AndroidManifest.xml:10:5-65 Warning:
-	Element uses-permission#android.permission.CAMERA at AndroidManifest.xml:10:5-65 duplicated with element declared at AndroidManifest.xml:8:5-65
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/AndroidManifest.xml:11:5-80 Warning:
-	Element uses-permission#android.permission.MODIFY_AUDIO_SETTINGS at AndroidManifest.xml:11:5-80 duplicated with element declared at AndroidManifest.xml:9:5-80
-
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
+> Task :app:processDebugManifestForPackage
+> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:compressDebugAssets
-> Task :app:mergeDebugJniLibFolders
-> Task :app:mergeDebugJavaResource
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugNativeLibs
-> Task :app:processDebugManifestForPackage
-> Task :app:mergeExtDexDebug
-> Task :app:mergeLibDexDebug
-
-> Task :app:stripDebugDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libmlkit_google_ocr_pipeline.so.
-
 > Task :app:processDebugResources
-> Task :app:validateSigningDebug
+> Task :app:mergeDebugJavaResource
 
 > Task :app:compileDebugJavaWithJavac
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:54: error: illegal character: '\'
-        audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
-                                                    ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java:54: error: ';' expected
-        audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
-                                                                     ^
-2 errors
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java:119: error: class, interface, enum, or record expected
+    private String getSecureModelName() {
+            ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java:122: error: class, interface, enum, or record expected
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java:123: error: class, interface, enum, or record expected
+            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+            ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java:124: error: class, interface, enum, or record expected
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
+        ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java:124: error: class, interface, enum, or record expected
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
+                                                               ^
+5 errors
 
 > Task :app:compileDebugJavaWithJavac FAILED
 
@@ -274,5 +267,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 1m 20s
-26 actionable tasks: 26 executed
+BUILD FAILED in 50s
+19 actionable tasks: 19 executed
