@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
@@ -19,32 +18,30 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private SharedPreferences encryptedPrefs;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        initSecurePrefs();
+        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR SELALU BISA DIBACA DI BACKGROUND
+        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        if (encryptedPrefs != null) {
-            apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
-            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+        if (prefs != null) {
+            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
+            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
             if (savedModel.equals("llama-3.1-70b-versatile")) ((RadioButton) findViewById(R.id.rbLlama70b)).setChecked(true);
             else if (savedModel.equals("mixtral-8x7b-32768")) ((RadioButton) findViewById(R.id.rbMixtral)).setChecked(true);
             else ((RadioButton) findViewById(R.id.rbLlama8b)).setChecked(true);
@@ -54,13 +51,13 @@ public class MainActivity extends AppCompatActivity {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else if (encryptedPrefs != null) {
+            } else {
                 String selectedModel = "llama-3.1-8b-instant";
                 int checkedId = rgModel.getCheckedRadioButtonId();
                 if (checkedId == R.id.rbLlama70b) selectedModel = "llama-3.1-70b-versatile";
                 else if (checkedId == R.id.rbMixtral) selectedModel = "mixtral-8x7b-32768";
                 
-                encryptedPrefs.edit()
+                prefs.edit()
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
@@ -84,13 +81,6 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
     }
 
-    private void initSecurePrefs() {
-        try {
-            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-        } catch (Exception e) {}
-    }
-
     private void requestBasicPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -100,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
+        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }

@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -49,19 +50,25 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private SpeechRecognizer speechRecognizer;
     private Intent speechIntent;
     private AnimatorSet pulseAnimator;
+    
+    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent/suara sentuh dimatikan)
+    private ToneGenerator toneGen;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        this.toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
         setupSpeechRecognizer();
     }
 
-    private void playUISound(int soundEffectType) {
-        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-        if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
+    private void playSciFiSound(int toneType, int durationMs) {
+        try {
+            if (toneGen != null) toneGen.startTone(toneType, durationMs);
+        } catch (Exception e) {}
     }
 
     private void initCloseTarget() {
@@ -120,13 +127,14 @@ public class FloatingBubbleView implements EventBus.EventListener {
         startJellyPulseAnimation();
 
         bubbleView.setOnClickListener(v -> {
-            playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
+                playSciFiSound(ToneGenerator.TONE_PROP_BEEP, 100); // Bunyi Wake
                 bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
+                playSciFiSound(ToneGenerator.TONE_PROP_NACK, 100); // Bunyi Sleep
                 bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
                 if (speechRecognizer != null) speechRecognizer.stopListening();
@@ -153,7 +161,12 @@ public class FloatingBubbleView implements EventBus.EventListener {
                     case MotionEvent.ACTION_MOVE:
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
-                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
+                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                            if (!isDragging) {
+                                playSciFiSound(ToneGenerator.TONE_CDMA_PRESSHOLDKEY_LITE, 50); // Bunyi saat ditarik (Swef)
+                                isDragging = true;
+                            }
+                        }
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
@@ -170,7 +183,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
                     case MotionEvent.ACTION_UP:
                         if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
                         if (params.y > metrics.heightPixels - 500) {
-                            playUISound(AudioManager.FX_KEYPRESS_DELETE);
+                            playSciFiSound(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200); // Bunyi X (Close Total)
                             isListeningMode = false;
                             context.stopService(new Intent(context, NovaForegroundService.class));
                         }
@@ -216,13 +229,19 @@ public class FloatingBubbleView implements EventBus.EventListener {
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
-        try { windowManager.addView(bubbleView, params); isAdded = true; speechRecognizer.startListening(speechIntent); } catch (Exception e) {}
+        try { 
+            windowManager.addView(bubbleView, params); 
+            isAdded = true; 
+            playSciFiSound(ToneGenerator.TONE_PROP_PROMPT, 200); // Bunyi saat awal Jelly muncul!
+            speechRecognizer.startListening(speechIntent); 
+        } catch (Exception e) {}
     }
 
     public void remove() {
         isListeningMode = false;
         if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
         if (speechRecognizer != null) speechRecognizer.destroy();
+        if (toneGen != null) toneGen.release();
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -230,6 +249,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
+            
             if ("NOVA_SPEAKING_START".equals(state)) {
                 isMicMutedBySystem = true;
                 speechRecognizer.stopListening();
