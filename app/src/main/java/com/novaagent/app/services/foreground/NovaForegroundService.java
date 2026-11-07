@@ -22,7 +22,7 @@ import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.data.repository.GroqApiClient;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
-import com.novaagent.app.infrastructure.system.NovaVoiceEngine;
+import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.infrastructure.system.NovaWatchdog;
 import com.novaagent.app.ui.bubble.FloatingBubbleView;
 
@@ -32,7 +32,7 @@ public class NovaForegroundService extends Service {
     private MediaProjectionWrapper mediaProjectionWrapper;
     private NovaWatchdog watchdog;
     private AutonomousLoopEngine loopEngine;
-    private NovaVoiceEngine voiceEngine;
+    private NovaAudioDirector audioDirector;
 
     @Override
     public void onCreate() {
@@ -47,7 +47,7 @@ public class NovaForegroundService extends Service {
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
-        voiceEngine = new NovaVoiceEngine(this);
+        audioDirector = new NovaAudioDirector(this);\n        locator.register(NovaAudioDirector.class, audioDirector);
 
         // 3. Hidupkan Otak AI (Sekarang instansiasi murni tanpa parameter Context)
         loopEngine = new AutonomousLoopEngine();
@@ -99,7 +99,7 @@ public class NovaForegroundService extends Service {
         if (mediaProjectionWrapper != null) mediaProjectionWrapper.stop();
         if (watchdog != null) watchdog.stop();
         if (loopEngine != null) loopEngine.stopTask();
-        if (voiceEngine != null) voiceEngine.shutdown();
+        if (audioDirector != null) audioDirector.destroy();
         
         ServiceLocator locator = ServiceLocator.getInstance();
         locator.register(NovaWatchdog.class, null);
