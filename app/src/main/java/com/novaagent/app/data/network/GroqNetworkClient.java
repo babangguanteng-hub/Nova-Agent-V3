@@ -1,9 +1,12 @@
 package com.novaagent.app.data.network;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -35,15 +38,13 @@ public class GroqNetworkClient {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        String apiKey = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_api_key", "").trim();
-        String modelName = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_model", "llama-3.1-8b-instant");
-
+        String apiKey = getSecureApiKey();
         if (apiKey.isEmpty()) {
             callback.onError("API Key Kosong. Silakan isi di aplikasi.");
             return;
@@ -51,7 +52,8 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", modelName);
+            // PENTING: Trim nama model untuk mencegah HTTP 400 (Invalid Model/Space character)
+            payload.put("model", getSecureModelName().trim());
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
@@ -64,16 +66,26 @@ public class GroqNetworkClient {
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi Terputus");
+                    handleRetry(messages, callback, retryCount, "Koneksi Terputus/RTO");
                 }
 
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
+                        String errorBody = response.body() != null ? response.body().string() : "";
+                        String exactError = "HTTP " + code;
+                        try {
+                            // Ekstrak pesan spesifik dari Groq agar kita tahu alasan pasti error-nya
+                            JSONObject errObj = new JSONObject(errorBody);
+                            exactError = "HTTP " + code + ": " + errObj.getJSONObject("error").getString("message");
+                        } catch (Exception ignored) {
+                            exactError = "HTTP " + code + " (Raw: " + errorBody + ")";
+                        }
+                        
                         if (code == 429 || code >= 500) {
                             handleRetry(messages, callback, retryCount, "Server Error (" + code + ")");
                         } else {
-                            callback.onError("HTTP " + code + ": Cek API Key/Kuota Anda.");
+                            callback.onError(exactError);
                         }
                         return;
                     }
@@ -82,12 +94,12 @@ public class GroqNetworkClient {
                         String content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Gagal membaca respon AI.");
+                        callback.onError("Gagal mengekstrak JSON dari Groq.");
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Error merakit data JSON.");
+            callback.onError("Sistem Lokal Error saat merakit JSON.");
         }
     }
 
@@ -95,9 +107,26 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
+            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            callback.onError(reason + " (Batal setelah 3x coba)");
+            callback.onError(reason + " (Menyerah setelah 3x percobaan)");
         }
+    }
+
+    private String getSecureApiKey() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_api_key", "").trim();
+        } catch (Exception e) { return ""; }
+    }
+
+    private String getSecureModelName() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }

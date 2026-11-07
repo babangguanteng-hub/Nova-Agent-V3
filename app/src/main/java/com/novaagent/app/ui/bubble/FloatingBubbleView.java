@@ -51,7 +51,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private Intent speechIntent;
     private AnimatorSet pulseAnimator;
     
-    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent/suara sentuh dimatikan)
+    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent, ala Voice Note WA)
     private ToneGenerator toneGen;
 
     public FloatingBubbleView(Context context) {
@@ -65,7 +65,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         setupSpeechRecognizer();
     }
 
-    private void playSciFiSound(int toneType, int durationMs) {
+    private void playTone(int toneType, int durationMs) {
         try {
             if (toneGen != null) toneGen.startTone(toneType, durationMs);
         } catch (Exception e) {}
@@ -126,15 +126,16 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
         startJellyPulseAnimation();
 
+        // Logika Klik Jelly (Tidur / Bangun ala WA VN)
         bubbleView.setOnClickListener(v -> {
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                playSciFiSound(ToneGenerator.TONE_PROP_BEEP, 100); // Bunyi Wake
+                playTone(ToneGenerator.TONE_CDMA_PIP, 150); // Bunyi 'Pip' Bangun
                 bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
-                playSciFiSound(ToneGenerator.TONE_PROP_NACK, 100); // Bunyi Sleep
+                playTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 150); // Bunyi 'Bloop' Tidur
                 bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
                 if (speechRecognizer != null) speechRecognizer.stopListening();
@@ -142,9 +143,11 @@ public class FloatingBubbleView implements EventBus.EventListener {
             }
         });
 
+        // Smart Drag to Close dengan Hover Detection
         bubbleView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
             private boolean isDragging = false;
+            private boolean isHoveringX = false;
             
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
@@ -153,6 +156,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         isDragging = false;
+                        isHoveringX = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
                         if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
@@ -161,29 +165,35 @@ public class FloatingBubbleView implements EventBus.EventListener {
                     case MotionEvent.ACTION_MOVE:
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
-                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-                            if (!isDragging) {
-                                playSciFiSound(ToneGenerator.TONE_CDMA_PRESSHOLDKEY_LITE, 50); // Bunyi saat ditarik (Swef)
-                                isDragging = true;
-                            }
-                        }
+                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
+                        
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
                         
+                        // Deteksi area X (Zona Bawah)
                         if (params.y > metrics.heightPixels - 500) {
-                            closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
-                            closeTargetView.setAlpha(1.0f);
+                            if (!isHoveringX) {
+                                isHoveringX = true;
+                                playTone(ToneGenerator.TONE_CDMA_KEYPAD_VOLUME_KEY_LITE, 50); // Bunyi Tik (Masuk zona hapus)
+                                closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                                closeTargetView.setAlpha(1.0f);
+                            }
                         } else {
-                            closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
-                            closeTargetView.setAlpha(0.7f);
+                            if (isHoveringX) {
+                                isHoveringX = false;
+                                closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                                closeTargetView.setAlpha(0.7f);
+                            }
                         }
                         return true;
                         
                     case MotionEvent.ACTION_UP:
                         if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
-                        if (params.y > metrics.heightPixels - 500) {
-                            playSciFiSound(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200); // Bunyi X (Close Total)
+                        
+                        // Jika dilepas tepat di zona X
+                        if (isHoveringX) {
+                            playTone(ToneGenerator.TONE_CDMA_NETWORK_BUSY_ONE_SHOT, 200); // Bunyi Tong Sampah WA
                             isListeningMode = false;
                             context.stopService(new Intent(context, NovaForegroundService.class));
                         }
@@ -232,7 +242,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         try { 
             windowManager.addView(bubbleView, params); 
             isAdded = true; 
-            playSciFiSound(ToneGenerator.TONE_PROP_PROMPT, 200); // Bunyi saat awal Jelly muncul!
+            playTone(ToneGenerator.TONE_CDMA_PIP, 200); // Bunyi saat awal Jelly muncul
             speechRecognizer.startListening(speechIntent); 
         } catch (Exception e) {}
     }

@@ -1345,7 +1345,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private Intent speechIntent;
     private AnimatorSet pulseAnimator;
     
-    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent/suara sentuh dimatikan)
+    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent, ala Voice Note WA)
     private ToneGenerator toneGen;
 
     public FloatingBubbleView(Context context) {
@@ -1359,7 +1359,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         setupSpeechRecognizer();
     }
 
-    private void playSciFiSound(int toneType, int durationMs) {
+    private void playTone(int toneType, int durationMs) {
         try {
             if (toneGen != null) toneGen.startTone(toneType, durationMs);
         } catch (Exception e) {}
@@ -1420,15 +1420,16 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
         startJellyPulseAnimation();
 
+        // Logika Klik Jelly (Tidur / Bangun ala WA VN)
         bubbleView.setOnClickListener(v -> {
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                playSciFiSound(ToneGenerator.TONE_PROP_BEEP, 100); // Bunyi Wake
+                playTone(ToneGenerator.TONE_CDMA_PIP, 150); // Bunyi 'Pip' Bangun
                 bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
-                playSciFiSound(ToneGenerator.TONE_PROP_NACK, 100); // Bunyi Sleep
+                playTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 150); // Bunyi 'Bloop' Tidur
                 bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
                 if (speechRecognizer != null) speechRecognizer.stopListening();
@@ -1436,9 +1437,11 @@ public class FloatingBubbleView implements EventBus.EventListener {
             }
         });
 
+        // Smart Drag to Close dengan Hover Detection
         bubbleView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
             private boolean isDragging = false;
+            private boolean isHoveringX = false;
             
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
@@ -1447,6 +1450,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         isDragging = false;
+                        isHoveringX = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
                         if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
@@ -1455,29 +1459,35 @@ public class FloatingBubbleView implements EventBus.EventListener {
                     case MotionEvent.ACTION_MOVE:
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
-                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
-                            if (!isDragging) {
-                                playSciFiSound(ToneGenerator.TONE_CDMA_PRESSHOLDKEY_LITE, 50); // Bunyi saat ditarik (Swef)
-                                isDragging = true;
-                            }
-                        }
+                        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
+                        
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
                         
+                        // Deteksi area X (Zona Bawah)
                         if (params.y > metrics.heightPixels - 500) {
-                            closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
-                            closeTargetView.setAlpha(1.0f);
+                            if (!isHoveringX) {
+                                isHoveringX = true;
+                                playTone(ToneGenerator.TONE_CDMA_KEYPAD_VOLUME_KEY_LITE, 50); // Bunyi Tik (Masuk zona hapus)
+                                closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                                closeTargetView.setAlpha(1.0f);
+                            }
                         } else {
-                            closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
-                            closeTargetView.setAlpha(0.7f);
+                            if (isHoveringX) {
+                                isHoveringX = false;
+                                closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                                closeTargetView.setAlpha(0.7f);
+                            }
                         }
                         return true;
                         
                     case MotionEvent.ACTION_UP:
                         if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
-                        if (params.y > metrics.heightPixels - 500) {
-                            playSciFiSound(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200); // Bunyi X (Close Total)
+                        
+                        // Jika dilepas tepat di zona X
+                        if (isHoveringX) {
+                            playTone(ToneGenerator.TONE_CDMA_NETWORK_BUSY_ONE_SHOT, 200); // Bunyi Tong Sampah WA
                             isListeningMode = false;
                             context.stopService(new Intent(context, NovaForegroundService.class));
                         }
@@ -1526,7 +1536,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         try { 
             windowManager.addView(bubbleView, params); 
             isAdded = true; 
-            playSciFiSound(ToneGenerator.TONE_PROP_PROMPT, 200); // Bunyi saat awal Jelly muncul!
+            playTone(ToneGenerator.TONE_CDMA_PIP, 200); // Bunyi saat awal Jelly muncul
             speechRecognizer.startListening(speechIntent); 
         } catch (Exception e) {}
     }
@@ -2886,9 +2896,12 @@ FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
 package com.novaagent.app.data.network;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -2920,15 +2933,13 @@ public class GroqNetworkClient {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        String apiKey = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_api_key", "").trim();
-        String modelName = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_model", "llama-3.1-8b-instant");
-
+        String apiKey = getSecureApiKey();
         if (apiKey.isEmpty()) {
             callback.onError("API Key Kosong. Silakan isi di aplikasi.");
             return;
@@ -2936,7 +2947,8 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", modelName);
+            // PENTING: Trim nama model untuk mencegah HTTP 400 (Invalid Model/Space character)
+            payload.put("model", getSecureModelName().trim());
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
@@ -2949,16 +2961,26 @@ public class GroqNetworkClient {
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi Terputus");
+                    handleRetry(messages, callback, retryCount, "Koneksi Terputus/RTO");
                 }
 
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
+                        String errorBody = response.body() != null ? response.body().string() : "";
+                        String exactError = "HTTP " + code;
+                        try {
+                            // Ekstrak pesan spesifik dari Groq agar kita tahu alasan pasti error-nya
+                            JSONObject errObj = new JSONObject(errorBody);
+                            exactError = "HTTP " + code + ": " + errObj.getJSONObject("error").getString("message");
+                        } catch (Exception ignored) {
+                            exactError = "HTTP " + code + " (Raw: " + errorBody + ")";
+                        }
+                        
                         if (code == 429 || code >= 500) {
                             handleRetry(messages, callback, retryCount, "Server Error (" + code + ")");
                         } else {
-                            callback.onError("HTTP " + code + ": Cek API Key/Kuota Anda.");
+                            callback.onError(exactError);
                         }
                         return;
                     }
@@ -2967,12 +2989,12 @@ public class GroqNetworkClient {
                         String content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Gagal membaca respon AI.");
+                        callback.onError("Gagal mengekstrak JSON dari Groq.");
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Error merakit data JSON.");
+            callback.onError("Sistem Lokal Error saat merakit JSON.");
         }
     }
 
@@ -2980,10 +3002,27 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
+            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            callback.onError(reason + " (Batal setelah 3x coba)");
+            callback.onError(reason + " (Menyerah setelah 3x percobaan)");
         }
+    }
+
+    private String getSecureApiKey() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_api_key", "").trim();
+        } catch (Exception e) { return ""; }
+    }
+
+    private String getSecureModelName() {
+        try {
+            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+        } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }
 
