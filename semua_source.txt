@@ -1,6 +1,8 @@
+
 ==================================================
 FILE: ./app/src/main/AndroidManifest.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -51,9 +53,12 @@ FILE: ./app/src/main/AndroidManifest.xml
     </application>
 </manifest>
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/EventBus.java
 ==================================================
+
 package com.novaagent.app.core.bus;
 
 import android.os.Handler;
@@ -137,9 +142,12 @@ public class EventBus {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java
 ==================================================
+
 package com.novaagent.app.core.bus;
 
 /**
@@ -175,9 +183,12 @@ public class AgentEvent {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java
 ==================================================
+
 package com.novaagent.app.core.proactive;
 
 import android.util.Log;
@@ -219,9 +230,12 @@ public class ProactiveTriggerEngine {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java
 ==================================================
+
 package com.novaagent.app.core.vision;
 
 import com.novaagent.app.data.model.UnifiedScreenContext;
@@ -254,9 +268,12 @@ public class SemanticVisionEngine {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java
 ==================================================
+
 package com.novaagent.app.core.engine;
 
 import android.os.Handler;
@@ -499,9 +516,12 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java
 ==================================================
+
 package com.novaagent.app.core.engine;
 
 import com.novaagent.app.data.model.ActionCommandDto;
@@ -621,9 +641,12 @@ public class ActionVerificationScore {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java
 ==================================================
+
 package com.novaagent.app.core.engine;
 
 import android.util.Log;
@@ -691,9 +714,12 @@ public class SafetyPolicyEngine {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java
 ==================================================
+
 package com.novaagent.app.core.audio;
 
 import android.content.Context;
@@ -758,6 +784,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
             mouth.setLanguage(new Locale("id", "ID"));
+            // BACA PENGATURAN KARAKTER SUARA 
+            float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
+            mouth.setPitch(pitch);
             isMouthReady = true;
             
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
@@ -881,16 +910,19 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java
 ==================================================
+
 package com.novaagent.app.core.brain;
 
 import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import com.novaagent.app.data.model.ActionCommandDto;
-import com.novaagent.app.data.network.GroqNetworkClient;
+import com.novaagent.app.data.network.UniversalNetworkClient;
 import com.novaagent.app.data.repository.PromptRegistry;
 
 /**
@@ -899,7 +931,7 @@ import com.novaagent.app.data.repository.PromptRegistry;
  */
 public class NovaBrainEngine {
     private final ConversationMemory memory;
-    private final GroqNetworkClient networkClient;
+    private final UniversalNetworkClient networkClient;
 
     public interface BrainCallback {
         void onDecisionMade(ActionCommandDto command);
@@ -908,7 +940,7 @@ public class NovaBrainEngine {
 
     public NovaBrainEngine(Context context) {
         this.memory = new ConversationMemory();
-        this.networkClient = new GroqNetworkClient(context);
+        this.networkClient = new UniversalNetworkClient(context);
     }
 
     public void processTask(String userCommand, String screenContextData, String previousFailedAction, BrainCallback callback) {
@@ -936,7 +968,7 @@ public class NovaBrainEngine {
             memory.addUserMessage(userCommand);
 
             // 4. Eksekusi ke Jaringan
-            networkClient.executeCall(finalMessages, new GroqNetworkClient.NetworkCallback() {
+            networkClient.executeCall(finalMessages, new UniversalNetworkClient.NetworkCallback() {
                 @Override
                 public void onSuccess(String rawJsonContent) {
                     try {
@@ -967,9 +999,12 @@ public class NovaBrainEngine {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java
 ==================================================
+
 package com.novaagent.app.core.brain;
 
 import org.json.JSONArray;
@@ -1021,9 +1056,12 @@ public class ConversationMemory {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java
 ==================================================
+
 package com.novaagent.app.core.di;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -1073,9 +1111,12 @@ public class ServiceLocator {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/state/AgentState.java
 ==================================================
+
 package com.novaagent.app.core.state;
 
 /**
@@ -1095,36 +1136,57 @@ public enum AgentState {
     ERROR
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/config/MainActivity.java
 ==================================================
+
 package com.novaagent.app.ui.config;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
+import com.novaagent.app.services.accessibility.NovaAccessibilityService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private SharedPreferences prefs;
+    private ToneGenerator toneGen;
+    
+    private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek"};
+    private RadioGroup rgModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1132,66 +1194,172 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        RadioGroup rgModel = findViewById(R.id.rgModel);
-        Button btnSaveKey = findViewById(R.id.btnSaveKey);
-
-        if (prefs != null) {
-            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
-            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
-            if (savedModel.equals("llama3-8b-8192")) ((RadioButton) findViewById(R.id.rbLlamaLite)).setChecked(true);
-            else if (savedModel.equals("gemma2-9b-it")) ((RadioButton) findViewById(R.id.rbGemma)).setChecked(true);
-            else ((RadioButton) findViewById(R.id.rbLlama31)).setChecked(true);
+        rgModel = findViewById(R.id.rgModel);
+        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+        TextView tvDev = findViewById(R.id.tvDeveloperCredit);
+        
+        // RGB Shader Developer Credit
+        if (tvDev != null) {
+            tvDev.post(() -> {
+                Shader shader = new LinearGradient(0, 0, tvDev.getWidth(), 0,
+                        new int[]{0xFFFF00E5, 0xFF00E5FF, 0xFF00FF73, 0xFFFFE500, 0xFFFF00E5}, 
+                        null, Shader.TileMode.REPEAT);
+                tvDev.getPaint().setShader(shader);
+                tvDev.invalidate();
+            });
         }
 
-        btnSaveKey.setOnClickListener(v -> {
+        // Setup Spinner Provider
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
+        spinnerProvider.setAdapter(adapter);
+        
+        String savedProvider = prefs.getString("ai_provider", "Groq");
+        int spinnerPos = adapter.getPosition(savedProvider);
+        spinnerProvider.setSelection(spinnerPos >= 0 ? spinnerPos : 0);
+
+        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(view instanceof TextView) ((TextView) view).setTextColor(0xFF00E5FF);
+                updateModelList(providers[position]);
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        apiKeyInput.setText(prefs.getString("api_key", ""));
+
+        // Buttons Sound & Actions
+        findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
+            playClickSound();
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
-                Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else {
-                String selectedModel = "llama-3.1-8b-instant";
-                int checkedId = rgModel.getCheckedRadioButtonId();
-                if (checkedId == R.id.rbLlamaLite) selectedModel = "llama3-8b-8192";
-                else if (checkedId == R.id.rbGemma) selectedModel = "gemma2-9b-it";
-                
-                prefs.edit()
-                    .putString("groq_api_key", key)
-                    .putString("groq_model", selectedModel)
-                    .apply();
-                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
+                return;
             }
+            String selectedProvider = spinnerProvider.getSelectedItem().toString();
+            String selectedModel = "";
+            int checkedId = rgModel.getCheckedRadioButtonId();
+            if (checkedId != -1) {
+                RadioButton rb = findViewById(checkedId);
+                selectedModel = rb.getTag().toString();
+            }
+
+            prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
+            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
+        });
+
+        findViewById(R.id.btnSettings).setOnClickListener(v -> {
+            playClickSound();
+            showSettingsDialog();
         });
 
         findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
+            playClickSound();
             startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         });
 
         findViewById(R.id.btnOverlay).setOnClickListener(v -> {
-            if (!Settings.canDrawOverlays(this)) {
-                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-            }
+            playClickSound();
+            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
         });
 
-        findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
+        findViewById(R.id.btnStart).setOnClickListener(v -> {
+            playClickSound();
+            checkPermissionsAndStart();
+        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Update Status Badges
+        TextView tvA11y = findViewById(R.id.tvStatusA11y);
+        TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
+        
+        boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
+        tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
+        tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive);
+        
+        // Simplifikasi cek accessibility
+        tvA11y.setText("✔ Cek Manual");
+        tvA11y.setBackgroundResource(R.drawable.bg_badge_active);
+    }
+
+    private void updateModelList(String provider) {
+        rgModel.removeAllViews();
+        List<String[]> models = new ArrayList<>();
+        
+        if (provider.equals("Groq")) {
+            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
+            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
+            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
+        } else if (provider.equals("Gemini (Google Studio)")) {
+            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
+            models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
+        } else if (provider.equals("DeepSeek")) {
+            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
+            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
+        }
+
+        String savedModel = prefs.getString("ai_model", "");
+        for (String[] m : models) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(m[0]);
+            rb.setTag(m[1]); // Tag holds the actual API model ID
+            rb.setTextColor(0xFFFFFFFF);
+            rb.setTextSize(14);
+            rb.setPadding(0, 10, 0, 10);
+            rgModel.addView(rb);
+            if (m[1].equals(savedModel)) rb.setChecked(true);
+        }
+        if (rgModel.getCheckedRadioButtonId() == -1 && rgModel.getChildCount() > 0) ((RadioButton)rgModel.getChildAt(0)).setChecked(true);
+    }
+
+    private void showSettingsDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        
+        RadioGroup rgVoice = view.findViewById(R.id.rgVoicePitch);
+        float currentPitch = prefs.getFloat("voice_pitch", 1.0f);
+        if (currentPitch == 0.5f) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
+        else if (currentPitch == 1.5f) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
+
+        view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
+            playClickSound();
+            float newPitch = 1.0f;
+            int id = rgVoice.getCheckedRadioButtonId();
+            if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; // Suara berat
+            else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; // Suara cempreng/imut
+            
+            prefs.edit().putFloat("voice_pitch", newPitch).apply();
+            Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+        dialog.show();
+    }
+
+    private void playClickSound() {
+        try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){}
     }
 
     private void requestBasicPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
         }
     }
 
     private void checkPermissionsAndStart() {
-        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
-            Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
+        if (prefs.getString("api_key", "").isEmpty()) {
+            Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show();
             return;
         }
         if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Harap berikan Izin Mengambang (Overlay)!", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show();
             return;
         }
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -1210,9 +1378,12 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java
 ==================================================
+
 package com.novaagent.app.ui.bubble;
 
 import android.os.Handler;
@@ -1281,9 +1452,12 @@ public class BubbleViewModel implements EventBus.EventListener {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
 ==================================================
+
 package com.novaagent.app.ui.bubble;
 
 import android.animation.AnimatorSet;
@@ -1558,9 +1732,12 @@ public class FloatingBubbleView implements EventBus.EventListener {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/NovaApplication.java
 ==================================================
+
 package com.novaagent.app;
 
 import android.app.Application;
@@ -1588,9 +1765,12 @@ public class NovaApplication extends Application {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java
 ==================================================
+
 package com.novaagent.app.infrastructure.system;
 
 import android.content.Context;
@@ -1678,9 +1858,12 @@ public class RecoveryManager implements EventBus.EventListener {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java
 ==================================================
+
 package com.novaagent.app.infrastructure.system;
 
 import android.os.Handler;
@@ -1785,9 +1968,12 @@ public class NovaWatchdog implements EventBus.EventListener {
     };
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java
 ==================================================
+
 package com.novaagent.app.infrastructure.injector;
 
 import android.accessibilityservice.AccessibilityService;
@@ -1956,9 +2142,12 @@ public class SystemActionInjector {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java
 ==================================================
+
 package com.novaagent.app.infrastructure.ocr;
 
 import android.graphics.Bitmap;
@@ -2024,9 +2213,12 @@ public class MlKitOcrEngine {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java
 ==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.graphics.Rect;
@@ -2083,9 +2275,12 @@ public class NodeCompactor {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java
 ==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.accessibilityservice.AccessibilityService;
@@ -2235,9 +2430,12 @@ public class NovaAccessibilityService extends AccessibilityService {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java
 ==================================================
+
 package com.novaagent.app.services.accessibility;
 
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -2294,9 +2492,12 @@ public class NodeScanner {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java
 ==================================================
+
 package com.novaagent.app.services.foreground;
 
 import android.content.Context;
@@ -2447,9 +2648,12 @@ public class MediaProjectionWrapper {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java
 ==================================================
+
 package com.novaagent.app.services.foreground;
 
 import android.app.Notification;
@@ -2583,9 +2787,12 @@ public class NovaForegroundService extends Service {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java
 ==================================================
+
 package com.novaagent.app.data.model;
 
 /**
@@ -2609,9 +2816,12 @@ public class ActionVerificationResult {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java
 ==================================================
+
 package com.novaagent.app.data.model;
 
 import org.json.JSONException;
@@ -2659,9 +2869,12 @@ public class ActionCommandDto {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java
 ==================================================
+
 package com.novaagent.app.data.model;
 
 import java.util.ArrayList;
@@ -2731,9 +2944,12 @@ public class UnifiedScreenContext {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java
 ==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.graphics.Bitmap;
@@ -2803,9 +3019,12 @@ public class ScreenCache {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/NodeCache.java
 ==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.os.SystemClock;
@@ -2843,9 +3062,12 @@ public class NodeCache {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java
 ==================================================
+
 package com.novaagent.app.data.cache;
 
 import android.util.Log;
@@ -2896,9 +3118,149 @@ public class ObjectPool<T> {
     }
 }
 
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java
+==================================================
+
+package com.novaagent.app.data.network;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+public class UniversalNetworkClient {
+    private static final String TAG = "UniversalNetClient";
+    
+    private final OkHttpClient client;
+    private final Context context;
+    private final Handler retryHandler;
+    private static final int MAX_RETRIES = 3;
+
+    public interface NetworkCallback {
+        void onSuccess(String rawJsonContent);
+        void onError(String errorReason);
+    }
+
+    public UniversalNetworkClient(Context context) {
+        this.context = context;
+        this.retryHandler = new Handler(Looper.getMainLooper());
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(35, TimeUnit.SECONDS)
+                .build();
+    }
+
+    public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        String provider = prefs.getString("ai_provider", "Groq");
+        String apiKey = prefs.getString("api_key", "").trim();
+        String modelName = prefs.getString("ai_model", "");
+
+        if (apiKey.isEmpty()) {
+            callback.onError("API Key (" + provider + ") Kosong!");
+            return;
+        }
+
+        try {
+            Request request = null;
+
+            // --- JALUR GOOGLE GEMINI ---
+            if (provider.equals("Gemini (Google Studio)")) {
+                JSONObject payload = new JSONObject();
+                JSONArray contents = new JSONArray();
+                
+                for (int i = 0; i < messages.length(); i++) {
+                    JSONObject msg = messages.getJSONObject(i);
+                    String role = msg.getString("role");
+                    String content = msg.getString("content");
+                    if (role.equals("system")) {
+                        payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
+                    } else {
+                        String gRole = role.equals("assistant") ? "model" : "user";
+                        contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
+                    }
+                }
+                payload.put("contents", contents);
+                payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
+
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
+                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
+            } 
+            // --- JALUR GROQ & DEEPSEEK (Standard OpenAI JSON) ---
+            else {
+                JSONObject payload = new JSONObject();
+                payload.put("model", modelName);
+                payload.put("temperature", 0.3);
+                payload.put("messages", messages);
+                
+                String url = provider.equals("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+
+                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
+            }
+
+            client.newCall(request).enqueue(new Callback() {
+                @Override public void onFailure(Call call, IOException e) {
+                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
+                }
+                @Override public void onResponse(Call call, Response response) throws IOException {
+                    if (!response.isSuccessful()) {
+                        handleRetry(messages, callback, retryCount, "HTTP " + response.code());
+                        return;
+                    }
+                    try {
+                        String respBody = response.body().string();
+                        String content = "";
+                        if (provider.equals("Gemini (Google Studio)")) {
+                            content = new JSONObject(respBody).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                        } else {
+                            content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
+                        }
+                        callback.onSuccess(content);
+                    } catch (Exception e) {
+                        callback.onError("Gagal parse JSON " + provider);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            callback.onError("Gagal merakit request " + provider);
+        }
+    }
+
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
+        if (currentRetry < MAX_RETRIES) {
+            int nextRetry = currentRetry + 1;
+            long delay = 1500 * (long) Math.pow(2, currentRetry);
+            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
+        } else {
+            callback.onError(reason + " (Gagal 3x)");
+        }
+    }
+}
+
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
 ==================================================
+
 package com.novaagent.app.data.network;
 
 import android.content.Context;
@@ -3014,9 +3376,12 @@ public class GroqNetworkClient {
     }
 }
 
+
+
 ==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
 ==================================================
+
 package com.novaagent.app.data.repository;
 
 public class PromptRegistry {
@@ -3036,9 +3401,65 @@ public class PromptRegistry {
     }
 }
 
+
+
+==================================================
+FILE: ./app/src/main/res/layout/dialog_settings.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_card_cyber"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PENGATURAN SUARA NOVA"
+        android:textColor="#00E5FF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="20dp"
+        android:layout_gravity="center_horizontal"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Karakter Suara (Pitch):"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="8dp"/>
+        
+    <RadioGroup
+        android:id="@+id/rgVoicePitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+        <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Besar" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Normal" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Imut" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+    </RadioGroup>
+
+    <Button
+        android:id="@+id/btnSaveSettings"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:text="SIMPAN PENGATURAN"
+        android:backgroundTint="#00E5FF"
+        android:textColor="#000"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"/>
+</LinearLayout>
+
+
+
 ==================================================
 FILE: ./app/src/main/res/layout/layout_close_target.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="75dp"
@@ -3053,121 +3474,213 @@ FILE: ./app/src/main/res/layout/layout_close_target.xml
         android:tint="#FFFFFF" />
 </FrameLayout>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/layout/activity_main.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#121212"
-    android:gravity="center_horizontal">
+    android:background="@drawable/bg_main_dark"
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="NOVA AGENT 5.0"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#00E5FF"
-        android:layout_marginBottom="16dp"/>
-
-    <EditText
-        android:id="@+id/apiKeyInput"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:hint="Masukkan API Key Groq"
-        android:textColorHint="#888888"
-        android:textColor="#FFFFFF"
-        android:background="#222222"
-        android:padding="12dp"
-        android:inputType="textPassword"
-        android:layout_marginBottom="12dp"/>
-
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Pilih Model AI (Groq):"
-        android:textColor="#00E5FF"
-        android:layout_marginBottom="8dp"
-        android:textStyle="bold"/>
+        android:orientation="vertical"
+        android:padding="20dp">
 
-<RadioGroup
-    android:id="@+id/rgModel"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:layout_marginBottom="16dp">
-    
-    <RadioButton
-        android:id="@+id/rbLlama31"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Llama 3.1 8B (Standar)"
-        android:textColor="#FFFFFF"
-        android:checked="true"/>
-        
-    <RadioButton
-        android:id="@+id/rbLlamaLite"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Llama 3 8B (Lite / Paling Stabil)"
-        android:textColor="#FFFFFF"/>
-        
-    <RadioButton
-        android:id="@+id/rbGemma"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Gemma 2 9B (Kecerdasan Google)"
-        android:textColor="#FFFFFF"/>
-</RadioGroup>
+        <!-- Bar Atas Futuristik -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp">
 
-    <Button
-        android:id="@+id/btnSaveKey"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="SIMPAN KONFIGURASI"
-        android:backgroundTint="#00E5FF"
-        android:textColor="#000000"
-        android:layout_marginBottom="24dp"/>
+            <LinearLayout
+                android:id="@+id/btnSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_cyber"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
+            </LinearLayout>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Status Perizinan Wajib:"
-        android:textColor="#AAAAAA"
-        android:layout_marginBottom="8dp"/>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_centerVertical="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_marginEnd="10dp"/>
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@android:drawable/ic_menu_mylocation" android:tint="#FF00E5"/>
+            </LinearLayout>
+        </RelativeLayout>
 
-    <Button
-        android:id="@+id/btnAccessibility"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="1. AKTIFKAN AKSESIBILITAS"
-        android:layout_marginBottom="8dp"/>
+        <!-- TITLE AGENT -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="NOVA AGENT v6.0"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:textAlignment="center"
+            android:shadowColor="#00E5FF"
+            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="4dp"/>
+            
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="S M A R T  •  F A S T  •  P O W E R F U L"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#00E5FF"
+            android:textAlignment="center"
+            android:layout_marginBottom="24dp"/>
 
-    <Button
-        android:id="@+id/btnOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="2. IZIN MENGAMBANG (OVERLAY)"
-        android:layout_marginBottom="24dp"/>
+        <!-- CARD 1: PROVIDER & API KEY -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true">
 
-    <Button
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="3. MULAI NOVA"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:backgroundTint="#4CAF50"
-        android:textColor="#FFFFFF"/>
-</LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            
+            <Spinner
+                android:id="@+id/spinnerProvider"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:background="@drawable/bg_edit_text"
+                android:popupBackground="#0D1117"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            <EditText
+                android:id="@+id/apiKeyInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="Masukkan API Key..."
+                android:textColorHint="#40FFFFFF"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_edit_text"
+                android:paddingHorizontal="12dp"
+                android:inputType="textPassword"
+                android:textSize="14sp"
+                android:layout_marginBottom="12dp"/>
+
+            <Button
+                android:id="@+id/btnSaveKey"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:text="💾 Simpan Konfigurasi"
+                android:backgroundTint="#00E5FF"
+                android:textColor="#000000"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- CARD 2: MODEL AI -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📦 PILIH MODEL AI"
+                android:textColor="#00E5FF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioGroup
+                android:id="@+id/rgModel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <!-- RadioButton akan di-inject via Java sesuai Provider -->
+            </RadioGroup>
+        </LinearLayout>
+
+        <!-- CARD 3: PERMISSIONS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+
+            <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
+                <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+            </RelativeLayout>
+
+            <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
+                <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG (OVERLAY)" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- TOMBOL UTAMA -->
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="65dp"
+            android:background="@drawable/bg_start_glow"
+            android:text="▶ MULAI NOVA"
+            android:textColor="#000D1A"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- 🌈 DEVELOPER CREDIT RGB -->
+        <TextView
+            android:id="@+id/tvDeveloperCredit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DEVELOPER BY\nMOCH KHOIRUL AZMAN"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="20dp"/>
+
+    </LinearLayout>
+</ScrollView>
+
+
 
 ==================================================
 FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/bubbleRoot"
@@ -3190,9 +3703,12 @@ FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
         android:elevation="9dp" />
 </FrameLayout>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/xml/accessibility_service_config.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
@@ -3202,9 +3718,12 @@ FILE: ./app/src/main/res/xml/accessibility_service_config.xml
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100" />
 
+
+
 ==================================================
 FILE: ./app/src/main/res/xml/device_admin_receiver.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-policies>
@@ -3212,36 +3731,59 @@ FILE: ./app/src/main/res/xml/device_admin_receiver.xml
     </uses-policies>
 </device-admin>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>
+
+
 
 ==================================================
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@drawable/ic_launcher_foreground" />
 </adaptive-icon>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/bg_close_btn.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#FF3B30" />
     <stroke android:width="1dp" android:color="#FFFFFF" />
 </shape>
 
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_main_dark.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#050914" android:endColor="#000000" android:angle="270" />
+</shape>
+
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
@@ -3249,9 +3791,42 @@ FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
     <path android:fillColor="#121212" android:pathData="M0,0h108v108h-108z"/>
 </vector>
 
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_card_cyber.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#4D00E5FF">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#121826" />
+            <corners android:radius="16dp" />
+            <stroke android:width="1.5dp" android:color="#00E5FF" />
+        </shape>
+    </item>
+</ripple>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_badge_inactive.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1AFF3030" />
+    <corners android:radius="8dp" />
+    <stroke android:width="1dp" android:color="#FF3030" />
+</shape>
+
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
@@ -3260,9 +3835,42 @@ FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
     <stroke android:width="2dp" android:color="#00E5FF" /> <!-- Garis Cyan -->
 </shape>
 
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_start_glow.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:startColor="#00E5FF" android:endColor="#0088FF" android:angle="0" />
+            <corners android:radius="30dp" />
+            <stroke android:width="2dp" android:color="#80FFFFFF" />
+        </shape>
+    </item>
+</ripple>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_badge_active.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1A00FF73" />
+    <corners android:radius="8dp" />
+    <stroke android:width="1dp" android:color="#00FF73" />
+</shape>
+
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
 ==================================================
+
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -3289,9 +3897,12 @@ FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
         android:pathData="M54,54m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"/>
 </vector>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_jelly_face.xml
 ==================================================
+
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="60dp"
     android:height="60dp"
@@ -3308,18 +3919,24 @@ FILE: ./app/src/main/res/drawable/ic_jelly_face.xml
     <path android:strokeColor="#FFFFFF" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M42,62 Q50,72 58,62" />
 </vector>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="#CC00E5FF" />
     <stroke android:width="2dp" android:color="#FFFFFF" />
 </shape>
 
+
+
 ==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
 ==================================================
+
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
@@ -3332,9 +3949,25 @@ FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
           android:strokeLineJoin="round"/>
 </vector>
 
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_edit_text.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#080C14" />
+    <corners android:radius="12dp" />
+    <stroke android:width="1dp" android:color="#4000E5FF" />
+</shape>
+
+
+
 ==================================================
 FILE: ./app/build.gradle
 ==================================================
+
 plugins {
     id 'com.android.application'
 }
@@ -3382,15 +4015,21 @@ dependencies {
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
 }
 
+
+
 ==================================================
 FILE: ./settings.gradle
 ==================================================
+
 include ':app'
 rootProject.name = "NovaAgent"
+
+
 
 ==================================================
 FILE: ./build.gradle
 ==================================================
+
 buildscript {
     repositories {
         google()
@@ -3406,4 +4045,5 @@ allprojects {
         mavenCentral()
     }
 }
+
 

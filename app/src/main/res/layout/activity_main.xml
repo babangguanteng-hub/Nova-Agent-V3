@@ -1,108 +1,194 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#121212"
-    android:gravity="center_horizontal">
+    android:background="@drawable/bg_main_dark"
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="NOVA AGENT 5.0"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:textColor="#00E5FF"
-        android:layout_marginBottom="16dp"/>
-
-    <EditText
-        android:id="@+id/apiKeyInput"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:hint="Masukkan API Key Groq"
-        android:textColorHint="#888888"
-        android:textColor="#FFFFFF"
-        android:background="#222222"
-        android:padding="12dp"
-        android:inputType="textPassword"
-        android:layout_marginBottom="12dp"/>
-
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Pilih Model AI (Groq):"
-        android:textColor="#00E5FF"
-        android:layout_marginBottom="8dp"
-        android:textStyle="bold"/>
+        android:orientation="vertical"
+        android:padding="20dp">
 
-<RadioGroup
-    android:id="@+id/rgModel"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:layout_marginBottom="16dp">
-    
-    <RadioButton
-        android:id="@+id/rbLlama31"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Llama 3.1 8B (Standar)"
-        android:textColor="#FFFFFF"
-        android:checked="true"/>
-        
-    <RadioButton
-        android:id="@+id/rbLlamaLite"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Llama 3 8B (Lite / Paling Stabil)"
-        android:textColor="#FFFFFF"/>
-        
-    <RadioButton
-        android:id="@+id/rbGemma"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Gemma 2 9B (Kecerdasan Google)"
-        android:textColor="#FFFFFF"/>
-</RadioGroup>
+        <!-- Bar Atas Futuristik -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp">
 
-    <Button
-        android:id="@+id/btnSaveKey"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="SIMPAN KONFIGURASI"
-        android:backgroundTint="#00E5FF"
-        android:textColor="#000000"
-        android:layout_marginBottom="24dp"/>
+            <LinearLayout
+                android:id="@+id/btnSettings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_cyber"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
+            </LinearLayout>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Status Perizinan Wajib:"
-        android:textColor="#AAAAAA"
-        android:layout_marginBottom="8dp"/>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_centerVertical="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_marginEnd="10dp"/>
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@android:drawable/ic_menu_mylocation" android:tint="#FF00E5"/>
+            </LinearLayout>
+        </RelativeLayout>
 
-    <Button
-        android:id="@+id/btnAccessibility"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="1. AKTIFKAN AKSESIBILITAS"
-        android:layout_marginBottom="8dp"/>
+        <!-- TITLE AGENT -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="NOVA AGENT v6.0"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:textAlignment="center"
+            android:shadowColor="#00E5FF"
+            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="4dp"/>
+            
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="S M A R T  •  F A S T  •  P O W E R F U L"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:textColor="#00E5FF"
+            android:textAlignment="center"
+            android:layout_marginBottom="24dp"/>
 
-    <Button
-        android:id="@+id/btnOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="2. IZIN MENGAMBANG (OVERLAY)"
-        android:layout_marginBottom="24dp"/>
+        <!-- CARD 1: PROVIDER & API KEY -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true">
 
-    <Button
-        android:id="@+id/btnStart"
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:text="3. MULAI NOVA"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:backgroundTint="#4CAF50"
-        android:textColor="#FFFFFF"/>
-</LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            
+            <Spinner
+                android:id="@+id/spinnerProvider"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:background="@drawable/bg_edit_text"
+                android:popupBackground="#0D1117"
+                android:layout_marginBottom="12dp"/>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            <EditText
+                android:id="@+id/apiKeyInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="Masukkan API Key..."
+                android:textColorHint="#40FFFFFF"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_edit_text"
+                android:paddingHorizontal="12dp"
+                android:inputType="textPassword"
+                android:textSize="14sp"
+                android:layout_marginBottom="12dp"/>
+
+            <Button
+                android:id="@+id/btnSaveKey"
+                android:layout_width="match_parent"
+                android:layout_height="45dp"
+                android:text="💾 Simpan Konfigurasi"
+                android:backgroundTint="#00E5FF"
+                android:textColor="#000000"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- CARD 2: MODEL AI -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📦 PILIH MODEL AI"
+                android:textColor="#00E5FF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"/>
+
+            <RadioGroup
+                android:id="@+id/rgModel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <!-- RadioButton akan di-inject via Java sesuai Provider -->
+            </RadioGroup>
+        </LinearLayout>
+
+        <!-- CARD 3: PERMISSIONS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_cyber"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+
+            <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
+                <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+            </RelativeLayout>
+
+            <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
+                <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG (OVERLAY)" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- TOMBOL UTAMA -->
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="65dp"
+            android:background="@drawable/bg_start_glow"
+            android:text="▶ MULAI NOVA"
+            android:textColor="#000D1A"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"/>
+
+        <!-- 🌈 DEVELOPER CREDIT RGB -->
+        <TextView
+            android:id="@+id/tvDeveloperCredit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DEVELOPER BY\nMOCH KHOIRUL AZMAN"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textAlignment="center"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="20dp"/>
+
+    </LinearLayout>
+</ScrollView>

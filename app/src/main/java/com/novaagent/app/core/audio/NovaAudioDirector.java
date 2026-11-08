@@ -62,6 +62,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
             mouth.setLanguage(new Locale("id", "ID"));
+            // BACA PENGATURAN KARAKTER SUARA 
+            float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
+            mouth.setPitch(pitch);
             isMouthReady = true;
             
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {

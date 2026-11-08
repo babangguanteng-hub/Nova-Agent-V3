@@ -4,7 +4,7 @@ import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import com.novaagent.app.data.model.ActionCommandDto;
-import com.novaagent.app.data.network.GroqNetworkClient;
+import com.novaagent.app.data.network.UniversalNetworkClient;
 import com.novaagent.app.data.repository.PromptRegistry;
 
 /**
@@ -13,7 +13,7 @@ import com.novaagent.app.data.repository.PromptRegistry;
  */
 public class NovaBrainEngine {
     private final ConversationMemory memory;
-    private final GroqNetworkClient networkClient;
+    private final UniversalNetworkClient networkClient;
 
     public interface BrainCallback {
         void onDecisionMade(ActionCommandDto command);
@@ -22,7 +22,7 @@ public class NovaBrainEngine {
 
     public NovaBrainEngine(Context context) {
         this.memory = new ConversationMemory();
-        this.networkClient = new GroqNetworkClient(context);
+        this.networkClient = new UniversalNetworkClient(context);
     }
 
     public void processTask(String userCommand, String screenContextData, String previousFailedAction, BrainCallback callback) {
@@ -50,7 +50,7 @@ public class NovaBrainEngine {
             memory.addUserMessage(userCommand);
 
             // 4. Eksekusi ke Jaringan
-            networkClient.executeCall(finalMessages, new GroqNetworkClient.NetworkCallback() {
+            networkClient.executeCall(finalMessages, new UniversalNetworkClient.NetworkCallback() {
                 @Override
                 public void onSuccess(String rawJsonContent) {
                     try {
