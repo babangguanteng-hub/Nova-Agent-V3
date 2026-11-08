@@ -11,7 +11,6 @@ import androidx.security.crypto.MasterKey;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -39,15 +38,9 @@ public class GroqNetworkClient {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-    }
-
-    // 🕵️ JURUS SILUMAN 1: Memalsukan IP (Menggunakan blok IP Telkomsel/Indihome Indonesia)
-    private String generateRandomIndonesianIP() {
-        Random r = new Random();
-        return "114.124." + r.nextInt(256) + "." + r.nextInt(256);
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
@@ -59,26 +52,17 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", getSecureModelName().trim());
+            payload.put("model", getSecureModelName());
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            // 🕵️ JURUS SILUMAN 2: Manipulasi Header Organik (Menyamar jadi Google Chrome di PC)
+            // Format Murni API agar diterima Server Groq (Menghapus spoofing header)
             Request request = new Request.Builder()
                     .url(API_URL)
                     .addHeader("Authorization", "Bearer " + apiKey)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .addHeader("Accept", "application/json")
-                    .addHeader("Accept-Language", "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7")
-                    .addHeader("X-Forwarded-For", generateRandomIndonesianIP())
-                    .addHeader("Sec-Ch-Ua", "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
-                    .addHeader("Sec-Ch-Ua-Mobile", "?0")
-                    .addHeader("Sec-Ch-Ua-Platform", "\"Windows\"")
-                    .addHeader("Sec-Fetch-Dest", "empty")
-                    .addHeader("Sec-Fetch-Mode", "cors")
-                    .addHeader("Sec-Fetch-Site", "same-origin")
+                    .addHeader("Content-Type", "application/json")
                     .post(body)
                     .build();
 
@@ -124,10 +108,9 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
-            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            callback.onError(reason + " (Menyerah setelah 3x percobaan)");
+            callback.onError(reason + " (Batal: 3x gagal)");
         }
     }
 
@@ -143,7 +126,7 @@ public class GroqNetworkClient {
         try {
             MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
             SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+            return prefs.getString("groq_model", "llama-3.1-8b-instant").trim();
         } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }

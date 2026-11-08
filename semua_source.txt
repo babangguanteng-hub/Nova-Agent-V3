@@ -1,5 +1,7 @@
 
+==================================================
 FILE: ./app/src/main/AndroidManifest.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -52,7 +54,10 @@ FILE: ./app/src/main/AndroidManifest.xml
 </manifest>
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/EventBus.java
+==================================================
 
 package com.novaagent.app.core.bus;
 
@@ -138,7 +143,10 @@ public class EventBus {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java
+==================================================
 
 package com.novaagent.app.core.bus;
 
@@ -176,7 +184,10 @@ public class AgentEvent {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java
+==================================================
 
 package com.novaagent.app.core.proactive;
 
@@ -220,7 +231,10 @@ public class ProactiveTriggerEngine {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java
+==================================================
 
 package com.novaagent.app.core.vision;
 
@@ -255,7 +269,10 @@ public class SemanticVisionEngine {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java
+==================================================
 
 package com.novaagent.app.core.engine;
 
@@ -503,7 +520,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java
+==================================================
 
 package com.novaagent.app.core.engine;
 
@@ -625,7 +645,10 @@ public class ActionVerificationScore {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java
+==================================================
 
 package com.novaagent.app.core.engine;
 
@@ -695,7 +718,10 @@ public class SafetyPolicyEngine {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java
+==================================================
 
 package com.novaagent.app.core.audio;
 
@@ -885,7 +911,10 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java
+==================================================
 
 package com.novaagent.app.core.brain;
 
@@ -971,7 +1000,10 @@ public class NovaBrainEngine {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java
+==================================================
 
 package com.novaagent.app.core.brain;
 
@@ -1025,7 +1057,10 @@ public class ConversationMemory {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java
+==================================================
 
 package com.novaagent.app.core.di;
 
@@ -1077,7 +1112,10 @@ public class ServiceLocator {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/state/AgentState.java
+==================================================
 
 package com.novaagent.app.core.state;
 
@@ -1099,7 +1137,10 @@ public enum AgentState {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/config/MainActivity.java
+==================================================
 
 package com.novaagent.app.ui.config;
 
@@ -1121,67 +1162,72 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private SharedPreferences prefs;
+    private SharedPreferences encryptedPrefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR SELALU BISA DIBACA DI BACKGROUND
-        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        initSecurePrefs();
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        if (prefs != null) {
-            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
-            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
-            if (savedModel.equals("llama-3.1-70b-versatile")) ((RadioButton) findViewById(R.id.rbLlama70b)).setChecked(true);
-            else if (savedModel.equals("mixtral-8x7b-32768")) ((RadioButton) findViewById(R.id.rbMixtral)).setChecked(true);
-            else ((RadioButton) findViewById(R.id.rbLlama8b)).setChecked(true);
+        if (encryptedPrefs != null) {
+            apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
+            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+            if (savedModel.equals("llama3-8b-8192")) ((RadioButton) findViewById(R.id.rbLlamaLite)).setChecked(true);
+            else if (savedModel.equals("gemma2-9b-it")) ((RadioButton) findViewById(R.id.rbGemma)).setChecked(true);
+            else ((RadioButton) findViewById(R.id.rbLlama31)).setChecked(true);
         }
 
         btnSaveKey.setOnClickListener(v -> {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else {
+            } else if (encryptedPrefs != null) {
                 String selectedModel = "llama-3.1-8b-instant";
                 int checkedId = rgModel.getCheckedRadioButtonId();
-                if (checkedId == R.id.rbLlama70b) selectedModel = "llama-3.1-70b-versatile";
-                else if (checkedId == R.id.rbMixtral) selectedModel = "mixtral-8x7b-32768";
+                if (checkedId == R.id.rbLlamaLite) selectedModel = "llama3-8b-8192";
+                else if (checkedId == R.id.rbGemma) selectedModel = "gemma2-9b-it";
                 
-                prefs.edit()
+                encryptedPrefs.edit()
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
-                Toast.makeText(this, "Konfigurasi & Model Disimpan!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
             }
         });
 
         findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
             startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            Toast.makeText(this, "Cari 'Nova Otonom AI' dan Aktifkan", Toast.LENGTH_LONG).show();
         });
 
         findViewById(R.id.btnOverlay).setOnClickListener(v -> {
             if (!Settings.canDrawOverlays(this)) {
                 startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-            } else {
-                Toast.makeText(this, "Izin Mengambang Sudah Aktif!", Toast.LENGTH_SHORT).show();
             }
         });
 
         findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
+    }
+
+    private void initSecurePrefs() {
+        try {
+            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+        } catch (Exception e) {}
     }
 
     private void requestBasicPermissions() {
@@ -1193,7 +1239,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
+        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }
@@ -1219,7 +1265,10 @@ public class MainActivity extends AppCompatActivity {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java
+==================================================
 
 package com.novaagent.app.ui.bubble;
 
@@ -1290,7 +1339,10 @@ public class BubbleViewModel implements EventBus.EventListener {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
+==================================================
 
 package com.novaagent.app.ui.bubble;
 
@@ -1567,7 +1619,10 @@ public class FloatingBubbleView implements EventBus.EventListener {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/NovaApplication.java
+==================================================
 
 package com.novaagent.app;
 
@@ -1597,7 +1652,10 @@ public class NovaApplication extends Application {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java
+==================================================
 
 package com.novaagent.app.infrastructure.system;
 
@@ -1687,7 +1745,10 @@ public class RecoveryManager implements EventBus.EventListener {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java
+==================================================
 
 package com.novaagent.app.infrastructure.system;
 
@@ -1794,7 +1855,10 @@ public class NovaWatchdog implements EventBus.EventListener {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java
+==================================================
 
 package com.novaagent.app.infrastructure.injector;
 
@@ -1951,7 +2015,10 @@ public class SystemActionInjector {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java
+==================================================
 
 package com.novaagent.app.infrastructure.ocr;
 
@@ -2019,7 +2086,10 @@ public class MlKitOcrEngine {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java
+==================================================
 
 package com.novaagent.app.services.accessibility;
 
@@ -2078,7 +2148,10 @@ public class NodeCompactor {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java
+==================================================
 
 package com.novaagent.app.services.accessibility;
 
@@ -2230,7 +2303,10 @@ public class NovaAccessibilityService extends AccessibilityService {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java
+==================================================
 
 package com.novaagent.app.services.accessibility;
 
@@ -2289,7 +2365,10 @@ public class NodeScanner {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java
+==================================================
 
 package com.novaagent.app.services.foreground;
 
@@ -2442,7 +2521,10 @@ public class MediaProjectionWrapper {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java
+==================================================
 
 package com.novaagent.app.services.foreground;
 
@@ -2578,7 +2660,10 @@ public class NovaForegroundService extends Service {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java
+==================================================
 
 package com.novaagent.app.data.model;
 
@@ -2604,7 +2689,10 @@ public class ActionVerificationResult {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java
+==================================================
 
 package com.novaagent.app.data.model;
 
@@ -2654,7 +2742,10 @@ public class ActionCommandDto {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java
+==================================================
 
 package com.novaagent.app.data.model;
 
@@ -2726,7 +2817,10 @@ public class UnifiedScreenContext {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java
+==================================================
 
 package com.novaagent.app.data.cache;
 
@@ -2798,7 +2892,10 @@ public class ScreenCache {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/NodeCache.java
+==================================================
 
 package com.novaagent.app.data.cache;
 
@@ -2838,7 +2935,10 @@ public class NodeCache {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java
+==================================================
 
 package com.novaagent.app.data.cache;
 
@@ -2891,7 +2991,10 @@ public class ObjectPool<T> {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
+==================================================
 
 package com.novaagent.app.data.network;
 
@@ -2906,7 +3009,6 @@ import androidx.security.crypto.MasterKey;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -2934,15 +3036,9 @@ public class GroqNetworkClient {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-    }
-
-    // 🕵️ JURUS SILUMAN 1: Memalsukan IP (Menggunakan blok IP Telkomsel/Indihome Indonesia)
-    private String generateRandomIndonesianIP() {
-        Random r = new Random();
-        return "114.124." + r.nextInt(256) + "." + r.nextInt(256);
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
@@ -2954,26 +3050,17 @@ public class GroqNetworkClient {
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", getSecureModelName().trim());
+            payload.put("model", getSecureModelName());
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            // 🕵️ JURUS SILUMAN 2: Manipulasi Header Organik (Menyamar jadi Google Chrome di PC)
+            // Format Murni API agar diterima Server Groq (Menghapus spoofing header)
             Request request = new Request.Builder()
                     .url(API_URL)
                     .addHeader("Authorization", "Bearer " + apiKey)
-                    .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                    .addHeader("Accept", "application/json")
-                    .addHeader("Accept-Language", "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7")
-                    .addHeader("X-Forwarded-For", generateRandomIndonesianIP())
-                    .addHeader("Sec-Ch-Ua", "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Google Chrome\";v=\"120\"")
-                    .addHeader("Sec-Ch-Ua-Mobile", "?0")
-                    .addHeader("Sec-Ch-Ua-Platform", "\"Windows\"")
-                    .addHeader("Sec-Fetch-Dest", "empty")
-                    .addHeader("Sec-Fetch-Mode", "cors")
-                    .addHeader("Sec-Fetch-Site", "same-origin")
+                    .addHeader("Content-Type", "application/json")
                     .post(body)
                     .build();
 
@@ -3019,10 +3106,9 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
-            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            callback.onError(reason + " (Menyerah setelah 3x percobaan)");
+            callback.onError(reason + " (Batal: 3x gagal)");
         }
     }
 
@@ -3038,13 +3124,16 @@ public class GroqNetworkClient {
         try {
             MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
             SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_model", "llama-3.1-8b-instant");
+            return prefs.getString("groq_model", "llama-3.1-8b-instant").trim();
         } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }
 
 
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
+==================================================
 
 package com.novaagent.app.data.repository;
 
@@ -3066,7 +3155,10 @@ public class PromptRegistry {
 }
 
 
+
+==================================================
 FILE: ./app/src/main/res/layout/layout_close_target.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3083,7 +3175,10 @@ FILE: ./app/src/main/res/layout/layout_close_target.xml
 </FrameLayout>
 
 
+
+==================================================
 FILE: ./app/src/main/res/layout/activity_main.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3123,35 +3218,35 @@ FILE: ./app/src/main/res/layout/activity_main.xml
         android:layout_marginBottom="8dp"
         android:textStyle="bold"/>
 
-    <RadioGroup
-        android:id="@+id/rgModel"
-        android:layout_width="match_parent"
+<RadioGroup
+    android:id="@+id/rgModel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="16dp">
+    
+    <RadioButton
+        android:id="@+id/rbLlama31"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="16dp">
+        android:text="Llama 3.1 8B (Standar)"
+        android:textColor="#FFFFFF"
+        android:checked="true"/>
         
-        <RadioButton
-            android:id="@+id/rbLlama8b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Llama 3.1 8B (Super Cepat)"
-            android:textColor="#FFFFFF"
-            android:checked="true"/>
-            
-        <RadioButton
-            android:id="@+id/rbLlama70b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Llama 3.1 70B (Sangat Pintar)"
-            android:textColor="#FFFFFF"/>
-            
-        <RadioButton
-            android:id="@+id/rbMixtral"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Mixtral 8x7B (Seimbang)"
-            android:textColor="#FFFFFF"/>
-    </RadioGroup>
+    <RadioButton
+        android:id="@+id/rbLlamaLite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Llama 3 8B (Lite / Paling Stabil)"
+        android:textColor="#FFFFFF"/>
+        
+    <RadioButton
+        android:id="@+id/rbGemma"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gemma 2 9B (Kecerdasan Google)"
+        android:textColor="#FFFFFF"/>
+</RadioGroup>
 
     <Button
         android:id="@+id/btnSaveKey"
@@ -3195,7 +3290,10 @@ FILE: ./app/src/main/res/layout/activity_main.xml
 </LinearLayout>
 
 
+
+==================================================
 FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3220,7 +3318,10 @@ FILE: ./app/src/main/res/layout/layout_floating_bubble.xml
 </FrameLayout>
 
 
+
+==================================================
 FILE: ./app/src/main/res/xml/accessibility_service_config.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3232,7 +3333,10 @@ FILE: ./app/src/main/res/xml/accessibility_service_config.xml
     android:notificationTimeout="100" />
 
 
+
+==================================================
 FILE: ./app/src/main/res/xml/device_admin_receiver.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <device-admin xmlns:android="http://schemas.android.com/apk/res/android">
@@ -3242,7 +3346,10 @@ FILE: ./app/src/main/res/xml/device_admin_receiver.xml
 </device-admin>
 
 
+
+==================================================
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -3251,7 +3358,10 @@ FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
 </adaptive-icon>
 
 
+
+==================================================
 FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
@@ -3260,7 +3370,10 @@ FILE: ./app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 </adaptive-icon>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_close_btn.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
@@ -3269,7 +3382,10 @@ FILE: ./app/src/main/res/drawable/bg_close_btn.xml
 </shape>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3279,7 +3395,10 @@ FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
 </vector>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3290,7 +3409,10 @@ FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
 </shape>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
+==================================================
 
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -3319,7 +3441,10 @@ FILE: ./app/src/main/res/drawable/ic_launcher_nova.xml
 </vector>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/ic_jelly_face.xml
+==================================================
 
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="60dp"
@@ -3338,7 +3463,10 @@ FILE: ./app/src/main/res/drawable/ic_jelly_face.xml
 </vector>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
@@ -3347,7 +3475,10 @@ FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
 </shape>
 
 
+
+==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
+==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -3362,7 +3493,10 @@ FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
 </vector>
 
 
+
+==================================================
 FILE: ./app/build.gradle
+==================================================
 
 plugins {
     id 'com.android.application'
@@ -3412,13 +3546,19 @@ dependencies {
 }
 
 
+
+==================================================
 FILE: ./settings.gradle
+==================================================
 
 include ':app'
 rootProject.name = "NovaAgent"
 
 
+
+==================================================
 FILE: ./build.gradle
+==================================================
 
 buildscript {
     repositories {
@@ -3435,4 +3575,5 @@ allprojects {
         mavenCentral()
     }
 }
+
 

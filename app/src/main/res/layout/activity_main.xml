@@ -36,35 +36,35 @@
         android:layout_marginBottom="8dp"
         android:textStyle="bold"/>
 
-    <RadioGroup
-        android:id="@+id/rgModel"
-        android:layout_width="match_parent"
+<RadioGroup
+    android:id="@+id/rgModel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginBottom="16dp">
+    
+    <RadioButton
+        android:id="@+id/rbLlama31"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginBottom="16dp">
+        android:text="Llama 3.1 8B (Standar)"
+        android:textColor="#FFFFFF"
+        android:checked="true"/>
         
-        <RadioButton
-            android:id="@+id/rbLlama8b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Llama 3.1 8B (Super Cepat)"
-            android:textColor="#FFFFFF"
-            android:checked="true"/>
-            
-        <RadioButton
-            android:id="@+id/rbLlama70b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Llama 3.1 70B (Sangat Pintar)"
-            android:textColor="#FFFFFF"/>
-            
-        <RadioButton
-            android:id="@+id/rbMixtral"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Mixtral 8x7B (Seimbang)"
-            android:textColor="#FFFFFF"/>
-    </RadioGroup>
+    <RadioButton
+        android:id="@+id/rbLlamaLite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Llama 3 8B (Lite / Paling Stabil)"
+        android:textColor="#FFFFFF"/>
+        
+    <RadioButton
+        android:id="@+id/rbGemma"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gemma 2 9B (Kecerdasan Google)"
+        android:textColor="#FFFFFF"/>
+</RadioGroup>
 
     <Button
         android:id="@+id/btnSaveKey"

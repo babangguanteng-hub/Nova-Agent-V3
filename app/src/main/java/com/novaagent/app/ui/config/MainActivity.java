@@ -18,67 +18,72 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private SharedPreferences prefs;
+    private SharedPreferences encryptedPrefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR SELALU BISA DIBACA DI BACKGROUND
-        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        initSecurePrefs();
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        if (prefs != null) {
-            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
-            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
-            if (savedModel.equals("llama-3.1-70b-versatile")) ((RadioButton) findViewById(R.id.rbLlama70b)).setChecked(true);
-            else if (savedModel.equals("mixtral-8x7b-32768")) ((RadioButton) findViewById(R.id.rbMixtral)).setChecked(true);
-            else ((RadioButton) findViewById(R.id.rbLlama8b)).setChecked(true);
+        if (encryptedPrefs != null) {
+            apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
+            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+            if (savedModel.equals("llama3-8b-8192")) ((RadioButton) findViewById(R.id.rbLlamaLite)).setChecked(true);
+            else if (savedModel.equals("gemma2-9b-it")) ((RadioButton) findViewById(R.id.rbGemma)).setChecked(true);
+            else ((RadioButton) findViewById(R.id.rbLlama31)).setChecked(true);
         }
 
         btnSaveKey.setOnClickListener(v -> {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else {
+            } else if (encryptedPrefs != null) {
                 String selectedModel = "llama-3.1-8b-instant";
                 int checkedId = rgModel.getCheckedRadioButtonId();
-                if (checkedId == R.id.rbLlama70b) selectedModel = "llama-3.1-70b-versatile";
-                else if (checkedId == R.id.rbMixtral) selectedModel = "mixtral-8x7b-32768";
+                if (checkedId == R.id.rbLlamaLite) selectedModel = "llama3-8b-8192";
+                else if (checkedId == R.id.rbGemma) selectedModel = "gemma2-9b-it";
                 
-                prefs.edit()
+                encryptedPrefs.edit()
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
-                Toast.makeText(this, "Konfigurasi & Model Disimpan!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
             }
         });
 
         findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
             startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-            Toast.makeText(this, "Cari 'Nova Otonom AI' dan Aktifkan", Toast.LENGTH_LONG).show();
         });
 
         findViewById(R.id.btnOverlay).setOnClickListener(v -> {
             if (!Settings.canDrawOverlays(this)) {
                 startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-            } else {
-                Toast.makeText(this, "Izin Mengambang Sudah Aktif!", Toast.LENGTH_SHORT).show();
             }
         });
 
         findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
+    }
+
+    private void initSecurePrefs() {
+        try {
+            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
+            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
+        } catch (Exception e) {}
     }
 
     private void requestBasicPermissions() {
@@ -90,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
+        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }
