@@ -31,7 +31,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR BEBAS DIAKSES SAAT BACKGROUND
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         requestBasicPermissions();
 
@@ -61,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
-                Toast.makeText(this, "Kunci & Model Tersimpan (Mode Aman Background)!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -106,7 +105,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, NovaForegroundService.class);
             intent.putExtra("code", resultCode); intent.putExtra("data", data);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent);
-            Toast.makeText(this, "Nova Diaktifkan!", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
