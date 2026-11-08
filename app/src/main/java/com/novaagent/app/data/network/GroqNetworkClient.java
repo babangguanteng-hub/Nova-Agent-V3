@@ -5,8 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -44,25 +42,29 @@ public class GroqNetworkClient {
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        String apiKey = getSecureApiKey();
+        // MENGAMBIL KUNCI DARI LACI STANDAR AGAR TIDAK DIGEMBOK ANDROID
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        String apiKey = prefs.getString("groq_api_key", "").trim();
+        String modelName = prefs.getString("groq_model", "llama3-8b-8192").trim();
+
         if (apiKey.isEmpty()) {
-            callback.onError("API Key Kosong. Silakan isi di aplikasi.");
+            callback.onError("API Key Kosong. Silakan buka aplikasi Nova dan simpan ulang.");
             return;
         }
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", getSecureModelName());
+            payload.put("model", modelName);
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            // Format Murni API agar diterima Server Groq (Menghapus spoofing header)
             Request request = new Request.Builder()
                     .url(API_URL)
                     .addHeader("Authorization", "Bearer " + apiKey)
                     .addHeader("Content-Type", "application/json")
+                    .addHeader("User-Agent", "Nova-Agent-Mobile/5.0")
                     .post(body)
                     .build();
 
@@ -108,25 +110,10 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
+            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
             callback.onError(reason + " (Batal: 3x gagal)");
         }
-    }
-
-    private String getSecureApiKey() {
-        try {
-            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_api_key", "").trim();
-        } catch (Exception e) { return ""; }
-    }
-
-    private String getSecureModelName() {
-        try {
-            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_model", "llama-3.1-8b-instant").trim();
-        } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }

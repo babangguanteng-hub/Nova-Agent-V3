@@ -147,6 +147,20 @@ public class SystemActionInjector {
                 if (!openAppByName(context, "kamera")) openAppByName(context, "camera");
             } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
                 if (!openAppByName(context, "galeri")) openAppByName(context, "gallery");
+            } else if (lowerCmd.contains("musik") || lowerCmd.contains("lagu") || lowerCmd.contains("putar") || lowerCmd.contains("berhenti")) {
+                // SKIL DEWA: PENGONTROL MUSIK OFFLINE 
+                AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    int keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+                    if (lowerCmd.contains("lanjut") || lowerCmd.contains("next")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_NEXT;
+                    else if (lowerCmd.contains("kembali") || lowerCmd.contains("sebelumnya")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS;
+                    else if (lowerCmd.contains("stop") || lowerCmd.contains("berhenti")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_STOP;
+
+                    android.view.KeyEvent eventDown = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
+                    android.view.KeyEvent eventUp = new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode);
+                    audioManager.dispatchMediaKeyEvent(eventDown);
+                    audioManager.dispatchMediaKeyEvent(eventUp);
+                }
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }

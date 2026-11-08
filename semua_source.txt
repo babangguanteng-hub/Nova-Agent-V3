@@ -348,7 +348,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
         String lowerTask = task.toLowerCase();
 
-        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar & Obrolan Keren)
+        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar)
         if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
             speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
         } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
@@ -360,9 +360,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
             speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
         } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
-            speak("Halo bos! Nova siap meluncur dan melayani perintah Anda."); return;
+            speak("Halo bos! Nova siap meluncur."); return;
         } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
-            speak("Nova bisa ngobrol offline, buka semua aplikasi, ngatur senter, wifi, bluetooth, dan mengontrol penuh layar bos."); return;
+            speak("Nova bisa ngobrol offline, buka aplikasi, ngatur senter, wifi, bluetooth, putar musik, dan mengontrol penuh layar bos."); return;
         }
 
         // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
@@ -376,13 +376,13 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             return;
         }
 
-        // 3. Skil Kontrol Panel Android / Perangkat Keras
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri).*")) {
+        // 3. SKIL DEWA: Kontrol Panel Android & Media Musik
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri|musik|lagu|putar|berhenti|lanjut|sebelumnya).*")) {
             Log.i(TAG, "Mode Offline (Survival) Terpicu!");
             try {
                 ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                speak("Siap bos, langsung dieksekusi.");
+                speak("Siap bos, dilaksanakan.");
             } catch (Exception e) {}
             return;
         }
@@ -422,7 +422,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             switch (event.type) {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
-                    
                     resolveDependencies();
                     proactiveEngine.evaluateScreen(newContext);
 
@@ -436,7 +435,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                             failedActionToReport = lastCommandExecuted.action;
                             if (consecutiveFailures >= 3) {
                                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                speak("Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain.");
+                                speak("Maaf bos, letak tombolnya berubah. Arahkan pakai kata lain.");
                                 stopTask();
                                 return;
                             }
@@ -498,9 +497,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
                 if ("done".equalsIgnoreCase(cmd.action)) {
-                    if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                        speak(cmd.speech);
-                    }
+                    if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
                     stopTask();
                 } else {
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
@@ -1162,31 +1159,30 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private SharedPreferences encryptedPrefs;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        initSecurePrefs();
+        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR BEBAS DIAKSES SAAT BACKGROUND
+        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        if (encryptedPrefs != null) {
-            apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
-            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+        if (prefs != null) {
+            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
+            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
             if (savedModel.equals("llama3-8b-8192")) ((RadioButton) findViewById(R.id.rbLlamaLite)).setChecked(true);
             else if (savedModel.equals("gemma2-9b-it")) ((RadioButton) findViewById(R.id.rbGemma)).setChecked(true);
             else ((RadioButton) findViewById(R.id.rbLlama31)).setChecked(true);
@@ -1196,17 +1192,17 @@ public class MainActivity extends AppCompatActivity {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else if (encryptedPrefs != null) {
+            } else {
                 String selectedModel = "llama-3.1-8b-instant";
                 int checkedId = rgModel.getCheckedRadioButtonId();
                 if (checkedId == R.id.rbLlamaLite) selectedModel = "llama3-8b-8192";
                 else if (checkedId == R.id.rbGemma) selectedModel = "gemma2-9b-it";
                 
-                encryptedPrefs.edit()
+                prefs.edit()
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
-                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Kunci & Model Tersimpan (Mode Aman Background)!", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -1223,13 +1219,6 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
     }
 
-    private void initSecurePrefs() {
-        try {
-            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-        } catch (Exception e) {}
-    }
-
     private void requestBasicPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -1239,7 +1228,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
+        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }
@@ -2009,6 +1998,20 @@ public class SystemActionInjector {
                 if (!openAppByName(context, "kamera")) openAppByName(context, "camera");
             } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
                 if (!openAppByName(context, "galeri")) openAppByName(context, "gallery");
+            } else if (lowerCmd.contains("musik") || lowerCmd.contains("lagu") || lowerCmd.contains("putar") || lowerCmd.contains("berhenti")) {
+                // SKIL DEWA: PENGONTROL MUSIK OFFLINE 
+                AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    int keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+                    if (lowerCmd.contains("lanjut") || lowerCmd.contains("next")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_NEXT;
+                    else if (lowerCmd.contains("kembali") || lowerCmd.contains("sebelumnya")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS;
+                    else if (lowerCmd.contains("stop") || lowerCmd.contains("berhenti")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_STOP;
+
+                    android.view.KeyEvent eventDown = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
+                    android.view.KeyEvent eventUp = new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode);
+                    audioManager.dispatchMediaKeyEvent(eventDown);
+                    audioManager.dispatchMediaKeyEvent(eventUp);
+                }
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }
@@ -3003,8 +3006,6 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -3042,25 +3043,29 @@ public class GroqNetworkClient {
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        String apiKey = getSecureApiKey();
+        // MENGAMBIL KUNCI DARI LACI STANDAR AGAR TIDAK DIGEMBOK ANDROID
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        String apiKey = prefs.getString("groq_api_key", "").trim();
+        String modelName = prefs.getString("groq_model", "llama3-8b-8192").trim();
+
         if (apiKey.isEmpty()) {
-            callback.onError("API Key Kosong. Silakan isi di aplikasi.");
+            callback.onError("API Key Kosong. Silakan buka aplikasi Nova dan simpan ulang.");
             return;
         }
 
         try {
             JSONObject payload = new JSONObject();
-            payload.put("model", getSecureModelName());
+            payload.put("model", modelName);
             payload.put("temperature", 0.3);
             payload.put("messages", messages);
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             
-            // Format Murni API agar diterima Server Groq (Menghapus spoofing header)
             Request request = new Request.Builder()
                     .url(API_URL)
                     .addHeader("Authorization", "Bearer " + apiKey)
                     .addHeader("Content-Type", "application/json")
+                    .addHeader("User-Agent", "Nova-Agent-Mobile/5.0")
                     .post(body)
                     .build();
 
@@ -3106,26 +3111,11 @@ public class GroqNetworkClient {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
+            Log.w(TAG, "Request Gagal: " + reason + ". Retry " + nextRetry + " dalam " + delay + "ms");
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
             callback.onError(reason + " (Batal: 3x gagal)");
         }
-    }
-
-    private String getSecureApiKey() {
-        try {
-            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_api_key", "").trim();
-        } catch (Exception e) { return ""; }
-    }
-
-    private String getSecureModelName() {
-        try {
-            MasterKey mk = new MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            SharedPreferences prefs = EncryptedSharedPreferences.create(context, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-            return prefs.getString("groq_model", "llama-3.1-8b-instant").trim();
-        } catch (Exception e) { return "llama-3.1-8b-instant"; }
     }
 }
 

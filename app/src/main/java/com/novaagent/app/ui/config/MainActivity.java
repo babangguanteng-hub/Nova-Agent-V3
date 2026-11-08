@@ -18,31 +18,30 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private SharedPreferences encryptedPrefs;
+    private SharedPreferences prefs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        initSecurePrefs();
+        // MENGGUNAKAN PENYIMPANAN STANDAR AGAR BEBAS DIAKSES SAAT BACKGROUND
+        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         RadioGroup rgModel = findViewById(R.id.rgModel);
         Button btnSaveKey = findViewById(R.id.btnSaveKey);
 
-        if (encryptedPrefs != null) {
-            apiKeyInput.setText(encryptedPrefs.getString("groq_api_key", ""));
-            String savedModel = encryptedPrefs.getString("groq_model", "llama-3.1-8b-instant");
+        if (prefs != null) {
+            apiKeyInput.setText(prefs.getString("groq_api_key", ""));
+            String savedModel = prefs.getString("groq_model", "llama-3.1-8b-instant");
             if (savedModel.equals("llama3-8b-8192")) ((RadioButton) findViewById(R.id.rbLlamaLite)).setChecked(true);
             else if (savedModel.equals("gemma2-9b-it")) ((RadioButton) findViewById(R.id.rbGemma)).setChecked(true);
             else ((RadioButton) findViewById(R.id.rbLlama31)).setChecked(true);
@@ -52,17 +51,17 @@ public class MainActivity extends AppCompatActivity {
             String key = apiKeyInput.getText().toString().trim();
             if (key.isEmpty()) {
                 Toast.makeText(this, "API Key tidak boleh kosong!", Toast.LENGTH_SHORT).show();
-            } else if (encryptedPrefs != null) {
+            } else {
                 String selectedModel = "llama-3.1-8b-instant";
                 int checkedId = rgModel.getCheckedRadioButtonId();
                 if (checkedId == R.id.rbLlamaLite) selectedModel = "llama3-8b-8192";
                 else if (checkedId == R.id.rbGemma) selectedModel = "gemma2-9b-it";
                 
-                encryptedPrefs.edit()
+                prefs.edit()
                     .putString("groq_api_key", key)
                     .putString("groq_model", selectedModel)
                     .apply();
-                Toast.makeText(this, "Kunci & Model Tersimpan!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Kunci & Model Tersimpan (Mode Aman Background)!", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -79,13 +78,6 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnStart).setOnClickListener(v -> checkPermissionsAndStart());
     }
 
-    private void initSecurePrefs() {
-        try {
-            MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-            encryptedPrefs = EncryptedSharedPreferences.create(this, "nova_secure_config", mk, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM);
-        } catch (Exception e) {}
-    }
-
     private void requestBasicPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -95,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        if (encryptedPrefs == null || encryptedPrefs.getString("groq_api_key", "").isEmpty()) {
+        if (prefs == null || prefs.getString("groq_api_key", "").isEmpty()) {
             Toast.makeText(this, "Harap simpan API Key terlebih dahulu!", Toast.LENGTH_LONG).show();
             return;
         }

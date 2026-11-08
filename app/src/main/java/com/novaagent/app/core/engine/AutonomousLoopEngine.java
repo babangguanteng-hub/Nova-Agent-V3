@@ -72,7 +72,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
         String lowerTask = task.toLowerCase();
 
-        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar & Obrolan Keren)
+        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar)
         if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
             speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
         } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
@@ -84,9 +84,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
             speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
         } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
-            speak("Halo bos! Nova siap meluncur dan melayani perintah Anda."); return;
+            speak("Halo bos! Nova siap meluncur."); return;
         } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
-            speak("Nova bisa ngobrol offline, buka semua aplikasi, ngatur senter, wifi, bluetooth, dan mengontrol penuh layar bos."); return;
+            speak("Nova bisa ngobrol offline, buka aplikasi, ngatur senter, wifi, bluetooth, putar musik, dan mengontrol penuh layar bos."); return;
         }
 
         // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
@@ -100,13 +100,13 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             return;
         }
 
-        // 3. Skil Kontrol Panel Android / Perangkat Keras
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri).*")) {
+        // 3. SKIL DEWA: Kontrol Panel Android & Media Musik
+        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri|musik|lagu|putar|berhenti|lanjut|sebelumnya).*")) {
             Log.i(TAG, "Mode Offline (Survival) Terpicu!");
             try {
                 ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                speak("Siap bos, langsung dieksekusi.");
+                speak("Siap bos, dilaksanakan.");
             } catch (Exception e) {}
             return;
         }
@@ -146,7 +146,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             switch (event.type) {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
-                    
                     resolveDependencies();
                     proactiveEngine.evaluateScreen(newContext);
 
@@ -160,7 +159,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                             failedActionToReport = lastCommandExecuted.action;
                             if (consecutiveFailures >= 3) {
                                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                speak("Maaf bos, layar atau tombol ini berubah letaknya. Tolong arahkan saya pakai kata lain.");
+                                speak("Maaf bos, letak tombolnya berubah. Arahkan pakai kata lain.");
                                 stopTask();
                                 return;
                             }
@@ -222,9 +221,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
                 if ("done".equalsIgnoreCase(cmd.action)) {
-                    if (cmd.speech != null && !cmd.speech.isEmpty()) {
-                        speak(cmd.speech);
-                    }
+                    if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
                     stopTask();
                 } else {
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
