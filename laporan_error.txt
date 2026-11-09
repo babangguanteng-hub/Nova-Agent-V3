@@ -42,13 +42,13 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:compressDebugAssets
-> Task :app:mergeDebugJavaResource
 > Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugJavaResource
 > Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugNativeLibs
 > Task :app:processDebugManifestForPackage
-> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugNativeLibs
 > Task :app:mergeExtDexDebug
+> Task :app:mergeLibDexDebug
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libmlkit_google_ocr_pipeline.so.
@@ -56,20 +56,20 @@ Unable to strip the following libraries, packaging them as they are: libmlkit_go
 > Task :app:processDebugResources
 > Task :app:validateSigningDebug
 
-> Task :app:compileDebugJavaWithJavac FAILED
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:204: error: orphaned case
-                case ACTION_VALIDATED:
-                ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:217: error: 'catch' without 'try'
-        } catch (Exception e) {}
-          ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:146: error: 'try' without 'catch', 'finally' or resource declarations
-        try {
-        ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:220: error: illegal start of expression
-    private void pingWatchdog() {
+> Task :app:compileDebugJavaWithJavac
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java:45: error: SuppressWarnings is not a repeatable annotation type
+    @SuppressWarnings("unchecked")
     ^
-4 errors
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java:32: error: Override is not a repeatable annotation type
+    @Override
+    ^
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: /home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+2 errors
+
+> Task :app:compileDebugJavaWithJavac FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -332,5 +332,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 1m 28s
+BUILD FAILED in 1m 35s
 26 actionable tasks: 26 executed
