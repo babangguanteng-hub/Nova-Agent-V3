@@ -39,6 +39,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
+    private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
     
@@ -54,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
         
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        
+        // Memicu Popup Perizinan Cerdas
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
@@ -88,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
 
+        // SENSOR BUNGLON (AUTO-DETECT)
         apiKeyInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -105,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                     int pos = adapter.getPosition(detectedProvider);
                     if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
                         spinnerProvider.setSelection(pos);
-                        Toast.makeText(MainActivity.this, "🤖 Auto-Detect: " + detectedProvider, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "🤖 Provider Terdeteksi: " + detectedProvider, Toast.LENGTH_SHORT).show();
                         playClickSound();
                     }
                 }
@@ -126,14 +130,30 @@ public class MainActivity extends AppCompatActivity {
                 RadioButton rb = findViewById(checkedId);
                 selectedModel = rb.getTag().toString();
             }
+
             prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
-            Toast.makeText(this, "Tersimpan: " + selectedProvider, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
-        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+        findViewById(R.id.btnSettings).setOnClickListener(v -> {
+            playClickSound();
+            showSettingsDialog();
+        });
+
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
+            playClickSound();
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        });
+
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
+            playClickSound();
+            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        });
+
+        findViewById(R.id.btnStart).setOnClickListener(v -> {
+            playClickSound();
+            checkPermissionsAndStart();
+        });
     }
 
     @Override
@@ -141,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
+        
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
         if(tvOverlay != null) {
             tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
@@ -152,31 +173,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 🌟 INJEKSI 3 MODEL TERBARU DARI SETIAP PROVIDER 
     private void updateModelList(String provider) {
         rgModel.removeAllViews();
         List<String[]> models = new ArrayList<>();
         
         if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3.3 70B (Versatile/Pintar)", "llama-3.3-70b-versatile"});
-            models.add(new String[]{"Llama 3.1 8B (Super Cepat)", "llama-3.1-8b-instant"});
-            models.add(new String[]{"DeepSeek R1 70B (Logika Ekstra)", "deepseek-r1-distill-llama-70b"});
+            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
+            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
+            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
         } else if (provider.equals("Gemini (Google Studio)")) {
-            models.add(new String[]{"Gemini 2.0 Flash (Paling Baru & Cepat)", "gemini-2.0-flash"});
+            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
             models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
-            models.add(new String[]{"Gemini 3.5 Flash (Custom/TokoVPN)", "gemini-3.5-flash"});
+            models.add(new String[]{"Gemini 3.5 Flash (Custom/Proxy)", "gemini-3.5-flash"});
+            models.add(new String[]{"Gemini 3.8 Flash (Custom/Proxy)", "gemini-3.8-flash"});
         } else if (provider.equals("DeepSeek")) {
-            models.add(new String[]{"DeepSeek Chat V3 (Standar Utama)", "deepseek-chat"});
-            models.add(new String[]{"DeepSeek Reasoner R1 (Pemikir Cerdas)", "deepseek-reasoner"});
-            models.add(new String[]{"DeepSeek Coder (Koding)", "deepseek-coder"});
+            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
+            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
         } else if (provider.equals("OpenAI")) {
+            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
             models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
-            models.add(new String[]{"GPT-4o Mini (Kecil & Hemat)", "gpt-4o-mini"});
-            models.add(new String[]{"o3-mini (Reasoning Tercepat)", "o3-mini"});
         } else if (provider.equals("TokoVPN (Proxy)")) {
-            models.add(new String[]{"Claude 3.7 Sonnet (Paling Tangguh)", "claude-3-7-sonnet"});
-            models.add(new String[]{"GPT-4.5 Preview (Pro)", "gpt-4.5-preview"});
-            models.add(new String[]{"Gemini 2.5 Pro (Custom)", "gemini-2.5-pro"});
+            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
+            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
         }
 
         String savedModel = prefs.getString("ai_model", "");
@@ -222,9 +240,35 @@ public class MainActivity extends AppCompatActivity {
         try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){}
     }
 
+    // 🛡️ FITUR BARU: POPUP PERIZINAN MUTLAK
     private void requestBasicPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
+        List<String> permissionsNeeded = new ArrayList<>();
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+            }
+        }
+        
+        // Notifikasi untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            // Mencegat dengan Popup Kustom sebelum izin asli sistem muncul
+            new AlertDialog.Builder(this)
+                .setTitle("🎙️ Izin Wajib Nova AI")
+                .setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.\n\nMohon izinkan pada menu selanjutnya.")
+                .setPositiveButton("Beri Izin", (dialog, which) -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
+                    }
+                })
+                .setCancelable(false) // Tidak bisa ditutup sembarangan
+                .show();
         }
     }
 
@@ -250,6 +294,14 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show();
             return;
         }
+        
+        // Pengecekan ekstra sebelum start
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu agar Nova tidak bisu/tuli!", Toast.LENGTH_LONG).show();
+            requestBasicPermissions();
+            return;
+        }
+
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
