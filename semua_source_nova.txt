@@ -532,11 +532,11 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.core.brain.NovaBrainEngine;
-import com.novaagent.app.core.engine.LocalIntentRouter;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.services.accessibility.NovaAccessibilityService;
+import com.novaagent.app.services.foreground.MediaProjectionWrapper;
 
 public class AutonomousLoopEngine implements EventBus.EventListener {
     private static final String TAG = "AutonomousLoopEngine";
@@ -582,6 +582,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
+        // FASE 7: Sentinel / Proactive
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
@@ -593,7 +594,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // --- FASE 1 & 3: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA) ---
+        // FASE 1, 2, 3, 7: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA)
         LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
         if (routeResult.isOfflineAction) {
             if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
@@ -610,19 +611,22 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 this.lastScreenContext = null;
                 this.lastCommandExecuted = null;
                 this.lastFlatUiText = "";
-                // FASE 4: Hidupkan Mata Visual untuk bagian tugas daring
+                
+                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan tugas daring -> " + this.currentTask);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+                
+                // FASE 4: Hidupkan Mata Visual
                 try {
-                    com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                    MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
                     if (vision != null) vision.resumeVision();
                 } catch (Exception e) {}
-                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan dengan tugas daring -> " + this.currentTask);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+
                 loopHandler.postDelayed(this::requestScreenData, 2500);
             }
             return;
         }
 
-    this.currentTask = task;
+        this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
         this.lastCommandExecuted = null;
@@ -630,13 +634,15 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
-        // FASE 4: Hidupkan Mata Visual karena AI Daring butuh melihat layar
-        try {
-            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
-            if (vision != null) vision.resumeVision();
-        } catch (Exception e) {}
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+        
+        // FASE 4: Hidupkan Mata Visual
+        try {
+            MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
+            if (vision != null) vision.resumeVision();
+        } catch (Exception e) {}
+        
         requestScreenData();
     }
 
@@ -644,9 +650,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-        // FASE 4: Matikan Mata Visual saat tugas selesai untuk hemat baterai
+        // FASE 4: Matikan Mata Visual
         try {
-            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.pauseVision();
         } catch (Exception e) {}
     }
@@ -668,39 +674,35 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     resolveDependencies();
-                    proactiveEngine.evaluateScreen(newContext);
+                    if (proactiveEngine != null) proactiveEngine.evaluateScreen(newContext);
 
                     if (!isRunning) return;
 
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                    if (!result.isVerified) {
-                        consecutiveFailures++;
-                        failedActionToReport = lastCommandExecuted.action;
-                        
-                        // --- FASE 8: AUTONOMOUS SELF-HEALING (KOREKSI MANDIRI) ---
-                        if (consecutiveFailures == 2) {
-                            Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll ke bawah...");
-                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area bawah..."));
-                            try {
-                                ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
-                                actionInjector.executeAction(healCmd);
-                            } catch(Exception e){}
- // Hentikan siklus ini, tunggu layar terupdate akibat scroll
-                        } else if (consecutiveFailures >= 4) {
-
-                            speak("Maaf bos, jalan buntu. Saya sudah otomatis mencoba mencari ke bawah tapi tetap tidak ketemu.");
-
-
-                        // ---------------------------------------------------------
-    
-                                speak("Maaf bos, letak tombolnya berubah. Arahkan pakai kata lain.");
-    
-    
+                        if (!result.isVerified) {
+                            consecutiveFailures++;
+                            failedActionToReport = lastCommandExecuted.action;
+                            
+                            // FASE 8: AUTONOMOUS SELF-HEALING
+                            if (consecutiveFailures == 2) {
+                                Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll...");
+                                speak("Mencari di area bawah...");
+                                try {
+                                    ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
+                                    actionInjector.executeAction(healCmd);
+                                } catch(Exception e){}
+                                return; // Tunggu update layar
+                            } else if (consecutiveFailures >= 4) {
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                                speak("Maaf bos, jalan buntu. Tombol tidak ditemukan.");
+                                stopTask();
+                                return;
                             }
                         } else {
                             consecutiveFailures = 0;
+                        }
                     }
 
                     lastScreenContext = newContext;
@@ -734,12 +736,14 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 default:
                     break;
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            Log.e(TAG, "Error dalam Event Loop", e);
+        }
     }
 
     private void pingWatchdog() {
         try {
-            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
+            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
             if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.ENGINE);
         } catch (Exception e) {}
     }
