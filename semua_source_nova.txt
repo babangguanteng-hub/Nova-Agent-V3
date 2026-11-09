@@ -1,5 +1,12 @@
 
 ==================================================
+FILE: ./.gradle
+==================================================
+
+
+
+
+==================================================
 FILE: ./app/src/main/AndroidManifest.xml
 ==================================================
 
@@ -1242,7 +1249,6 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     @Override
-    @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
         // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
@@ -1254,7 +1260,6 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COL_FACT, fact);
         values.put(COL_TIMESTAMP, System.currentTimeMillis());
-        // Gunakan CONFLICT_REPLACE agar fakta yang sama hanya memperbarui waktu
         db.insertWithOnConflict(TABLE_MEMORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         db.close();
         Log.i("MemoryEngine", "Fakta baru disimpan: " + fact);
@@ -1455,10 +1460,6 @@ public class ServiceLocator {
         return instance;
     }
 
-    /**
-     * Mendaftarkan atau mencopot layanan.
-     * Thread-Safe karena menggunakan ConcurrentHashMap.
-     */
     public <T> void register(Class<T> serviceClass, T serviceInstance) {
         if (serviceInstance == null) {
             services.remove(serviceClass);
@@ -1468,11 +1469,6 @@ public class ServiceLocator {
     }
 
     /**
-     * Mengambil layanan yang terdaftar.
-     * Akan melempar pengecualian jika layanan dicari sebelum diregistrasi.
-     */
-    @SuppressWarnings("unchecked")
-    /**
      * Mengambil layanan tanpa melempar Exception jika belum terdaftar.
      * Digunakan oleh Watchdog & Recovery untuk menghindari Crash Loop.
      */
@@ -1481,6 +1477,10 @@ public class ServiceLocator {
         return (T) services.get(serviceClass);
     }
 
+    /**
+     * Mengambil layanan yang terdaftar secara wajib.
+     */
+    @SuppressWarnings("unchecked")
     public <T> T resolve(Class<T> serviceClass) {
         Object service = services.get(serviceClass);
         if (service == null) {

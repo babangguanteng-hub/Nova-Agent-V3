@@ -21,10 +21,6 @@ public class ServiceLocator {
         return instance;
     }
 
-    /**
-     * Mendaftarkan atau mencopot layanan.
-     * Thread-Safe karena menggunakan ConcurrentHashMap.
-     */
     public <T> void register(Class<T> serviceClass, T serviceInstance) {
         if (serviceInstance == null) {
             services.remove(serviceClass);
@@ -34,11 +30,6 @@ public class ServiceLocator {
     }
 
     /**
-     * Mengambil layanan yang terdaftar.
-     * Akan melempar pengecualian jika layanan dicari sebelum diregistrasi.
-     */
-    @SuppressWarnings("unchecked")
-    /**
      * Mengambil layanan tanpa melempar Exception jika belum terdaftar.
      * Digunakan oleh Watchdog & Recovery untuk menghindari Crash Loop.
      */
@@ -47,6 +38,10 @@ public class ServiceLocator {
         return (T) services.get(serviceClass);
     }
 
+    /**
+     * Mengambil layanan yang terdaftar secara wajib.
+     */
+    @SuppressWarnings("unchecked")
     public <T> T resolve(Class<T> serviceClass) {
         Object service = services.get(serviceClass);
         if (service == null) {

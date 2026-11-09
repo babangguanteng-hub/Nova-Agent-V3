@@ -29,7 +29,6 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     @Override
-    @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
         // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
@@ -41,7 +40,6 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COL_FACT, fact);
         values.put(COL_TIMESTAMP, System.currentTimeMillis());
-        // Gunakan CONFLICT_REPLACE agar fakta yang sama hanya memperbarui waktu
         db.insertWithOnConflict(TABLE_MEMORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
         db.close();
         Log.i("MemoryEngine", "Fakta baru disimpan: " + fact);
