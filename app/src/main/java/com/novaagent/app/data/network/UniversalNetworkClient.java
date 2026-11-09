@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -17,70 +18,78 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * FASE AUDIT TAHAP 4 [N011]: Network Resource Cleanup & Timeout Handling
- */
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
         void onError(String errorReason);
     }
 
+    private static class ProviderConfig {
+        String providerName;
+        String modelId;
+        String baseUrl;
+        ProviderConfig(String providerName, String modelId, String baseUrl) {
+            this.providerName = providerName; this.modelId = modelId; this.baseUrl = baseUrl;
+        }
+    }
+
     public UniversalNetworkClient(Context context) {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS)
-                .build();
+        this.client = new OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(35, TimeUnit.SECONDS).build();
+    }
+
+    private ProviderConfig getProviderConfig(String apiKey) {
+        if (apiKey.startsWith("AIza")) return new ProviderConfig("Google AI Studio", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
+        if (apiKey.startsWith("gsk_")) return new ProviderConfig("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1/chat/completions");
+        if (apiKey.startsWith("sk-proj")) return new ProviderConfig("OpenAI", "gpt-6-luna", "https://api.openai.com/v1/chat/completions");
+        if (apiKey.startsWith("sk-ant")) return new ProviderConfig("Anthropic", "claude-haiku-5-5", "https://api.anthropic.com/v1/messages");
+        if (apiKey.startsWith("sk-or-v1")) return new ProviderConfig("OpenRouter", "openrouter/auto", "https://openrouter.ai/api/v1/chat/completions");
+        if (apiKey.startsWith("sk-") && !apiKey.startsWith("sk-proj") && !apiKey.startsWith("sk-ant") && !apiKey.startsWith("sk-or")) return new ProviderConfig("DeepSeek", "deepseek-flash", "https://api.deepseek.com/chat/completions");
+        if (apiKey.startsWith("mistral-")) return new ProviderConfig("Mistral AI", "ministral-3b-latest", "https://api.mistral.ai/v1/chat/completions");
+        if (apiKey.startsWith("cerebras-")) return new ProviderConfig("Cerebras", "qwen-3.8-27b", "https://api.cerebras.ai/v1/chat/completions");
+        if (apiKey.startsWith("together-")) return new ProviderConfig("Together AI", "meta-llama/Llama-3-8b-chat-hf", "https://api.together.xyz/v1/chat/completions");
+        
+        return new ProviderConfig("Unknown Proxy", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        String provider = prefs.getString("ai_provider", "Groq");
-        String apiKey = prefs.getString("api_key", "").trim();
-        String modelName = prefs.getString("ai_model", "").trim();
+        String allKeys = prefs.getString("api_key", "").trim();
+        
+        if (allKeys.isEmpty()) { callback.onError("API Key Kosong. Silakan isi di aplikasi."); return; }
 
-        if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
-            else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
-            else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
-            else modelName = "llama-3.1-8b-instant";
-        }
-
-        if (apiKey.isEmpty()) {
-            callback.onError("API Key (" + provider + ") Kosong!");
+        String[] keyArray = allKeys.split(",");
+        if (retryCount >= keyArray.length) {
+            callback.onError("Maaf Bos, seluruh API Key cadangan sudah kehabisan kuota untuk hari ini.");
             return;
         }
 
+        String currentKey = keyArray[retryCount].trim();
+        ProviderConfig config = getProviderConfig(currentKey);
+        Log.i(TAG, "Mencoba Tembakan AI ke-" + (retryCount + 1) + " menggunakan: " + config.providerName + " (" + config.modelId + ")");
+
         try {
             Request request = null;
-
-            if (provider.equals("Gemini (Google Studio)")) {
+            if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
-                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
                         String gRole = role.equals("assistant") ? "model" : "user";
                         if (gRole.equals(lastRole) && contents.length() > 0) {
-                            contents.getJSONObject(contents.length() - 1)
-                                    .getJSONArray("parts")
-                                    .put(new JSONObject().put("text", "\n\n" + content));
+                            contents.getJSONObject(contents.length() - 1).getJSONArray("parts").put(new JSONObject().put("text", "\n\n" + content));
                         } else {
                             contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                             lastRole = gRole;
@@ -89,14 +98,11 @@ public class UniversalNetworkClient {
                 }
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
-
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
-            } 
-            else {
+                request = new Request.Builder().url(config.baseUrl).addHeader("Content-Type", "application/json").post(body).build();
+            } else {
                 JSONObject payload = new JSONObject();
-                payload.put("model", modelName);
+                payload.put("model", config.modelId);
                 payload.put("temperature", 0.3);
                 
                 JSONArray safeMessages = new JSONArray();
@@ -105,7 +111,6 @@ public class UniversalNetworkClient {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
                         JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
                         lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
@@ -116,85 +121,57 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url;
-                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
-                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
-                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else url = "https://api.codex.com/v1/chat/completions";
+                if (config.providerName.equals("Anthropic")) { payload.put("max_tokens", 1024); }
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .addHeader("Content-Type", "application/json")
-                        .post(body).build();
+                Request.Builder rb = new Request.Builder().url(config.baseUrl)
+                        .addHeader("Content-Type", "application/json");
+                        
+                if (config.providerName.equals("Anthropic")) {
+                    rb.addHeader("x-api-key", currentKey).addHeader("anthropic-version", "2023-06-01");
+                } else {
+                    rb.addHeader("Authorization", "Bearer " + currentKey);
+                }
+                request = rb.post(body).build();
             }
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
+                    retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     try {
                         if (!response.isSuccessful()) {
                             int code = response.code();
-                            String errorBody = response.body() != null ? response.body().string() : "";
-                            String errorMsg = "HTTP " + code;
-                            try {
-                                JSONObject errObj = new JSONObject(errorBody);
-                                if(errObj.has("error")) {
-                                    Object err = errObj.get("error");
-                                    if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
-                                    else if(err instanceof String) errorMsg = (String)err;
-                                }
-                            } catch (Exception ignored) {}
-                            
-                            if (code == 400 || code == 401 || code == 403 || code == 404) {
-                                callback.onError(provider + ": " + errorMsg);
-                            } else {
-                                handleRetry(messages, callback, retryCount, errorMsg);
-                            }
+                            Log.w(TAG, "API " + config.providerName + " Gagal HTTP " + code + ". Beralih ke Kunci Cadangan.");
+                            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                             return;
                         }
                         
                         String respBody = response.body().string();
                         String content = "";
-                        if (provider.equals("Gemini (Google Studio)")) {
+                        
+                        if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
                             JSONObject jsonResponse = new JSONObject(respBody);
-                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
-                            
-                            if (candidate.has("content")) {
-                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                            } else {
-                                String finishReason = candidate.optString("finishReason", "UNKNOWN");
-                                callback.onError("Gemini memblokir respon (Safety Filter: " + finishReason + ")");
-                                return;
-                            }
+                            content = jsonResponse.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                        } else if (config.providerName.equals("Anthropic")) {
+                            JSONObject jsonResponse = new JSONObject(respBody);
+                            content = jsonResponse.getJSONArray("content").getJSONObject(0).getString("text");
                         } else {
                             content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
-                        callback.onSuccess(content);
+                        
+                        final String finalContent = content;
+                        retryHandler.post(() -> callback.onSuccess(finalContent));
                     } catch (Exception e) {
-                        callback.onError("Gagal parse JSON " + provider);
+                        retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                     } finally {
-                        // AUDIT FIX [N011]: Wajib menutup Response agar tidak terjadi Memory Leak & Penyumbatan Koneksi!
-                        if (response != null) {
-                            try { response.close(); } catch (Exception ignored) {}
-                        }
+                        response.close();
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit request " + provider);
-        }
-    }
-
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
-        if (currentRetry < MAX_RETRIES) {
-            int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
-        } else {
-            callback.onError(reason + " (Gagal 3x)");
+            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
         }
     }
 }

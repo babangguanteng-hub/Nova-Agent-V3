@@ -15,17 +15,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
@@ -33,7 +27,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,11 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
-    
-    private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek", "OpenAI", "TokoVPN (Proxy)"};
-    private RadioGroup rgModel;
-    private ArrayAdapter<String> adapter;
-    private Spinner spinnerProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,12 +44,9 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         
-        // Memicu Popup Perizinan Cerdas
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        rgModel = findViewById(R.id.rgModel);
-        spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
         if (tvDev != null) {
@@ -74,47 +59,8 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
-        spinnerProvider.setAdapter(adapter);
-        
-        String savedProvider = prefs.getString("ai_provider", "Groq");
-        int spinnerPos = adapter.getPosition(savedProvider);
-        spinnerProvider.setSelection(spinnerPos >= 0 ? spinnerPos : 0);
-
-        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if(view instanceof TextView) ((TextView) view).setTextColor(0xFF00E5FF);
-                updateModelList(providers[position]);
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
         apiKeyInput.setText(prefs.getString("api_key", ""));
-
-        // SENSOR BUNGLON (AUTO-DETECT)
-        apiKeyInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                String key = s.toString().trim();
-                String detectedProvider = null;
-                
-                if (key.startsWith("AIza")) detectedProvider = "Gemini (Google Studio)";
-                else if (key.startsWith("gsk_")) detectedProvider = "Groq";
-                else if (key.startsWith("sk-proj-") || key.startsWith("sk-ant-")) detectedProvider = "OpenAI";
-                else if (key.startsWith("sk-") && !key.startsWith("sk-proj-")) detectedProvider = "DeepSeek";
-                else if (key.startsWith("tokovpn_")) detectedProvider = "TokoVPN (Proxy)";
-
-                if (detectedProvider != null) {
-                    int pos = adapter.getPosition(detectedProvider);
-                    if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
-                        spinnerProvider.setSelection(pos);
-                        Toast.makeText(MainActivity.this, "🤖 Provider Terdeteksi: " + detectedProvider, Toast.LENGTH_SHORT).show();
-                        playClickSound();
-                    }
-                }
-            }
-        });
+        apiKeyInput.setHint("Masukkan API Key (pisahkan dengan koma jika lebih dari 1)...");
 
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
             playClickSound();
@@ -123,37 +69,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            String selectedProvider = spinnerProvider.getSelectedItem().toString();
-            String selectedModel = "";
-            int checkedId = rgModel.getCheckedRadioButtonId();
-            if (checkedId != -1) {
-                RadioButton rb = findViewById(checkedId);
-                selectedModel = rb.getTag().toString();
-            }
-
-            prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
-            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
+            prefs.edit().putString("api_key", key).apply();
+            Toast.makeText(this, "Kunci Tersimpan! Omni-Rotator Aktif.", Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> {
-            playClickSound();
-            showSettingsDialog();
-        });
-
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
-            playClickSound();
-            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-        });
-
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
-            playClickSound();
-            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-        });
-
-        findViewById(R.id.btnStart).setOnClickListener(v -> {
-            playClickSound();
-            checkPermissionsAndStart();
-        });
+        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
     }
 
     @Override
@@ -161,54 +84,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
-        
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if(tvOverlay != null) {
-            tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
-            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive);
-        }
-        if(tvA11y != null) {
-            tvA11y.setText("✔ Cek Manual");
-            tvA11y.setBackgroundResource(R.drawable.bg_badge_active);
-        }
-    }
-
-    private void updateModelList(String provider) {
-        rgModel.removeAllViews();
-        List<String[]> models = new ArrayList<>();
-        
-        if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
-            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
-            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
-        } else if (provider.equals("Gemini (Google Studio)")) {
-            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
-            models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
-            models.add(new String[]{"Gemini 3.5 Flash (Custom/Proxy)", "gemini-3.5-flash"});
-            models.add(new String[]{"Gemini 3.8 Flash (Custom/Proxy)", "gemini-3.8-flash"});
-        } else if (provider.equals("DeepSeek")) {
-            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
-            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
-        } else if (provider.equals("OpenAI")) {
-            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
-            models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
-        } else if (provider.equals("TokoVPN (Proxy)")) {
-            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
-            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
-        }
-
-        String savedModel = prefs.getString("ai_model", "");
-        for (String[] m : models) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(m[0]);
-            rb.setTag(m[1]); 
-            rb.setTextColor(0xFFFFFFFF);
-            rb.setTextSize(14);
-            rb.setPadding(0, 10, 0, 10);
-            rgModel.addView(rb);
-            if (m[1].equals(savedModel)) rb.setChecked(true);
-        }
-        if (rgModel.getCheckedRadioButtonId() == -1 && rgModel.getChildCount() > 0) ((RadioButton)rgModel.getChildAt(0)).setChecked(true);
+        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive); }
+        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_badge_active); }
     }
 
     private void showSettingsDialog() {
@@ -228,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
             int id = rgVoice.getCheckedRadioButtonId();
             if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; 
             else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; 
-            
             prefs.edit().putFloat("voice_pitch", newPitch).apply();
             Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
@@ -236,72 +113,26 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void playClickSound() {
-        try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){}
-    }
+    private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
 
-    // 🛡️ FITUR BARU: POPUP PERIZINAN MUTLAK
     private void requestBasicPermissions() {
         List<String> permissionsNeeded = new ArrayList<>();
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
-            }
-        }
-        
-        // Notifikasi untuk Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-        }
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!permissionsNeeded.isEmpty()) {
-            // Mencegat dengan Popup Kustom sebelum izin asli sistem muncul
-            new AlertDialog.Builder(this)
-                .setTitle("🎙️ Izin Wajib Nova AI")
-                .setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.\n\nMohon izinkan pada menu selanjutnya.")
-                .setPositiveButton("Beri Izin", (dialog, which) -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
-                    }
-                })
-                .setCancelable(false) // Tidak bisa ditutup sembarangan
-                .show();
+            new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.").setPositiveButton("Beri Izin", (dialog, which) -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
+            }).setCancelable(false).show();
         }
     }
 
     private void checkPermissionsAndStart() {
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         String key = apiKeyInput.getText().toString().trim();
-        
-        if (!key.isEmpty()) {
-            String provider = spinnerProvider.getSelectedItem() != null ? spinnerProvider.getSelectedItem().toString() : "Groq";
-            String model = "";
-            int checkedId = rgModel.getCheckedRadioButtonId();
-            if (checkedId != -1) {
-                model = findViewById(checkedId).getTag().toString();
-            }
-            prefs.edit().putString("api_key", key).putString("ai_provider", provider).putString("ai_model", model).apply();
-        }
-
-        if (prefs.getString("api_key", "").isEmpty()) {
-            Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show();
-            return;
-        }
-        
-        // Pengecekan ekstra sebelum start
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu agar Nova tidak bisu/tuli!", Toast.LENGTH_LONG).show();
-            requestBasicPermissions();
-            return;
-        }
-
+        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+        if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
+        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
