@@ -782,6 +782,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
+        // FASE 7: Sentinel / Proactive
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
@@ -793,12 +794,15 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
+        // FASE 1, 2, 3, 7: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA)
         LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
         if (routeResult.isOfflineAction) {
             if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
             if (routeResult.command != null) {
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, routeResult.command));
             }
+            
+            // FASE 3: BATON PASS (Estafet Nalar Daring)
             if (routeResult.nextTask != null && !routeResult.nextTask.isEmpty()) {
                 this.currentTask = routeResult.nextTask;
                 this.isRunning = true;
@@ -810,10 +814,13 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 
                 Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan tugas daring -> " + this.currentTask);
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+                
+                // FASE 4: Hidupkan Mata Visual
                 try {
                     MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
                     if (vision != null) vision.resumeVision();
                 } catch (Exception e) {}
+
                 loopHandler.postDelayed(this::requestScreenData, 2500);
             }
             return;
@@ -829,6 +836,8 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+        
+        // FASE 4: Hidupkan Mata Visual
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.resumeVision();
@@ -841,6 +850,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+        // FASE 4: Matikan Mata Visual
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.pauseVision();
@@ -871,6 +881,104 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
+                        if (!result.isVerified) {
+                            consecutiveFailures++;
+                            failedActionToReport = lastCommandExecuted.action;
+                            
+                            // --- FASE 8: AUTONOMOUS SELF-HEALING (KOREKSI MANDIRI) ---
+                            if (consecutiveFailures == 2) {
+                                Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll ke bawah...");
+                                speak("Mencari di area bawah...");
+                                try {
+                                    ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
+                                    actionInjector.executeAction(healCmd);
+                                } catch(Exception e){}
+                                return; // Hentikan siklus ini, tunggu layar terupdate akibat scroll
+                            } else if (consecutiveFailures >= 4) {
+                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                                speak("Maaf bos, jalan buntu. Saya sudah otomatis mencoba mencari ke bawah tapi tetap tidak ketemu.");
+                                stopTask();
+                                return;
+                            }
+                            // ---------------------------------------------------------
+                        } else {
+                            consecutiveFailures = 0;
+                        }
+                    }
+
+                    lastScreenContext = newContext;
+                    stepCount++;
+                    if (stepCount > 15) {
+                        speak("Misi terlalu panjang. Saya berhenti.");
+                        stopTask();
+                        return;
+                    }
+
+                    String flatUiText = newContext.toString();
+                    if (flatUiText.length() > 2500) flatUiText = flatUiText.substring(0, 2500);
+                    
+                    if (flatUiText.equals(lastFlatUiText)) { return; }
+                    lastFlatUiText = flatUiText;
+
+                    String enrichedSemantics = visionEngine.extractSemantics(newContext);
+                    processWithAI(enrichedSemantics, failedActionToReport);
+                    break;
+
+                case ACTION_VALIDATED:
+                    ActionCommandDto safeCmd = (ActionCommandDto) event.payload;
+                    lastCommandExecuted = safeCmd;
+                    actionInjector.executeAction(safeCmd);
+                    break;
+
+                case ACTION_EXECUTED:
+                    loopHandler.postDelayed(this::requestScreenData, 4000);
+                    break;
+                    
+                default:
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error dalam Event Loop", e);
+        }
+    }
+
+    private void pingWatchdog() {
+        try {
+            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
+            if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.ENGINE);
+        } catch (Exception e) {}
+    }
+
+    private void speak(String text) {
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, text));
+    }
+
+    private void processWithAI(String uiContextString, String failedAction) {
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
+        
+        brainEngine.processTask(currentTask, uiContextString, failedAction, new NovaBrainEngine.BrainCallback() {
+            @Override
+            public void onDecisionMade(ActionCommandDto cmd) {
+                if (!isRunning) return;
+                if ("done".equalsIgnoreCase(cmd.action)) {
+                    if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
+                    stopTask();
+                } else {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
+                    safetyEngine.evaluateAction(cmd, lastScreenContext);
+                }
+            }
+
+            @Override
+            public void onConfusion(String errorMessage) {
+                if (!isRunning) return;
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
+                speak(errorMessage);
+                stopTask();
+            }
+        });
+    }
+}
 
 
 
