@@ -15,6 +15,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -31,7 +33,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,9 +41,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
-    
-    private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek"};
+
+    // Menambahkan OpenAI dan TokoVPN ke dalam daftar Universal Provider
+    private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek", "OpenAI", "TokoVPN (Proxy)"};
     private RadioGroup rgModel;
+    private ArrayAdapter<String> adapter;
+    private Spinner spinnerProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         rgModel = findViewById(R.id.rgModel);
-        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+        spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
         // RGB Shader Developer Credit
@@ -70,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Setup Spinner Provider
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
         spinnerProvider.setAdapter(adapter);
         
         String savedProvider = prefs.getString("ai_provider", "Groq");
@@ -86,6 +90,39 @@ public class MainActivity extends AppCompatActivity {
         });
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
+
+        // 🌟 SENSOR BUNGLON (AUTO-DETECT API KEY)
+        apiKeyInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                String key = s.toString().trim();
+                String detectedProvider = null;
+                
+                // Logika Pendeteksi Format Kunci Tingkat Dewa
+                if (key.startsWith("AIza")) {
+                    detectedProvider = "Gemini (Google Studio)";
+                } else if (key.startsWith("gsk_")) {
+                    detectedProvider = "Groq";
+                } else if (key.startsWith("sk-proj-") || key.startsWith("sk-ant-")) {
+                    detectedProvider = "OpenAI";
+                } else if (key.startsWith("sk-") && !key.startsWith("sk-proj-")) {
+                    // Kunci DeepSeek dan OpenAI lawas sering menggunakan format sk- murni
+                    detectedProvider = "DeepSeek";
+                } else if (key.startsWith("tokovpn_")) {
+                    detectedProvider = "TokoVPN (Proxy)";
+                }
+
+                if (detectedProvider != null) {
+                    int pos = adapter.getPosition(detectedProvider);
+                    if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
+                        spinnerProvider.setSelection(pos); // UI Otomatis Berpindah!
+                        Toast.makeText(MainActivity.this, "🤖 Provider Auto-Detect: " + detectedProvider, Toast.LENGTH_SHORT).show();
+                        playClickSound();
+                    }
+                }
+            }
+        });
 
         // Buttons Sound & Actions
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
@@ -131,26 +168,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Update Status Badges
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
         
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
-        tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive);
-        
-        // Simplifikasi cek accessibility
-        tvA11y.setText("✔ Cek Manual");
-        tvA11y.setBackgroundResource(R.drawable.bg_badge_active);
+        if(tvOverlay != null) {
+            tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
+            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive);
+        }
+        if(tvA11y != null) {
+            tvA11y.setText("✔ Cek Manual");
+            tvA11y.setBackgroundResource(R.drawable.bg_badge_active);
+        }
     }
 
     private void updateModelList(String provider) {
         rgModel.removeAllViews();
         List<String[]> models = new ArrayList<>();
         
+        // Memuat Modul Sesuai Provider yang Dipilih/Dideteksi
         if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
             models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
+            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
             models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
         } else if (provider.equals("Gemini (Google Studio)")) {
             models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
@@ -158,13 +197,20 @@ public class MainActivity extends AppCompatActivity {
         } else if (provider.equals("DeepSeek")) {
             models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
             models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
+        } else if (provider.equals("OpenAI")) {
+            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
+            models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
+        } else if (provider.equals("TokoVPN (Proxy)")) {
+            // Untuk Proxy seperti TokoVPN (Codex), biasanya menggunakan model standar Claude/GPT.
+            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
+            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
         }
 
         String savedModel = prefs.getString("ai_model", "");
         for (String[] m : models) {
             RadioButton rb = new RadioButton(this);
             rb.setText(m[0]);
-            rb.setTag(m[1]); // Tag holds the actual API model ID
+            rb.setTag(m[1]); 
             rb.setTextColor(0xFFFFFFFF);
             rb.setTextSize(14);
             rb.setPadding(0, 10, 0, 10);
@@ -189,8 +235,8 @@ public class MainActivity extends AppCompatActivity {
             playClickSound();
             float newPitch = 1.0f;
             int id = rgVoice.getCheckedRadioButtonId();
-            if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; // Suara berat
-            else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; // Suara cempreng/imut
+            if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; 
+            else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; 
             
             prefs.edit().putFloat("voice_pitch", newPitch).apply();
             Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();

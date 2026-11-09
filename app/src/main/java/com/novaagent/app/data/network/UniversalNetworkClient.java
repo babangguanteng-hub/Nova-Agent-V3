@@ -20,11 +20,11 @@ import okhttp3.Response;
 
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
-    
+
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 3;
+    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -54,7 +54,7 @@ public class UniversalNetworkClient {
         try {
             Request request = null;
 
-            // --- JALUR GOOGLE GEMINI ---
+            // --- JALUR GOOGLE GEMINI (Format Khusus) ---
             if (provider.equals("Gemini (Google Studio)")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
@@ -77,14 +77,18 @@ public class UniversalNetworkClient {
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
             } 
-            // --- JALUR GROQ & DEEPSEEK (Standard OpenAI JSON) ---
+            // --- JALUR GROQ, DEEPSEEK, OPENAI, TOKOVPN (Format Standar OpenAI JSON) ---
             else {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.3);
                 payload.put("messages", messages);
                 
-                String url = provider.equals("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+                String url;
+                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
+                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
+                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
+                else url = "https://api.codex.com/v1/chat/completions"; // Ganti dengan URL asli TokoVPN jika sudah dapat
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
