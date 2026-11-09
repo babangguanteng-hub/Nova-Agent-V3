@@ -12,6 +12,7 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.engine.LocalIntentRouter;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
@@ -26,6 +27,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private SystemActionInjector actionInjector;
     private SafetyPolicyEngine safetyEngine;
     private ActionVerificationScore verificationEngine;
+    private LocalIntentRouter intentRouter;
     
     private final Handler loopHandler;
     private String currentTask = "";
@@ -39,6 +41,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
     public AutonomousLoopEngine() {
         this.loopHandler = new Handler(Looper.getMainLooper());
+        this.intentRouter = new LocalIntentRouter();
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_EXECUTED, this);
@@ -70,48 +73,36 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        String lowerTask = task.toLowerCase();
-
-        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar)
-        if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
-            speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
-        } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
-            speak("Saya diciptakan oleh Babang Ganteng, sang visioner sejati."); return;
-        } else if (lowerTask.contains("jam berapa") || lowerTask.contains("waktu")) {
-            speak("Sekarang menunjukan jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date())); return;
-        } else if (lowerTask.contains("hari apa") || lowerTask.contains("tanggal")) {
-            speak("Hari ini " + new java.text.SimpleDateFormat("EEEE, dd MMMM yyyy").format(new java.util.Date())); return;
-        } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
-            speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
-        } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
-            speak("Halo bos! Nova siap meluncur."); return;
-        } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
-            speak("Nova bisa ngobrol offline, buka aplikasi, ngatur senter, wifi, bluetooth, putar musik, dan mengontrol penuh layar bos."); return;
-        }
-
-        // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
-        if (lowerTask.startsWith("buka ")) {
-            String app = lowerTask.substring(5).trim();
-            try {
-                ActionCommandDto openCmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + app + "\"}");
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, openCmd));
-                speak("Membuka " + app);
-            } catch(Exception e){}
+        // --- FASE 1 & 3: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA) ---
+        LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
+        if (routeResult.isOfflineAction) {
+            if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
+            if (routeResult.command != null) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, routeResult.command));
+            }
+            
+            // FASE 3: BATON PASS (Estafet Nalar Daring)
+            if (routeResult.nextTask != null && !routeResult.nextTask.isEmpty()) {
+                this.currentTask = routeResult.nextTask;
+                this.isRunning = true;
+                this.stepCount = 0;
+                this.consecutiveFailures = 0;
+                this.lastScreenContext = null;
+                this.lastCommandExecuted = null;
+                this.lastFlatUiText = "";
+                // FASE 4: Hidupkan Mata Visual untuk bagian tugas daring
+                try {
+                    com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                    if (vision != null) vision.resumeVision();
+                } catch (Exception e) {}
+                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan dengan tugas daring -> " + this.currentTask);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+                loopHandler.postDelayed(this::requestScreenData, 2500);
+            }
             return;
         }
 
-        // 3. SKIL DEWA: Kontrol Panel Android & Media Musik
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri|musik|lagu|putar|berhenti|lanjut|sebelumnya).*")) {
-            Log.i(TAG, "Mode Offline (Survival) Terpicu!");
-            try {
-                ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                speak("Siap bos, dilaksanakan.");
-            } catch (Exception e) {}
-            return;
-        }
-
-        this.currentTask = task;
+    this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
         this.lastCommandExecuted = null;
@@ -119,6 +110,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
+        // FASE 4: Hidupkan Mata Visual karena AI Daring butuh melihat layar
+        try {
+            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            if (vision != null) vision.resumeVision();
+        } catch (Exception e) {}
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         requestScreenData();
@@ -128,6 +124,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+        // FASE 4: Matikan Mata Visual saat tugas selesai untuk hemat baterai
+        try {
+            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            if (vision != null) vision.pauseVision();
+        } catch (Exception e) {}
     }
 
     private void requestScreenData() {
@@ -154,18 +155,32 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                        if (!result.isVerified) {
-                            consecutiveFailures++;
-                            failedActionToReport = lastCommandExecuted.action;
-                            if (consecutiveFailures >= 3) {
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                    if (!result.isVerified) {
+                        consecutiveFailures++;
+                        failedActionToReport = lastCommandExecuted.action;
+                        
+                        // --- FASE 8: AUTONOMOUS SELF-HEALING (KOREKSI MANDIRI) ---
+                        if (consecutiveFailures == 2) {
+                            Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll ke bawah...");
+                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area bawah..."));
+                            try {
+                                ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
+                                actionInjector.executeAction(healCmd);
+                            } catch(Exception e){}
+ // Hentikan siklus ini, tunggu layar terupdate akibat scroll
+                        } else if (consecutiveFailures >= 4) {
+
+                            speak("Maaf bos, jalan buntu. Saya sudah otomatis mencoba mencari ke bawah tapi tetap tidak ketemu.");
+
+
+                        // ---------------------------------------------------------
+    
                                 speak("Maaf bos, letak tombolnya berubah. Arahkan pakai kata lain.");
-                                stopTask();
-                                return;
+    
+    
                             }
                         } else {
                             consecutiveFailures = 0;
-                        }
                     }
 
                     lastScreenContext = newContext;

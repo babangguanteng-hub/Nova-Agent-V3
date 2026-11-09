@@ -30,7 +30,12 @@ public class NovaBrainEngine {
             JSONArray finalMessages = new JSONArray();
             
             // 1. Suntikkan Identitas & Blueprint (System Prompt)
-            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.SYSTEM_PROMPT));
+            String facts = "";
+            try {
+                com.novaagent.app.core.brain.LongTermMemoryEngine db = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.LongTermMemoryEngine.class);
+                if (db != null) facts = db.getAllFacts();
+            } catch (Exception e) {}
+            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.buildSystemPrompt(facts)));
 
             // 2. Masukkan Ingatan Obrolan Sebelumnya
             JSONArray history = memory.getMemoryAsJsonArray();

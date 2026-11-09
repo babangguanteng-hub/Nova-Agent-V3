@@ -19,8 +19,9 @@ import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
 import java.nio.ByteBuffer;
 
 /**
- * Membungkus MediaProjection untuk menangkap layar.
- * Dioptimalkan untuk Android Go: Resolusi diturunkan & Capture bersifat On-Demand (Single Shot).
+ * FASE 4: VISION EFFICIENCY
+ * Dilengkapi dengan saklar pauseVision() dan resumeVision() agar
+ * VirtualDisplay tidak menguras GPU/Baterai saat Nova sedang Offline/Idle.
  */
 public class MediaProjectionWrapper {
     private static final String TAG = "MediaProjWrapper";
@@ -45,7 +46,6 @@ public class MediaProjectionWrapper {
         this.ocrEngine = ocrEngine;
         this.screenCache = screenCache;
 
-        // RESOLUSI KERDIL: Turunkan skala max lebar ke 720px untuk mencegah OOM
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         float scale = Math.min(1.0f, 720f / metrics.widthPixels);
         this.width = Math.round(metrics.widthPixels * scale);
@@ -58,23 +58,17 @@ public class MediaProjectionWrapper {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
-        // MaxImages = 2: Batas terendah mutlak agar OS tidak menumpuk frame grafis di RAM
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         
-        virtualDisplay = mediaProjection.createVirtualDisplay(
-                "NovaScreenCapture",
-                width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(),
-                null, backgroundHandler
-        );
-
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = null;
             try {
                 image = reader.acquireLatestImage();
-                    try { com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); } catch (Exception e) {}
-                // HANYA proses jika mesin AI memang sedang meminta data layar (On-Demand)
+                try { 
+                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
+                    if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); 
+                } catch (Exception e) {}
+                
                 if (image != null && isCaptureRequested) {
                     isCaptureRequested = false; 
                     processImageSafe(image);
@@ -82,15 +76,37 @@ public class MediaProjectionWrapper {
             } catch (Exception e) {
                 Log.e(TAG, "Gagal menangkap frame", e);
             } finally {
-                // MUTLAK: Buffer grafis OS harus langsung ditutup untuk cegah kernel panic
                 if (image != null) image.close();
             }
         }, backgroundHandler);
+
+        // Langsung pause di awal agar hemat baterai sebelum disuruh mikir
+        Log.i(TAG, "MediaProjection disiapkan dalam mode standby (Hemat Daya).");
     }
 
-    /**
-     * Dipanggil oleh LoopEngine/Service saat AI butuh "Melihat" layar saat ini.
-     */
+    // --- FASE 4: SAKLAR HEMAT BATERAI ---
+    public void pauseVision() {
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+            virtualDisplay = null;
+            Log.i(TAG, "FASE 4: Mata Visual DIMATIKAN (VirtualDisplay dilepas - Hemat Baterai & RAM).");
+        }
+    }
+
+    public void resumeVision() {
+        if (virtualDisplay == null && mediaProjection != null && imageReader != null) {
+            virtualDisplay = mediaProjection.createVirtualDisplay(
+                    "NovaScreenCapture",
+                    width, height, density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    null, backgroundHandler
+            );
+            Log.i(TAG, "FASE 4: Mata Visual DIHIDUPKAN (Nalar Daring sedang butuh gambar layar).");
+        }
+    }
+    // ------------------------------------
+
     public void requestSingleFrame() {
         this.isCaptureRequested = true;
     }
@@ -105,45 +121,33 @@ public class MediaProjectionWrapper {
             int rowStride = planes[0].getRowStride();
             int rowPadding = rowStride - pixelStride * width;
 
-            // 1. Ekstrak Bitmap Mentah
             rawBitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
             rawBitmap.copyPixelsFromBuffer(buffer);
-            
-            // 2. Buang padding hitam di pinggir (Kompensasi hardware memori)
             croppedBitmap = Bitmap.createBitmap(rawBitmap, 0, 0, width, height);
 
-            // 3. Evaluasi pHash. Jika layar sama persis dengan detik lalu, batalkan OCR!
             if (!screenCache.isDuplicate(croppedBitmap)) {
-                // Serahkan ke OCR, tanggung jawab memori `croppedBitmap` pindah ke MlKitOcrEngine
                 ocrEngine.processImage(croppedBitmap); 
             } else {
-                Log.d(TAG, "Layar statis (pHash sama). Bypass ML Kit untuk hemat CPU.");
                 croppedBitmap.recycle(); 
             }
 
         } catch (Exception e) {
-            Log.e(TAG, "OOM Terjadi saat alokasi layar!", e);
             if (croppedBitmap != null) croppedBitmap.recycle();
         } finally {
-            // Raw bitmap yang ada padding-nya wajib langsung dihapus
             if (rawBitmap != null && !rawBitmap.isRecycled()) rawBitmap.recycle();
         }
     }
 
     public void stop() {
-        if (virtualDisplay != null) virtualDisplay.release();
+        pauseVision();
         if (imageReader != null) imageReader.close();
         if (backgroundThread != null) backgroundThread.quitSafely();
         if (mediaProjection != null) mediaProjection.stop();
     }
 
-    /**
-     * Injected by C003 Remediation: Protokol penyembuhan Level 2
-     */
     public void rebind() {
-        android.util.Log.w("MediaProjectionWrapper", "Rebinding MediaProjection Surface...");
-        stop();
-        try { Thread.sleep(500); } catch (InterruptedException e) {} // Jeda aman
-        start();
+        Log.w(TAG, "Rebinding MediaProjection Surface...");
+        pauseVision();
+        resumeVision();
     }
 }

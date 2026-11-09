@@ -22,11 +22,14 @@ import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.core.brain.NovaBrainEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
+import com.novaagent.app.core.brain.LongTermMemoryEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
 import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.infrastructure.system.NovaWatchdog;
 import com.novaagent.app.ui.bubble.FloatingBubbleView;
+import com.novaagent.app.ui.bubble.HologramAuraManager;
 
 public class NovaForegroundService extends Service {
     private static final String CHANNEL_ID = "NovaAgentChannel";
@@ -49,6 +52,8 @@ public class NovaForegroundService extends Service {
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
+        locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
         audioDirector = new NovaAudioDirector(this);
@@ -60,6 +65,7 @@ public class NovaForegroundService extends Service {
 
         // 4. Tampilkan UI Bubble
         floatingBubbleView = new FloatingBubbleView(this);
+        locator.register(HologramAuraManager.class, new HologramAuraManager(this));
         floatingBubbleView.show();
 
         // 5. Hidupkan Pengawas Detak Jantung
@@ -116,6 +122,13 @@ public class NovaForegroundService extends Service {
         locator.register(ActionVerificationScore.class, null);
         locator.register(SemanticVisionEngine.class, null);
         locator.register(ProactiveTriggerEngine.class, null);
+        try {
+            ConditionalSentinelEngine sentinel = locator.resolve(ConditionalSentinelEngine.class);
+            if(sentinel != null) sentinel.shutdown();
+        } catch(Exception e){}
+        locator.register(ConditionalSentinelEngine.class, null);
+        locator.register(HologramAuraManager.class, null);
+        locator.register(LongTermMemoryEngine.class, null);
     }
 
     @Nullable

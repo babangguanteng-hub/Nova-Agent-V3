@@ -186,6 +186,136 @@ public class AgentEvent {
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ConditionalSentinelEngine.java
+==================================================
+
+package com.novaagent.app.core.proactive;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.di.ServiceLocator;
+import com.novaagent.app.core.engine.AutonomousLoopEngine;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * FASE 7: CONDITIONAL SENTINELS
+ * Menjalankan perintah secara otomatis berdasarkan waktu atau kondisi sistem (seperti Baterai).
+ */
+public class ConditionalSentinelEngine {
+    private static final String TAG = "SentinelEngine";
+    private final Context context;
+    private final Handler timeHandler;
+    
+    private final List<BatteryTask> batteryTasks = new ArrayList<>();
+    private boolean isReceiverRegistered = false;
+
+    private static class BatteryTask {
+        int targetLevel;
+        String command;
+        boolean triggerWhenBelow;
+
+        BatteryTask(int level, String cmd, boolean below) {
+            this.targetLevel = level;
+            this.command = cmd;
+            this.triggerWhenBelow = below;
+        }
+    }
+
+    public ConditionalSentinelEngine(Context context) {
+        this.context = context;
+        this.timeHandler = new Handler(Looper.getMainLooper());
+    }
+
+    // --- 1. PENJADWALAN WAKTU (DELAY) ---
+    public void scheduleTimeTask(int delayMinutes, String command) {
+        long delayMillis = delayMinutes * 60 * 1000L;
+        Log.i(TAG, "Menjadwalkan tugas: '" + command + "' dalam " + delayMinutes + " menit.");
+        
+        timeHandler.postDelayed(() -> {
+            Log.i(TAG, "Waktunya tiba! Mengeksekusi: " + command);
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Waktunya mengeksekusi tugas terjadwal bos."));
+            executeTask(command);
+        }, delayMillis);
+    }
+
+    // --- 2. PEMANTAUAN KONDISI BATERAI ---
+    public void scheduleBatteryTask(int targetLevel, String command) {
+        // Asumsi jika minta 15%, berarti minta dieksekusi saat baterai TURUN menyentuh 15% atau ke bawah
+        batteryTasks.add(new BatteryTask(targetLevel, command, true));
+        Log.i(TAG, "Sentinel Baterai aktif: Menunggu level " + targetLevel + "%.");
+        registerBatteryReceiver();
+    }
+
+    private void registerBatteryReceiver() {
+        if (isReceiverRegistered) return;
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        context.registerReceiver(batteryReceiver, filter);
+        isReceiverRegistered = true;
+    }
+
+    private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            float batteryPct = level * 100 / (float) scale;
+            int currentLevel = Math.round(batteryPct);
+
+            Iterator<BatteryTask> iterator = batteryTasks.iterator();
+            while (iterator.hasNext()) {
+                BatteryTask task = iterator.next();
+                if (task.triggerWhenBelow && currentLevel <= task.targetLevel) {
+                    Log.i(TAG, "Kondisi baterai terpenuhi (" + currentLevel + "%). Mengeksekusi: " + task.command);
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baterai menyentuh " + currentLevel + " persen. Mengeksekusi tugas darurat."));
+                    executeTask(task.command);
+                    iterator.remove(); // Hapus tugas setelah dieksekusi 1x
+                }
+            }
+
+            // Jika tidak ada tugas baterai lagi, matikan sensor agar hemat baterai
+            if (batteryTasks.isEmpty() && isReceiverRegistered) {
+                context.unregisterReceiver(this);
+                isReceiverRegistered = false;
+            }
+        }
+    };
+
+    private void executeTask(String command) {
+        try {
+            AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
+            if (engine != null) {
+                // Mengirim kembali perintah ke otak utama seolah-olah user yang bicara
+                engine.startTask(command);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal mengeksekusi tugas terjadwal", e);
+        }
+    }
+
+    public void shutdown() {
+        if (isReceiverRegistered) {
+            context.unregisterReceiver(batteryReceiver);
+            isReceiverRegistered = false;
+        }
+        timeHandler.removeCallbacksAndMessages(null);
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java
 ==================================================
 
@@ -271,6 +401,120 @@ public class SemanticVisionEngine {
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/engine/LocalIntentRouter.java
+==================================================
+
+package com.novaagent.app.core.engine;
+
+import android.util.Log;
+import com.novaagent.app.data.model.ActionCommandDto;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * PENJAGA GERBANG NIAT (FASE 1, 2, 3, & 7)
+ */
+public class LocalIntentRouter {
+    private static final String TAG = "LocalIntentRouter";
+
+    public static class RoutingResult {
+        public final boolean isOfflineAction;
+        public final ActionCommandDto command;
+        public final String speechResponse;
+        public final String nextTask;
+
+        public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse, String nextTask) {
+            this.isOfflineAction = isOfflineAction;
+            this.command = command;
+            this.speechResponse = speechResponse;
+            this.nextTask = nextTask;
+        }
+
+        public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse) {
+            this(isOfflineAction, command, speechResponse, null);
+        }
+    }
+
+    public RoutingResult route(String rawCommand) {
+        String c = rawCommand.toLowerCase().trim();
+        Log.i(TAG, "Menganalisis Niat: " + c);
+
+        try {
+            // --- FASE 7: PENJADWALAN & KONDISI (SENTINEL) ---
+            // Niat: "Dalam 5 menit buka youtube" atau "nanti 10 menit lagi matikan wifi"
+            Matcher timeMatcher = Pattern.compile(".*(dalam|nanti)\\s+(\\d+)\\s+menit\\s+(.*)").matcher(c);
+            if (timeMatcher.matches()) {
+                int menit = Integer.parseInt(timeMatcher.group(2));
+                String task = timeMatcher.group(3).replace("lagi", "").trim();
+                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"schedule_time\", \"x\":" + menit + ", \"textToType\":\"" + task + "\"}");
+                return new RoutingResult(true, cmd, "Baik bos, tugas dijadwalkan dalam " + menit + " menit.");
+            }
+
+            // Niat: "Kalau baterai sisa 15% matikan wifi"
+            Matcher batteryMatcher = Pattern.compile(".*baterai.*(\\d+)%.*(matikan|hidupkan|nyalakan|buka|redupkan|terangkan)\\s+(.*)").matcher(c);
+            if (batteryMatcher.matches()) {
+                int level = Integer.parseInt(batteryMatcher.group(1));
+                String action = batteryMatcher.group(2);
+                String target = batteryMatcher.group(3);
+                String task = action + " " + target;
+                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"schedule_battery\", \"x\":" + level + ", \"textToType\":\"" + task + "\"}");
+                return new RoutingResult(true, cmd, "Sentinel aktif. Saya akan eksekusi saat baterai menyentuh " + level + " persen.");
+            }
+
+            // --- FASE 3: DETEKSI PERINTAH HIBRIDA (BATON PASS) ---
+            Matcher hybridMatcher = Pattern.compile("^(buka|bka|bukka|open)\\s+(.*?)\\s+(dan|lalu|kemudian|terus|buat|untuk)\\s+(.*)").matcher(c);
+            if (hybridMatcher.matches()) {
+                String appName = hybridMatcher.group(2).trim();
+                String nextTask = hybridMatcher.group(4).trim();
+                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + appName + "\"}");
+                return new RoutingResult(true, cmd, "Membuka " + appName + ", dan melanjutkan tugas...", nextTask);
+            }
+
+            // --- FASE 1 & 2: GUDANG SENJATA LURING ---
+            if (c.matches("^(buka|bka|bukka|open)\\s+.*")) {
+                String appName = c.replaceFirst("^(buka|bka|bukka|open)\\s+", "").trim();
+                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + appName + "\"}"), "Membuka " + appName);
+            }
+            if (c.matches(".*(kembali|balik|back|mundur).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"back\"}"), null);
+            if (c.matches(".*(beranda|ke home|keluar dari aplikasi).*") || c.equals("home")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"home\"}"), null);
+            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?bawah.*") || c.matches(".*turun.*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}"), null);
+            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?atas.*") || c.matches(".*naik.*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"up\"}"), null);
+            if (c.matches(".*(notifikasi|pemberitahuan).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"notifications\"}"), null);
+            if (c.matches(".*(recent apps|aplikasi terakhir|multitasking).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"recent_apps\"}"), null);
+
+            if (c.matches(".*(senter|lampu|flashlight).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"toggle_flashlight\"}"), "Siap.");
+            if (c.matches(".*(wifi|internet|data|hotspot|bluetooth).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Membuka panel jaringan.");
+            if (c.matches(".*(kamera|camera|galeri|gallery).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Membuka media.");
+            if (c.matches(".*(volume|suara)\\s*(naik|tambah|besar|turun|kurang|kecil).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), null);
+            if (c.matches(".*(musik|lagu|putar|berhenti|stop|lanjut|sebelumnya).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Memproses media player.");
+
+            if (c.matches(".*(alarm|timer|waktu mundur).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_alarm\", \"textToType\":\"" + c + "\"}"), "Membuka pengaturan jam.");
+            if (c.matches("^(telepon|hubungi|panggil|call|telpon)\\s+.*")) {
+                String target = c.replaceFirst("^(telepon|hubungi|panggil|call|telpon)\\s+", "").trim();
+                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"dial_number\", \"textToType\":\"" + target + "\"}"), "Menyiapkan panggilan ke " + target);
+            }
+            if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_brightness\"}"), "Membuka pengaturan layar.");
+            if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_dnd\"}"), "Membuka mode jangan ganggu.");
+
+            if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
+            if (c.matches(".*(jam berapa|waktu).*")) {
+                String time = new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date());
+                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Sekarang jam " + time + " bos.");
+            }
+            if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Sama-sama bos! Ada lagi?");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal memproses niat lokal", e);
+        }
+
+        // DEFAULT
+        return new RoutingResult(false, null, null);
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java
 ==================================================
 
@@ -288,6 +532,7 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.engine.LocalIntentRouter;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
@@ -302,6 +547,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private SystemActionInjector actionInjector;
     private SafetyPolicyEngine safetyEngine;
     private ActionVerificationScore verificationEngine;
+    private LocalIntentRouter intentRouter;
     
     private final Handler loopHandler;
     private String currentTask = "";
@@ -315,6 +561,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
     public AutonomousLoopEngine() {
         this.loopHandler = new Handler(Looper.getMainLooper());
+        this.intentRouter = new LocalIntentRouter();
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_EXECUTED, this);
@@ -346,48 +593,36 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        String lowerTask = task.toLowerCase();
-
-        // 1. Skil Perpustakaan Offline (Tanya Jawab Dasar)
-        if (lowerTask.contains("siapa kamu") || lowerTask.contains("nama kamu")) {
-            speak("Saya Nova, asisten AI otonom tingkat dewa Anda."); return;
-        } else if (lowerTask.contains("siapa penciptamu") || lowerTask.contains("dibuat oleh")) {
-            speak("Saya diciptakan oleh Babang Ganteng, sang visioner sejati."); return;
-        } else if (lowerTask.contains("jam berapa") || lowerTask.contains("waktu")) {
-            speak("Sekarang menunjukan jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date())); return;
-        } else if (lowerTask.contains("hari apa") || lowerTask.contains("tanggal")) {
-            speak("Hari ini " + new java.text.SimpleDateFormat("EEEE, dd MMMM yyyy").format(new java.util.Date())); return;
-        } else if (lowerTask.contains("terima kasih") || lowerTask.contains("makasih")) {
-            speak("Sama-sama bos! Ada lagi yang bisa Nova bantu?"); return;
-        } else if (lowerTask.contains("halo") || lowerTask.contains("hai nova")) {
-            speak("Halo bos! Nova siap meluncur."); return;
-        } else if (lowerTask.contains("kamu bisa apa") || lowerTask.contains("bisa ngapain")) {
-            speak("Nova bisa ngobrol offline, buka aplikasi, ngatur senter, wifi, bluetooth, putar musik, dan mengontrol penuh layar bos."); return;
-        }
-
-        // 2. Skil Instan: Buka Aplikasi Langsung Tanpa Internet
-        if (lowerTask.startsWith("buka ")) {
-            String app = lowerTask.substring(5).trim();
-            try {
-                ActionCommandDto openCmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + app + "\"}");
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, openCmd));
-                speak("Membuka " + app);
-            } catch(Exception e){}
+        // --- FASE 1 & 3: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA) ---
+        LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
+        if (routeResult.isOfflineAction) {
+            if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
+            if (routeResult.command != null) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, routeResult.command));
+            }
+            
+            // FASE 3: BATON PASS (Estafet Nalar Daring)
+            if (routeResult.nextTask != null && !routeResult.nextTask.isEmpty()) {
+                this.currentTask = routeResult.nextTask;
+                this.isRunning = true;
+                this.stepCount = 0;
+                this.consecutiveFailures = 0;
+                this.lastScreenContext = null;
+                this.lastCommandExecuted = null;
+                this.lastFlatUiText = "";
+                // FASE 4: Hidupkan Mata Visual untuk bagian tugas daring
+                try {
+                    com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                    if (vision != null) vision.resumeVision();
+                } catch (Exception e) {}
+                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan dengan tugas daring -> " + this.currentTask);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+                loopHandler.postDelayed(this::requestScreenData, 2500);
+            }
             return;
         }
 
-        // 3. SKIL DEWA: Kontrol Panel Android & Media Musik
-        if (lowerTask.matches(".*(nyalakan|hidupkan|matikan|senter|volume|wifi|suara|bluetooth|data|hotspot|kamera|galeri|musik|lagu|putar|berhenti|lanjut|sebelumnya).*")) {
-            Log.i(TAG, "Mode Offline (Survival) Terpicu!");
-            try {
-                ActionCommandDto offlineCmd = new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + lowerTask + "\"}");
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, offlineCmd));
-                speak("Siap bos, dilaksanakan.");
-            } catch (Exception e) {}
-            return;
-        }
-
-        this.currentTask = task;
+    this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
         this.lastCommandExecuted = null;
@@ -395,6 +630,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
+        // FASE 4: Hidupkan Mata Visual karena AI Daring butuh melihat layar
+        try {
+            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            if (vision != null) vision.resumeVision();
+        } catch (Exception e) {}
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         requestScreenData();
@@ -404,6 +644,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+        // FASE 4: Matikan Mata Visual saat tugas selesai untuk hemat baterai
+        try {
+            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            if (vision != null) vision.pauseVision();
+        } catch (Exception e) {}
     }
 
     private void requestScreenData() {
@@ -913,6 +1158,74 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java
+==================================================
+
+package com.novaagent.app.core.brain;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
+
+/**
+ * FASE 5: LONG-TERM MEMORY CORE
+ * Database SQLite lokal agar Nova mengingat preferensi user selamanya.
+ */
+public class LongTermMemoryEngine extends SQLiteOpenHelper {
+    private static final String DB_NAME = "NovaMemory.db";
+    private static final int DB_VERSION = 1;
+    private static final String TABLE_MEMORY = "memories";
+    private static final String COL_FACT = "fact";
+    private static final String COL_TIMESTAMP = "timestamp";
+
+    public LongTermMemoryEngine(Context context) {
+        super(context, DB_NAME, null, DB_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + TABLE_MEMORY + " (id INTEGER PRIMARY KEY AUTOINCREMENT, " + COL_FACT + " TEXT UNIQUE, " + COL_TIMESTAMP + " INTEGER)");
+        Log.i("MemoryEngine", "Pusat ingatan berhasil diciptakan!");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_MEMORY);
+        onCreate(db);
+    }
+
+    public void saveFact(String fact) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_FACT, fact);
+        values.put(COL_TIMESTAMP, System.currentTimeMillis());
+        // Gunakan CONFLICT_REPLACE agar fakta yang sama hanya memperbarui waktu
+        db.insertWithOnConflict(TABLE_MEMORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        db.close();
+        Log.i("MemoryEngine", "Fakta baru disimpan: " + fact);
+    }
+
+    public String getAllFacts() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT " + COL_FACT + " FROM " + TABLE_MEMORY + " ORDER BY " + COL_TIMESTAMP + " DESC LIMIT 25", null);
+        StringBuilder facts = new StringBuilder();
+        if (cursor.moveToFirst()) {
+            do {
+                facts.append("- ").append(cursor.getString(0)).append("\n");
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        db.close();
+        return facts.toString().trim();
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java
 ==================================================
 
@@ -948,7 +1261,12 @@ public class NovaBrainEngine {
             JSONArray finalMessages = new JSONArray();
             
             // 1. Suntikkan Identitas & Blueprint (System Prompt)
-            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.SYSTEM_PROMPT));
+            String facts = "";
+            try {
+                com.novaagent.app.core.brain.LongTermMemoryEngine db = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.LongTermMemoryEngine.class);
+                if (db != null) facts = db.getAllFacts();
+            } catch (Exception e) {}
+            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.buildSystemPrompt(facts)));
 
             // 2. Masukkan Ingatan Obrolan Sebelumnya
             JSONArray history = memory.getMemoryAsJsonArray();
@@ -1767,6 +2085,91 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/HologramAuraManager.java
+==================================================
+
+package com.novaagent.app.ui.bubble;
+
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.WindowManager;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.ImageView;
+
+import com.novaagent.app.R;
+
+/**
+ * FASE 6: VISUAL EXECUTION AURA
+ * Memunculkan riak (ripple) neon hologram tepat di koordinat yang disentuh AI.
+ * Didesain 100% ephemeral (muncul -> animasi -> hancur) agar RAM tetap lega.
+ */
+public class HologramAuraManager {
+    private final Context context;
+    private final WindowManager windowManager;
+    private final Handler mainHandler;
+
+    public HologramAuraManager(Context context) {
+        this.context = context;
+        this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        this.mainHandler = new Handler(Looper.getMainLooper());
+    }
+
+    public void showAura(int x, int y) {
+        mainHandler.post(() -> {
+            try {
+                // 1. Buat titik energi baru
+                ImageView auraView = new ImageView(context);
+                auraView.setImageResource(R.drawable.bg_hologram_aura);
+
+                int size = 100; // Ukuran riak energi
+                int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
+                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+
+                // FLAG_NOT_TOUCHABLE agar animasi ini tembus pandang dan tidak mengganggu klik sistem
+                WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                        size, size, layoutFlag,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        PixelFormat.TRANSLUCENT
+                );
+
+                params.gravity = Gravity.TOP | Gravity.START;
+                params.x = x - (size / 2); // Pusatkan tepat di titik klik
+                params.y = y - (size / 2);
+
+                windowManager.addView(auraView, params);
+
+                // 2. Animasi Ledakan Energi (Membesar & Memudar)
+                ObjectAnimator scaleX = ObjectAnimator.ofFloat(auraView, "scaleX", 0.2f, 2.5f);
+                ObjectAnimator scaleY = ObjectAnimator.ofFloat(auraView, "scaleY", 0.2f, 2.5f);
+                ObjectAnimator alpha = ObjectAnimator.ofFloat(auraView, "alpha", 1f, 0f);
+
+                AnimatorSet animSet = new AnimatorSet();
+                animSet.playTogether(scaleX, scaleY, alpha);
+                animSet.setDuration(600); // 0.6 detik
+                animSet.setInterpolator(new DecelerateInterpolator()); // Cepat di awal, lambat di akhir
+                animSet.start();
+
+                // 3. Sapu bersih (Hancurkan objek dari RAM) setelah animasi selesai
+                mainHandler.postDelayed(() -> {
+                    try {
+                        windowManager.removeView(auraView);
+                    } catch (Exception e) {}
+                }, 650);
+
+            } catch (Exception e) {}
+        });
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/NovaApplication.java
 ==================================================
 
@@ -2083,6 +2486,45 @@ public class SystemActionInjector {
                 handleLocalHardware(service, cmd.textToType != null && !cmd.textToType.isEmpty() ? cmd.textToType : cmd.action);
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 return;
+            case "set_alarm":
+                handleSetAlarm(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "dial_number":
+                handleDialNumber(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_brightness":
+                handleBrightness(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_dnd":
+                handleDnd(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "save_memory":
+                try {
+                    com.novaagent.app.core.brain.LongTermMemoryEngine db = ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.LongTermMemoryEngine.class);
+                    if (db != null) {
+                        db.saveFact(cmd.textToType);
+                    }
+                } catch(Exception e) {}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "schedule_time":
+                try {
+                    com.novaagent.app.core.proactive.ConditionalSentinelEngine timeSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
+                    if (timeSentinel != null) timeSentinel.scheduleTimeTask(cmd.x, cmd.textToType);
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "schedule_battery":
+                try {
+                    com.novaagent.app.core.proactive.ConditionalSentinelEngine batSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
+                    if (batSentinel != null) batSentinel.scheduleBatteryTask(cmd.x, cmd.textToType);
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
@@ -2106,6 +2548,11 @@ public class SystemActionInjector {
 
     private boolean executeTap(NovaAccessibilityService service, int x, int y) {
         if (x <= 0 || y <= 0) return false;
+        // --- FASE 6: PICU HOLOGRAM AURA --- 
+        try {
+            com.novaagent.app.ui.bubble.HologramAuraManager aura = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.ui.bubble.HologramAuraManager.class);
+            if (aura != null) aura.showAura(x, y);
+        } catch (Exception e) {}
         Path clickPath = new Path(); clickPath.moveTo(x, y);
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 100));
@@ -2171,6 +2618,51 @@ public class SystemActionInjector {
                 }
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
+    }
+
+    // --- FASE 2: GUDANG SENJATA LURING (OFFLINE ARSENAL) ---
+    private void handleSetAlarm(Context context, String text) {
+        try {
+            Intent intent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka alarm", e); }
+    }
+
+    private void handleDialNumber(Context context, String target) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_DIAL);
+            // Jika target berupa angka, masukkan ke dialer
+            if (target.matches(".*\\d+.*")) {
+                String number = target.replaceAll("[^0-9]", "");
+                intent.setData(android.net.Uri.parse("tel:" + number));
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka dialer", e); }
+    }
+
+    private void handleBrightness(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka pengaturan layar", e); }
+    }
+
+    private void handleDnd(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            // Fallback jika tidak didukung pabrikan HP tertentu
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SOUND_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+            } catch (Exception ex) {}
+        }
     }
 }
 
@@ -2551,8 +3043,9 @@ import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
 import java.nio.ByteBuffer;
 
 /**
- * Membungkus MediaProjection untuk menangkap layar.
- * Dioptimalkan untuk Android Go: Resolusi diturunkan & Capture bersifat On-Demand (Single Shot).
+ * FASE 4: VISION EFFICIENCY
+ * Dilengkapi dengan saklar pauseVision() dan resumeVision() agar
+ * VirtualDisplay tidak menguras GPU/Baterai saat Nova sedang Offline/Idle.
  */
 public class MediaProjectionWrapper {
     private static final String TAG = "MediaProjWrapper";
@@ -2577,7 +3070,6 @@ public class MediaProjectionWrapper {
         this.ocrEngine = ocrEngine;
         this.screenCache = screenCache;
 
-        // RESOLUSI KERDIL: Turunkan skala max lebar ke 720px untuk mencegah OOM
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         float scale = Math.min(1.0f, 720f / metrics.widthPixels);
         this.width = Math.round(metrics.widthPixels * scale);
@@ -2590,23 +3082,17 @@ public class MediaProjectionWrapper {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
-        // MaxImages = 2: Batas terendah mutlak agar OS tidak menumpuk frame grafis di RAM
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         
-        virtualDisplay = mediaProjection.createVirtualDisplay(
-                "NovaScreenCapture",
-                width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(),
-                null, backgroundHandler
-        );
-
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = null;
             try {
                 image = reader.acquireLatestImage();
-                    try { com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); } catch (Exception e) {}
-                // HANYA proses jika mesin AI memang sedang meminta data layar (On-Demand)
+                try { 
+                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
+                    if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); 
+                } catch (Exception e) {}
+                
                 if (image != null && isCaptureRequested) {
                     isCaptureRequested = false; 
                     processImageSafe(image);
@@ -2614,15 +3100,37 @@ public class MediaProjectionWrapper {
             } catch (Exception e) {
                 Log.e(TAG, "Gagal menangkap frame", e);
             } finally {
-                // MUTLAK: Buffer grafis OS harus langsung ditutup untuk cegah kernel panic
                 if (image != null) image.close();
             }
         }, backgroundHandler);
+
+        // Langsung pause di awal agar hemat baterai sebelum disuruh mikir
+        Log.i(TAG, "MediaProjection disiapkan dalam mode standby (Hemat Daya).");
     }
 
-    /**
-     * Dipanggil oleh LoopEngine/Service saat AI butuh "Melihat" layar saat ini.
-     */
+    // --- FASE 4: SAKLAR HEMAT BATERAI ---
+    public void pauseVision() {
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+            virtualDisplay = null;
+            Log.i(TAG, "FASE 4: Mata Visual DIMATIKAN (VirtualDisplay dilepas - Hemat Baterai & RAM).");
+        }
+    }
+
+    public void resumeVision() {
+        if (virtualDisplay == null && mediaProjection != null && imageReader != null) {
+            virtualDisplay = mediaProjection.createVirtualDisplay(
+                    "NovaScreenCapture",
+                    width, height, density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.getSurface(),
+                    null, backgroundHandler
+            );
+            Log.i(TAG, "FASE 4: Mata Visual DIHIDUPKAN (Nalar Daring sedang butuh gambar layar).");
+        }
+    }
+    // ------------------------------------
+
     public void requestSingleFrame() {
         this.isCaptureRequested = true;
     }
@@ -2637,46 +3145,34 @@ public class MediaProjectionWrapper {
             int rowStride = planes[0].getRowStride();
             int rowPadding = rowStride - pixelStride * width;
 
-            // 1. Ekstrak Bitmap Mentah
             rawBitmap = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888);
             rawBitmap.copyPixelsFromBuffer(buffer);
-            
-            // 2. Buang padding hitam di pinggir (Kompensasi hardware memori)
             croppedBitmap = Bitmap.createBitmap(rawBitmap, 0, 0, width, height);
 
-            // 3. Evaluasi pHash. Jika layar sama persis dengan detik lalu, batalkan OCR!
             if (!screenCache.isDuplicate(croppedBitmap)) {
-                // Serahkan ke OCR, tanggung jawab memori `croppedBitmap` pindah ke MlKitOcrEngine
                 ocrEngine.processImage(croppedBitmap); 
             } else {
-                Log.d(TAG, "Layar statis (pHash sama). Bypass ML Kit untuk hemat CPU.");
                 croppedBitmap.recycle(); 
             }
 
         } catch (Exception e) {
-            Log.e(TAG, "OOM Terjadi saat alokasi layar!", e);
             if (croppedBitmap != null) croppedBitmap.recycle();
         } finally {
-            // Raw bitmap yang ada padding-nya wajib langsung dihapus
             if (rawBitmap != null && !rawBitmap.isRecycled()) rawBitmap.recycle();
         }
     }
 
     public void stop() {
-        if (virtualDisplay != null) virtualDisplay.release();
+        pauseVision();
         if (imageReader != null) imageReader.close();
         if (backgroundThread != null) backgroundThread.quitSafely();
         if (mediaProjection != null) mediaProjection.stop();
     }
 
-    /**
-     * Injected by C003 Remediation: Protokol penyembuhan Level 2
-     */
     public void rebind() {
-        android.util.Log.w("MediaProjectionWrapper", "Rebinding MediaProjection Surface...");
-        stop();
-        try { Thread.sleep(500); } catch (InterruptedException e) {} // Jeda aman
-        start();
+        Log.w(TAG, "Rebinding MediaProjection Surface...");
+        pauseVision();
+        resumeVision();
     }
 }
 
@@ -2710,11 +3206,14 @@ import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.core.brain.NovaBrainEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
+import com.novaagent.app.core.brain.LongTermMemoryEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.infrastructure.ocr.MlKitOcrEngine;
 import com.novaagent.app.core.audio.NovaAudioDirector;
 import com.novaagent.app.infrastructure.system.NovaWatchdog;
 import com.novaagent.app.ui.bubble.FloatingBubbleView;
+import com.novaagent.app.ui.bubble.HologramAuraManager;
 
 public class NovaForegroundService extends Service {
     private static final String CHANNEL_ID = "NovaAgentChannel";
@@ -2737,6 +3236,8 @@ public class NovaForegroundService extends Service {
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
+        locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
         // 2. Hidupkan Mesin Suara (Pita Suara)
         audioDirector = new NovaAudioDirector(this);
@@ -2748,6 +3249,7 @@ public class NovaForegroundService extends Service {
 
         // 4. Tampilkan UI Bubble
         floatingBubbleView = new FloatingBubbleView(this);
+        locator.register(HologramAuraManager.class, new HologramAuraManager(this));
         floatingBubbleView.show();
 
         // 5. Hidupkan Pengawas Detak Jantung
@@ -2804,6 +3306,13 @@ public class NovaForegroundService extends Service {
         locator.register(ActionVerificationScore.class, null);
         locator.register(SemanticVisionEngine.class, null);
         locator.register(ProactiveTriggerEngine.class, null);
+        try {
+            ConditionalSentinelEngine sentinel = locator.resolve(ConditionalSentinelEngine.class);
+            if(sentinel != null) sentinel.shutdown();
+        } catch(Exception e){}
+        locator.register(ConditionalSentinelEngine.class, null);
+        locator.register(HologramAuraManager.class, null);
+        locator.register(LongTermMemoryEngine.class, null);
     }
 
     @Nullable
@@ -3482,16 +3991,23 @@ FILE: ./app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java
 package com.novaagent.app.data.repository;
 
 public class PromptRegistry {
-    public static final String SYSTEM_PROMPT = 
+    public static final String SYSTEM_PROMPT_TEMPLATE = 
         "Anda adalah Nova (Jarvis), AI asisten super proaktif dan cerdas yang hidup di HP pengguna.\n" +
+        "INGATAN JANGKA PANJANG TENTANG USER:\n%s\n\n" +
         "KESADARAN SEMANTIK & HUKUM:\n" +
         "1. PAHAMI KONTEKS: Analisis nama aplikasi dan susunan layar sebelum bertindak.\n" +
-        "2. SELF-HEALING: Jika di memori ada peringatan bahwa tindakan Anda sebelumnya GAGAL, CARI CARA LAIN (misal: scroll dulu, atau cari teks yang berbeda). JANGAN ulangi kesalahan yang sama.\n" +
-        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban elegan/futuristik di 'speech'.\n" +
-        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', atau 'open_app' untuk interaksi visual.\n" +
-        "5. HARDWARE: Aksi hardware lokal diintersep sebelum LLM, tapi jika tembus ke Anda, arahkan user dengan 'speech'.\n\n" +
+        "2. SELF-HEALING: Jika di memori ada peringatan bahwa tindakan Anda sebelumnya GAGAL, CARI CARA LAIN. JANGAN ulangi kesalahan.\n" +
+        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban di 'speech'.\n" +
+        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', 'open_app'.\n" +
+        "5. INGATAN LOKAL (PENTING): Jika user memberi tahu fakta penting tentang dirinya (misal: 'istri saya namanya Siti', 'saya suka kopi'), gunakan action: 'save_memory' dan isi faktanya di 'textToType'.\n" +
+        "6. HARDWARE: Aksi hardware lokal diintersep sebelum LLM, tapi jika tembus ke Anda, arahkan user dengan 'speech'.\n\n" +
         "FORMAT OUTPUT (JSON MURNI WAJIB):\n" +
-        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara singkat\"}";
+        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara\"}";
+
+    public static String buildSystemPrompt(String longTermMemory) {
+        if (longTermMemory == null || longTermMemory.isEmpty()) longTermMemory = "Belum ada ingatan khusus.";
+        return String.format(SYSTEM_PROMPT_TEMPLATE, longTermMemory);
+    }
 
     public static String buildUserPrompt(String task, String screenContext) {
         return "PERINTAH: \"" + task + "\"\n\nDATA LAYAR: " + screenContext;
@@ -3916,6 +4432,20 @@ FILE: ./app/src/main/res/drawable/bg_badge_inactive.xml
     <solid android:color="#1AFF3030" />
     <corners android:radius="8dp" />
     <stroke android:width="1dp" android:color="#FF3030" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_hologram_aura.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <!-- Garis luar bersinar terang -->
+    <stroke android:width="3dp" android:color="#00E5FF"/>
+    <!-- Inti energi semi-transparan -->
+    <solid android:color="#4D00E5FF"/> 
 </shape>
 
 

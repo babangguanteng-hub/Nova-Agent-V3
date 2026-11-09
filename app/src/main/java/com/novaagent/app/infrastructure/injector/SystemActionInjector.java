@@ -75,6 +75,45 @@ public class SystemActionInjector {
                 handleLocalHardware(service, cmd.textToType != null && !cmd.textToType.isEmpty() ? cmd.textToType : cmd.action);
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 return;
+            case "set_alarm":
+                handleSetAlarm(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "dial_number":
+                handleDialNumber(service, cmd.textToType);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_brightness":
+                handleBrightness(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "set_dnd":
+                handleDnd(service);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "save_memory":
+                try {
+                    com.novaagent.app.core.brain.LongTermMemoryEngine db = ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.LongTermMemoryEngine.class);
+                    if (db != null) {
+                        db.saveFact(cmd.textToType);
+                    }
+                } catch(Exception e) {}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "schedule_time":
+                try {
+                    com.novaagent.app.core.proactive.ConditionalSentinelEngine timeSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
+                    if (timeSentinel != null) timeSentinel.scheduleTimeTask(cmd.x, cmd.textToType);
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "schedule_battery":
+                try {
+                    com.novaagent.app.core.proactive.ConditionalSentinelEngine batSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
+                    if (batSentinel != null) batSentinel.scheduleBatteryTask(cmd.x, cmd.textToType);
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
@@ -98,6 +137,11 @@ public class SystemActionInjector {
 
     private boolean executeTap(NovaAccessibilityService service, int x, int y) {
         if (x <= 0 || y <= 0) return false;
+        // --- FASE 6: PICU HOLOGRAM AURA --- 
+        try {
+            com.novaagent.app.ui.bubble.HologramAuraManager aura = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.ui.bubble.HologramAuraManager.class);
+            if (aura != null) aura.showAura(x, y);
+        } catch (Exception e) {}
         Path clickPath = new Path(); clickPath.moveTo(x, y);
         GestureDescription.Builder builder = new GestureDescription.Builder();
         builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 100));
@@ -163,5 +207,50 @@ public class SystemActionInjector {
                 }
             }
         } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
+    }
+
+    // --- FASE 2: GUDANG SENJATA LURING (OFFLINE ARSENAL) ---
+    private void handleSetAlarm(Context context, String text) {
+        try {
+            Intent intent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka alarm", e); }
+    }
+
+    private void handleDialNumber(Context context, String target) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_DIAL);
+            // Jika target berupa angka, masukkan ke dialer
+            if (target.matches(".*\\d+.*")) {
+                String number = target.replaceAll("[^0-9]", "");
+                intent.setData(android.net.Uri.parse("tel:" + number));
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka dialer", e); }
+    }
+
+    private void handleBrightness(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) { Log.e(TAG, "Gagal buka pengaturan layar", e); }
+    }
+
+    private void handleDnd(Context context) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            // Fallback jika tidak didukung pabrikan HP tertentu
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SOUND_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+            } catch (Exception ex) {}
+        }
     }
 }
