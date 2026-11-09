@@ -43,19 +43,30 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:compressDebugAssets
 > Task :app:mergeDebugJavaResource
-> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugJniLibFolders
 > Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugNativeLibs
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeLibDexDebug
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libmlkit_google_ocr_pipeline.so.
+
 > Task :app:processDebugResources
+> Task :app:validateSigningDebug
 > Task :app:mergeExtDexDebug
 
+> Task :app:compileDebugJavaWithJavac
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/brain/NovaBrainEngine.java:36: error: cannot find symbol
+                if (db != null) facts = db.getAllFacts();
+                                          ^
+  symbol:   method getAllFacts()
+  location: variable db of type LongTermMemoryEngine
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1 error
+
 > Task :app:compileDebugJavaWithJavac FAILED
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:153: error: reached end of file while parsing
-                        ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                                                                                                                                              ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java:142: error: 'try' without 'catch', 'finally' or resource declarations
-        try {
-        ^
-2 errors
 
 FAILURE: Build failed with an exception.
 
@@ -258,5 +269,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 1m 15s
-21 actionable tasks: 21 executed
+BUILD FAILED in 1m 11s
+26 actionable tasks: 26 executed
