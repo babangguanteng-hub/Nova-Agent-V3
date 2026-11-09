@@ -1185,7 +1185,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
-
+    
     private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek", "OpenAI", "TokoVPN (Proxy)"};
     private RadioGroup rgModel;
     private ArrayAdapter<String> adapter;
@@ -1232,7 +1232,6 @@ public class MainActivity extends AppCompatActivity {
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
 
-        // SENSOR BUNGLON (AUTO-DETECT)
         apiKeyInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -1250,7 +1249,7 @@ public class MainActivity extends AppCompatActivity {
                     int pos = adapter.getPosition(detectedProvider);
                     if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
                         spinnerProvider.setSelection(pos);
-                        Toast.makeText(MainActivity.this, "🤖 Provider Terdeteksi: " + detectedProvider, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "🤖 Auto-Detect: " + detectedProvider, Toast.LENGTH_SHORT).show();
                         playClickSound();
                     }
                 }
@@ -1271,30 +1270,14 @@ public class MainActivity extends AppCompatActivity {
                 RadioButton rb = findViewById(checkedId);
                 selectedModel = rb.getTag().toString();
             }
-
             prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
-            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Tersimpan: " + selectedProvider, Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> {
-            playClickSound();
-            showSettingsDialog();
-        });
-
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
-            playClickSound();
-            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-        });
-
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
-            playClickSound();
-            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-        });
-
-        findViewById(R.id.btnStart).setOnClickListener(v -> {
-            playClickSound();
-            checkPermissionsAndStart();
-        });
+        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
     }
 
     @Override
@@ -1302,7 +1285,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
-        
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
         if(tvOverlay != null) {
             tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
@@ -1314,28 +1296,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // 🌟 INJEKSI 3 MODEL TERBARU DARI SETIAP PROVIDER 
     private void updateModelList(String provider) {
         rgModel.removeAllViews();
         List<String[]> models = new ArrayList<>();
         
         if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
-            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
-            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
+            models.add(new String[]{"Llama 3.3 70B (Versatile/Pintar)", "llama-3.3-70b-versatile"});
+            models.add(new String[]{"Llama 3.1 8B (Super Cepat)", "llama-3.1-8b-instant"});
+            models.add(new String[]{"DeepSeek R1 70B (Logika Ekstra)", "deepseek-r1-distill-llama-70b"});
         } else if (provider.equals("Gemini (Google Studio)")) {
-            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
+            models.add(new String[]{"Gemini 2.0 Flash (Paling Baru & Cepat)", "gemini-2.0-flash"});
             models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
-            models.add(new String[]{"Gemini 3.5 Flash (Custom/Proxy)", "gemini-3.5-flash"});
-            models.add(new String[]{"Gemini 3.8 Flash (Custom/Proxy)", "gemini-3.8-flash"});
+            models.add(new String[]{"Gemini 3.5 Flash (Custom/TokoVPN)", "gemini-3.5-flash"});
         } else if (provider.equals("DeepSeek")) {
-            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
-            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
+            models.add(new String[]{"DeepSeek Chat V3 (Standar Utama)", "deepseek-chat"});
+            models.add(new String[]{"DeepSeek Reasoner R1 (Pemikir Cerdas)", "deepseek-reasoner"});
+            models.add(new String[]{"DeepSeek Coder (Koding)", "deepseek-coder"});
         } else if (provider.equals("OpenAI")) {
-            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
             models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
+            models.add(new String[]{"GPT-4o Mini (Kecil & Hemat)", "gpt-4o-mini"});
+            models.add(new String[]{"o3-mini (Reasoning Tercepat)", "o3-mini"});
         } else if (provider.equals("TokoVPN (Proxy)")) {
-            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
-            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
+            models.add(new String[]{"Claude 3.7 Sonnet (Paling Tangguh)", "claude-3-7-sonnet"});
+            models.add(new String[]{"GPT-4.5 Preview (Pro)", "gpt-4.5-preview"});
+            models.add(new String[]{"Gemini 2.5 Pro (Custom)", "gemini-2.5-pro"});
         }
 
         String savedModel = prefs.getString("ai_model", "");
@@ -1387,7 +1372,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 🛡️ FITUR BARU: AUTO-SAVE SEBELUM MULAI NOVA
     private void checkPermissionsAndStart() {
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         String key = apiKeyInput.getText().toString().trim();
@@ -1399,7 +1383,6 @@ public class MainActivity extends AppCompatActivity {
             if (checkedId != -1) {
                 model = findViewById(checkedId).getTag().toString();
             }
-            // Simpan paksa diam-diam
             prefs.edit().putString("api_key", key).putString("ai_provider", provider).putString("ai_model", model).apply();
         }
 
@@ -3198,7 +3181,7 @@ public class UniversalNetworkClient {
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 2;
+    private static final int MAX_RETRIES = 2; // Batas wajar retry
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -3210,7 +3193,7 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS)
+                .readTimeout(35, TimeUnit.SECONDS) // Waktu tunggu optimal
                 .build();
     }
 
@@ -3220,17 +3203,17 @@ public class UniversalNetworkClient {
         String apiKey = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        // 🛡️ FIX 1: Otomatis memilih model jika pengguna lupa menekan tombol "Simpan Konfigurasi"
+        // 🛡️ Mencegah model kosong
         if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
+            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
             else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
             else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
-            else modelName = "llama-3.1-8b-instant";
+            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
+            else modelName = "llama-3.3-70b-versatile";
         }
 
         if (apiKey.isEmpty()) {
-            callback.onError("API Key (" + provider + ") Kosong!");
+            callback.onError("Maaf Bos, API Key Anda masih kosong.");
             return;
         }
 
@@ -3251,8 +3234,6 @@ public class UniversalNetworkClient {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
                         String gRole = role.equals("assistant") ? "model" : "user";
-                        
-                        // 🛡️ FIX 2: Gemini menolak pesan "user" diikuti "user" (HTTP 400). Gabungkan jika role bertabrakan!
                         if (gRole.equals(lastRole) && contents.length() > 0) {
                             contents.getJSONObject(contents.length() - 1)
                                     .getJSONArray("parts")
@@ -3275,7 +3256,6 @@ public class UniversalNetworkClient {
                 payload.put("model", modelName);
                 payload.put("temperature", 0.3);
                 
-                // Mencegah error serupa di API Groq/OpenAI
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
@@ -3308,56 +3288,66 @@ public class UniversalNetworkClient {
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
+                    handleRetry(messages, callback, retryCount, "Maaf Bos, jaringan internet sedang tidak stabil.");
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
-                        String errorBody = response.body() != null ? response.body().string() : "";
-                        String errorMsg = "HTTP " + code;
-                        try {
-                            JSONObject errObj = new JSONObject(errorBody);
-                            if(errObj.has("error")) {
-                                Object err = errObj.get("error");
-                                if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
-                                else if(err instanceof String) errorMsg = (String)err;
-                            }
-                        } catch (Exception ignored) {}
                         
-                        // 🛡️ FIX 3: Jangan buang-buang waktu retry jika API Key salah (401/403) atau Format Ditolak (400)
-                        if (code == 400 || code == 401 || code == 403 || code == 404) {
-                            callback.onError(provider + ": " + errorMsg);
+                        // 🛡️ ANTI-LEMOT & ANTI-NGELANTUR: Tangani Error Secara Cerdas!
+                        if (code == 429) {
+                            // KUOTA HABIS (Langsung lapor bahasa Indonesia, tanpa retry)
+                            callback.onError("Maaf Bos, kuota " + provider + " Anda sudah habis. Silakan ganti API Key.");
+                            return;
+                        } 
+                        else if (code == 401 || code == 403 || code == 400) {
+                            // KUNCI SALAH / FORMAT DITOLAK (Langsung lapor bahasa Indonesia, tanpa retry)
+                            callback.onError("Maaf Bos, API Key salah atau ditolak oleh server " + provider + ".");
+                            return;
+                        } 
+                        else if (code >= 500) {
+                            // SERVER DOWN (Baru boleh di-retry)
+                            handleRetry(messages, callback, retryCount, "Server " + provider + " sedang sibuk.");
+                            return;
                         } else {
-                            handleRetry(messages, callback, retryCount, errorMsg);
+                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
+                            return;
                         }
-                        return;
                     }
                     try {
                         String respBody = response.body().string();
                         String content = "";
                         if (provider.equals("Gemini (Google Studio)")) {
-                            content = new JSONObject(respBody).getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                            JSONObject jsonResponse = new JSONObject(respBody);
+                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+                            if (candidate.has("content")) {
+                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                            } else {
+                                callback.onError("Maaf Bos, jawaban diblokir oleh filter keamanan Google.");
+                                return;
+                            }
                         } else {
                             content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Gagal parse JSON " + provider);
+                        callback.onError("Maaf Bos, gagal membaca struktur AI dari " + provider);
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit request " + provider);
+            callback.onError("Maaf Bos, gagal merakit permintaan jaringan.");
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String humanReason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            callback.onError(reason + " (Gagal 3x)");
+            // Setelah mentok retry, jangan kasih kode Inggris, kasih pesan lokal kita.
+            callback.onError(humanReason);
         }
     }
 }
