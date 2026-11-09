@@ -3192,7 +3192,6 @@ import okhttp3.Response;
 
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
-
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
@@ -3216,7 +3215,16 @@ public class UniversalNetworkClient {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String apiKey = prefs.getString("api_key", "").trim();
-        String modelName = prefs.getString("ai_model", "");
+        String modelName = prefs.getString("ai_model", "").trim();
+
+        // 🛡️ FIX 1: Otomatis memilih model jika pengguna lupa menekan tombol "Simpan Konfigurasi"
+        if (modelName.isEmpty()) {
+            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
+            else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
+            else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
+            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
+            else modelName = "llama-3.1-8b-instant";
+        }
 
         if (apiKey.isEmpty()) {
             callback.onError("API Key (" + provider + ") Kosong!");
@@ -3226,20 +3234,30 @@ public class UniversalNetworkClient {
         try {
             Request request = null;
 
-            // --- JALUR GOOGLE GEMINI (Format Khusus) ---
             if (provider.equals("Gemini (Google Studio)")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
                 
+                String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
+                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
                         String gRole = role.equals("assistant") ? "model" : "user";
-                        contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
+                        
+                        // 🛡️ FIX 2: Gemini menolak pesan "user" diikuti "user" (HTTP 400). Gabungkan jika role bertabrakan!
+                        if (gRole.equals(lastRole) && contents.length() > 0) {
+                            contents.getJSONObject(contents.length() - 1)
+                                    .getJSONArray("parts")
+                                    .put(new JSONObject().put("text", "\n\n" + content));
+                        } else {
+                            contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
+                            lastRole = gRole;
+                        }
                     }
                 }
                 payload.put("contents", contents);
@@ -3249,21 +3267,40 @@ public class UniversalNetworkClient {
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
             } 
-            // --- JALUR GROQ, DEEPSEEK, OPENAI, TOKOVPN (Format Standar OpenAI JSON) ---
             else {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.3);
-                payload.put("messages", messages);
+                
+                // Mencegah error serupa di API Groq/OpenAI
+                JSONArray safeMessages = new JSONArray();
+                String lastRole = "";
+                for (int i = 0; i < messages.length(); i++) {
+                    JSONObject msg = messages.getJSONObject(i);
+                    String role = msg.getString("role");
+                    String content = msg.getString("content");
+                    
+                    if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
+                        JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
+                        lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
+                    } else {
+                        safeMessages.put(new JSONObject().put("role", role).put("content", content));
+                        lastRole = role;
+                    }
+                }
+                payload.put("messages", safeMessages);
                 
                 String url;
                 if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
                 else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
                 else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else url = "https://api.codex.com/v1/chat/completions"; // Ganti dengan URL asli TokoVPN jika sudah dapat
+                else url = "https://api.codex.com/v1/chat/completions";
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
+                request = new Request.Builder().url(url)
+                        .addHeader("Authorization", "Bearer " + apiKey)
+                        .addHeader("Content-Type", "application/json")
+                        .post(body).build();
             }
 
             client.newCall(request).enqueue(new Callback() {
@@ -3272,7 +3309,24 @@ public class UniversalNetworkClient {
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
-                        handleRetry(messages, callback, retryCount, "HTTP " + response.code());
+                        int code = response.code();
+                        String errorBody = response.body() != null ? response.body().string() : "";
+                        String errorMsg = "HTTP " + code;
+                        try {
+                            JSONObject errObj = new JSONObject(errorBody);
+                            if(errObj.has("error")) {
+                                Object err = errObj.get("error");
+                                if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
+                                else if(err instanceof String) errorMsg = (String)err;
+                            }
+                        } catch (Exception ignored) {}
+                        
+                        // 🛡️ FIX 3: Jangan buang-buang waktu retry jika API Key salah (401/403) atau Format Ditolak (400)
+                        if (code == 400 || code == 401 || code == 403 || code == 404) {
+                            callback.onError(provider + ": " + errorMsg);
+                        } else {
+                            handleRetry(messages, callback, retryCount, errorMsg);
+                        }
                         return;
                     }
                     try {
