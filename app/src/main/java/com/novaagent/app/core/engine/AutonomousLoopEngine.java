@@ -11,8 +11,7 @@ import com.novaagent.app.core.state.AgentState;
 import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
-import com.novaagent.app.core.brain.NovaBrainEngine;
-import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.brain.CognitiveCore;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.services.accessibility.NovaAccessibilityService;
@@ -20,16 +19,18 @@ import com.novaagent.app.services.foreground.MediaProjectionWrapper;
 
 public class AutonomousLoopEngine implements EventBus.EventListener {
     private static final String TAG = "AutonomousLoopEngine";
+    private static final int MAX_STEPS_BUDGET = 20; // Anti-Spam & Hemat Token
     
-    private NovaBrainEngine brainEngine;
-    private SemanticVisionEngine visionEngine;
+    private CognitiveCore cognitiveCore;
     private ProactiveTriggerEngine proactiveEngine;
     private SystemActionInjector actionInjector;
     private SafetyPolicyEngine safetyEngine;
     private ActionVerificationScore verificationEngine;
     private LocalIntentRouter intentRouter;
+    private TaskCheckpointManager checkpointManager;
+    private TaskCompletionVerifier completionVerifier;
     
-    private final Handler loopHandler;
+    private final Handler loopHandler = new Handler(Looper.getMainLooper());
     private String currentTask = "";
     private boolean isRunning = false;
 
@@ -37,10 +38,8 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     private ActionCommandDto lastCommandExecuted;
     private int stepCount = 0;
     private int consecutiveFailures = 0;
-    private String lastFlatUiText = "";
 
     public AutonomousLoopEngine() {
-        this.loopHandler = new Handler(Looper.getMainLooper());
         this.intentRouter = new LocalIntentRouter();
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
@@ -48,21 +47,34 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void resolveDependencies() {
-        if (brainEngine == null) {
+        if (cognitiveCore == null) {
             ServiceLocator locator = ServiceLocator.getInstance();
-            brainEngine = locator.resolve(NovaBrainEngine.class);
-            visionEngine = locator.resolve(SemanticVisionEngine.class);
+            cognitiveCore = locator.resolve(CognitiveCore.class);
             proactiveEngine = locator.resolve(ProactiveTriggerEngine.class);
             actionInjector = locator.resolve(SystemActionInjector.class);
             safetyEngine = locator.resolve(SafetyPolicyEngine.class);
             verificationEngine = locator.resolve(ActionVerificationScore.class);
+            checkpointManager = locator.resolve(TaskCheckpointManager.class);
+            completionVerifier = locator.resolve(TaskCompletionVerifier.class);
         }
     }
 
     public void startTask(String task) {
         resolveDependencies();
         
-        // FASE 7: Sentinel / Proactive
+        // FASE 3: RESUME MISI
+        if (task.toLowerCase().matches(".*(lanjutkan|resume).*(tugas|misi).*")) {
+            String pendingGoal = checkpointManager.getResumableGoal();
+            if (pendingGoal != null) {
+                speak("Melanjutkan misi yang terputus: " + pendingGoal);
+                task = pendingGoal;
+            } else {
+                speak("Tidak ada misi yang tertunda, bos.");
+                return;
+            }
+        }
+
+        // FASE 7: PANTAU / SENTINEL
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
@@ -74,50 +86,36 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // FASE 1, 2, 3, 7: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA)
-        LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
-        if (routeResult.isOfflineAction) {
-            if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
-            if (routeResult.command != null) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, routeResult.command));
-            }
-            
-            // FASE 3: BATON PASS (Estafet Nalar Daring)
-            if (routeResult.nextTask != null && !routeResult.nextTask.isEmpty()) {
-                this.currentTask = routeResult.nextTask;
-                this.isRunning = true;
-                this.stepCount = 0;
-                this.consecutiveFailures = 0;
-                this.lastScreenContext = null;
-                this.lastCommandExecuted = null;
-                this.lastFlatUiText = "";
-                
-                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan tugas daring -> " + this.currentTask);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
-                
-                // FASE 4: Hidupkan Mata Visual
-                try {
-                    MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
-                    if (vision != null) vision.resumeVision();
-                } catch (Exception e) {}
-
-                loopHandler.postDelayed(this::requestScreenData, 2500);
+        // FASE 1: LOCAL INTENT ROUTER
+        LocalIntentRouter.RoutingResult route = intentRouter.route(task);
+        if (route.isOfflineAction) {
+            if (route.speechResponse != null) speak(route.speechResponse);
+            if (route.command != null) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, route.command));
+            if (route.nextTask != null) {
+                this.currentTask = route.nextTask;
+                setupEngineStart();
             }
             return;
         }
 
         this.currentTask = task;
+        setupEngineStart();
+    }
+
+    private void setupEngineStart() {
         this.isRunning = true;
-        this.lastScreenContext = null;
-        this.lastCommandExecuted = null;
         this.stepCount = 0;
         this.consecutiveFailures = 0;
-        this.lastFlatUiText = "";
+        this.lastScreenContext = null;
+        this.lastCommandExecuted = null;
+        cognitiveCore.getPlanner().setMainGoal(currentTask);
         
-        Log.i(TAG, "Memulai Misi Kognitif: " + task);
+        checkpointManager.saveCheckpoint(currentTask, cognitiveCore.getPlanner().getPendingTasks(), stepCount);
+        
+        Log.i(TAG, "Misi Kognitif: " + currentTask);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         
-        // FASE 4: Hidupkan Mata Visual
+        // FASE 4: Buka Mata Visual
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.resumeVision();
@@ -130,7 +128,8 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-        // FASE 4: Matikan Mata Visual
+        
+        // FASE 4: Tutup Mata Visual (Hemat Baterai)
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.pauseVision();
@@ -138,7 +137,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     }
 
     private void requestScreenData() {
-        if (!isRunning && proactiveEngine == null) return;
+        if (!isRunning) return;
         try {
             NovaAccessibilityService service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
             service.requestScreenScan();
@@ -152,12 +151,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         try {
             switch (event.type) {
                 case SCREEN_UPDATED:
+                    if (!isRunning) return;
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     resolveDependencies();
-                    if (proactiveEngine != null) proactiveEngine.evaluateScreen(newContext);
-
-                    if (!isRunning) return;
-
+                    
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
@@ -165,43 +162,38 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                             consecutiveFailures++;
                             failedActionToReport = lastCommandExecuted.action;
                             
-                            // --- FASE 8: AUTONOMOUS SELF-HEALING (KOREKSI MANDIRI) ---
-                            if (consecutiveFailures == 2) {
-                                Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll ke bawah...");
-                                speak("Mencari di area bawah...");
-                                try {
-                                    ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
-                                    actionInjector.executeAction(healCmd);
-                                } catch(Exception e){}
-                                return; // Hentikan siklus ini, tunggu layar terupdate akibat scroll
-                            } else if (consecutiveFailures >= 4) {
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                speak("Maaf bos, jalan buntu. Saya sudah otomatis mencoba mencari ke bawah tapi tetap tidak ketemu.");
-                                stopTask();
+                            // FASE 6: DELEGASI SELF-HEALING KE RECOVERY MANAGER
+                            Log.w(TAG, "Validasi Aksi Gagal! Melaporkan ke Tim Medis (RecoveryManager)...");
+                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "ACTION_FAILED_" + consecutiveFailures));
+                            
+                            if (consecutiveFailures >= 4) {
+                                stopTask(); 
                                 return;
                             }
-                            // ---------------------------------------------------------
+                            return; // Tunda proses AI agar sistem Healing bekerja
                         } else {
                             consecutiveFailures = 0;
                         }
                     }
 
-                    lastScreenContext = newContext;
-                    stepCount++;
-                    if (stepCount > 15) {
-                        speak("Misi terlalu panjang. Saya berhenti.");
-                        stopTask();
+                    // FASE 2: Cegah Spam Token LLM Jika Layar Statis (Visual Delta = 0)
+                    if (!newContext.hasMeaningfulChange && lastScreenContext != null) {
+                        loopHandler.postDelayed(this::requestScreenData, 2000);
                         return;
                     }
 
-                    String flatUiText = newContext.toString();
-                    if (flatUiText.length() > 2500) flatUiText = flatUiText.substring(0, 2500);
+                    lastScreenContext = newContext;
+                    stepCount++;
                     
-                    if (flatUiText.equals(lastFlatUiText)) { return; }
-                    lastFlatUiText = flatUiText;
+                    if (stepCount > MAX_STEPS_BUDGET) { 
+                        speak("Batas anggaran langkah tercapai. Misi terlalu panjang, saya berhenti untuk menghemat token."); 
+                        stopTask(); 
+                        return; 
+                    }
+                    
+                    checkpointManager.saveCheckpoint(cognitiveCore.getPlanner().getMainGoal(), cognitiveCore.getPlanner().getPendingTasks(), stepCount);
 
-                    String enrichedSemantics = visionEngine.extractSemantics(newContext);
-                    processWithAI(enrichedSemantics, failedActionToReport);
+                    processWithCore(newContext, failedActionToReport);
                     break;
 
                 case ACTION_VALIDATED:
@@ -211,15 +203,13 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     break;
 
                 case ACTION_EXECUTED:
-                    loopHandler.postDelayed(this::requestScreenData, 4000);
+                    if (isRunning) loopHandler.postDelayed(this::requestScreenData, 3000);
                     break;
                     
                 default:
                     break;
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error dalam Event Loop", e);
-        }
+        } catch (Exception e) {}
     }
 
     private void pingWatchdog() {
@@ -233,16 +223,19 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, text));
     }
 
-    private void processWithAI(String uiContextString, String failedAction) {
+    private void processWithCore(UnifiedScreenContext ctx, String failedAction) {
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
         
-        brainEngine.processTask(currentTask, uiContextString, failedAction, new NovaBrainEngine.BrainCallback() {
+        cognitiveCore.processEnvironment(currentTask, ctx, failedAction, new CognitiveCore.CoreCallback() {
             @Override
             public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
-                if ("done".equalsIgnoreCase(cmd.action)) {
-                    if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
-                    stopTask();
+                if ("done".equalsIgnoreCase(cmd.action) && !cognitiveCore.getPlanner().hasActivePlan()) {
+                    if (completionVerifier.verifyCompletion(cognitiveCore.getPlanner().getMainGoal(), ctx)) {
+                        checkpointManager.clearCheckpoint(); // Hapus checkpoint karena sukses
+                        if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
+                        stopTask();
+                    }
                 } else {
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
                     safetyEngine.evaluateAction(cmd, lastScreenContext);
@@ -251,10 +244,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
             @Override
             public void onConfusion(String errorMessage) {
-                if (!isRunning) return;
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
-                speak(errorMessage);
-                stopTask();
+                if (isRunning) { speak(errorMessage); stopTask(); }
             }
         });
     }
