@@ -532,11 +532,11 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.ActionVerificationResult;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.core.brain.NovaBrainEngine;
-import com.novaagent.app.core.engine.LocalIntentRouter;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
 import com.novaagent.app.services.accessibility.NovaAccessibilityService;
+import com.novaagent.app.services.foreground.MediaProjectionWrapper;
 
 public class AutonomousLoopEngine implements EventBus.EventListener {
     private static final String TAG = "AutonomousLoopEngine";
@@ -582,6 +582,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
+        // FASE 7: Sentinel / Proactive
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
@@ -593,7 +594,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // --- FASE 1 & 3: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA) ---
+        // FASE 1, 2, 3, 7: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA)
         LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
         if (routeResult.isOfflineAction) {
             if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
@@ -610,19 +611,22 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 this.lastScreenContext = null;
                 this.lastCommandExecuted = null;
                 this.lastFlatUiText = "";
-                // FASE 4: Hidupkan Mata Visual untuk bagian tugas daring
+                
+                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan tugas daring -> " + this.currentTask);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+                
+                // FASE 4: Hidupkan Mata Visual
                 try {
-                    com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                    MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
                     if (vision != null) vision.resumeVision();
                 } catch (Exception e) {}
-                Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan dengan tugas daring -> " + this.currentTask);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+
                 loopHandler.postDelayed(this::requestScreenData, 2500);
             }
             return;
         }
 
-    this.currentTask = task;
+        this.currentTask = task;
         this.isRunning = true;
         this.lastScreenContext = null;
         this.lastCommandExecuted = null;
@@ -630,13 +634,15 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.consecutiveFailures = 0;
         this.lastFlatUiText = "";
         
-        // FASE 4: Hidupkan Mata Visual karena AI Daring butuh melihat layar
-        try {
-            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
-            if (vision != null) vision.resumeVision();
-        } catch (Exception e) {}
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
+        
+        // FASE 4: Hidupkan Mata Visual
+        try {
+            MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
+            if (vision != null) vision.resumeVision();
+        } catch (Exception e) {}
+        
         requestScreenData();
     }
 
@@ -644,9 +650,9 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-        // FASE 4: Matikan Mata Visual saat tugas selesai untuk hemat baterai
+        // FASE 4: Matikan Mata Visual
         try {
-            com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+            MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.pauseVision();
         } catch (Exception e) {}
     }
@@ -668,7 +674,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 case SCREEN_UPDATED:
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     resolveDependencies();
-                    proactiveEngine.evaluateScreen(newContext);
+                    if (proactiveEngine != null) proactiveEngine.evaluateScreen(newContext);
 
                     if (!isRunning) return;
 
@@ -678,9 +684,19 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                         if (!result.isVerified) {
                             consecutiveFailures++;
                             failedActionToReport = lastCommandExecuted.action;
-                            if (consecutiveFailures >= 3) {
+                            
+                            // FASE 8: AUTONOMOUS SELF-HEALING
+                            if (consecutiveFailures == 2) {
+                                Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll...");
+                                speak("Mencari di area bawah...");
+                                try {
+                                    ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
+                                    actionInjector.executeAction(healCmd);
+                                } catch(Exception e){}
+                                return; // Tunggu update layar
+                            } else if (consecutiveFailures >= 4) {
                                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                speak("Maaf bos, letak tombolnya berubah. Arahkan pakai kata lain.");
+                                speak("Maaf bos, jalan buntu. Tombol tidak ditemukan.");
                                 stopTask();
                                 return;
                             }
@@ -720,12 +736,14 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 default:
                     break;
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            Log.e(TAG, "Error dalam Event Loop", e);
+        }
     }
 
     private void pingWatchdog() {
         try {
-            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
+            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
             if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.ENGINE);
         } catch (Exception e) {}
     }
@@ -983,23 +1001,16 @@ import com.novaagent.app.core.bus.EventBus;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/**
- * 10x KOMPLEKSITAS: SUTRADARA AUDIO TUNGGAL (SINGLETON PATTERN).
- * Mengatur lalu lintas antara Telinga (SpeechRecognizer) dan Mulut (TTS) secara absolut.
- * Menjamin tidak ada tabrakan Audio Focus yang membuat AI menjadi tuli.
- */
 public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.OnInitListener {
     private static final String TAG = "NovaAudioDirector";
     
     private final Context context;
     private final Handler mainHandler;
     
-    // Komponen Suara
     private SpeechRecognizer ear;
     private Intent earIntent;
     private TextToSpeech mouth;
     
-    // State Mesin
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
@@ -1008,7 +1019,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
         
-        // Inisialisasi wajib di Main Thread
         mainHandler.post(() -> {
             initMouth();
             initEar();
@@ -1018,9 +1028,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
-    // ==========================================
-    // 👄 SISTEM MULUT (TEXT-TO-SPEECH)
-    // ==========================================
     private void initMouth() {
         mouth = new TextToSpeech(context, this);
     }
@@ -1028,8 +1035,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            mouth.setLanguage(new Locale("id", "ID"));
-            // BACA PENGATURAN KARAKTER SUARA 
+            // FIX BISU: Fallback ke Default Locale jika id-ID belum lengkap diinstal di OS
+            int result = mouth.setLanguage(new Locale("id", "ID"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                mouth.setLanguage(Locale.getDefault()); 
+            }
+            
             float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
             mouth.setPitch(pitch);
             isMouthReady = true;
@@ -1037,13 +1048,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
-                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga sementara.");
+                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga.");
                 }
                 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga kembali.");
-                    // Jeda 500ms agar gema speaker tidak masuk ke mic
+                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga.");
                     mainHandler.postDelayed(() -> resumeListening(), 500);
                 }
                 
@@ -1052,18 +1062,16 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     mainHandler.post(() -> resumeListening());
                 }
             });
+        } else {
+            Log.e(TAG, "TTS Initialization Failed!");
         }
     }
 
-    // ==========================================
-    // 👂 SISTEM TELINGA (SPEECH RECOGNIZER)
-    // ==========================================
     private void initEar() {
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        // Memaksa pengenalan parsial agar lebih responsif
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
@@ -1074,13 +1082,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEndOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); }
             
             @Override public void onError(int error) {
-                // LOGIKA ANTI-TULI: Restart mic jika error timeout/no match, KECUALI jika AI sedang bicara
                 if (isListeningAbadi && !isCurrentlySpeaking) {
                     mainHandler.postDelayed(() -> {
                         if (isListeningAbadi && !isCurrentlySpeaking) {
-                            ear.startListening(earIntent);
+                            try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 100);
+                    }, 500);
                 }
             }
 
@@ -1090,7 +1097,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     String command = matches.get(0);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
                     
-                    // Lempar ke otak untuk diproses
                     try {
                         com.novaagent.app.core.di.ServiceLocator.getInstance()
                             .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
@@ -1104,16 +1110,17 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEvent(int eventType, Bundle params) {}
         });
         
-        // Mulai pendengaran perdana
         resumeListening();
     }
 
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null) {
-                ear.cancel(); // Bersihkan antrean
-                ear.startListening(earIntent);
+            if (ear != null && !isCurrentlySpeaking) {
+                try {
+                    ear.cancel(); 
+                    ear.startListening(earIntent);
+                } catch (Exception e) {}
             }
         });
     }
@@ -1121,15 +1128,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
         if (!isActive) {
-            mainHandler.post(() -> { if (ear != null) ear.stopListening(); });
+            mainHandler.post(() -> { if (ear != null) ear.cancel(); });
         } else {
             resumeListening();
         }
     }
 
-    // ==========================================
-    // 📡 MANAJER EVENT BUS
-    // ==========================================
     @Override
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
@@ -1138,6 +1142,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mainHandler.post(() -> {
                     // MUTLAK: Matikan telinga sebelum mulut terbuka!
                     if (ear != null) ear.cancel(); 
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
                     mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
@@ -1820,14 +1825,9 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -1841,8 +1841,12 @@ import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import java.util.ArrayList;
+import com.novaagent.app.core.audio.NovaAudioDirector;
 
+/**
+ * UI MURNI (DUMB COMPONENT)
+ * Sekarang 100% bersih dari SpeechRecognizer. Hanya mengatur Animasi dan Drag!
+ */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
@@ -1855,30 +1859,19 @@ public class FloatingBubbleView implements EventBus.EventListener {
     
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private boolean isMicMutedBySystem = false; 
-
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechIntent;
     private AnimatorSet pulseAnimator;
-    
-    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent, ala Voice Note WA)
-    private ToneGenerator toneGen;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        this.toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
-        
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
-        setupSpeechRecognizer();
     }
 
-    private void playTone(int toneType, int durationMs) {
-        try {
-            if (toneGen != null) toneGen.startTone(toneType, durationMs);
-        } catch (Exception e) {}
+    private void playUISound(int soundEffectType) {
+        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
     }
 
     private void initCloseTarget() {
@@ -1891,44 +1884,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
         closeParams.y = 150;
     }
 
-    private void setupSpeechRecognizer() {
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
-        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { bubbleView.setAlpha(1.0f); }
-            @Override public void onBeginningOfSpeech() { }
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { }
-            
-            @Override public void onError(int error) { 
-                if (isListeningMode && !isMicMutedBySystem) {
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (isListeningMode && !isMicMutedBySystem) speechRecognizer.startListening(speechIntent);
-                    }, 500);
-                }
-            }
-            
-            @Override public void onResults(Bundle results) {
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches != null && !matches.isEmpty()) {
-                    String command = matches.get(0);
-                    try {
-                        AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                        if (engine != null) engine.startTask(command);
-                    } catch (Exception e) {}
-                } else if (isListeningMode && !isMicMutedBySystem) {
-                    speechRecognizer.startListening(speechIntent);
-                }
-            }
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
-    }
-
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
@@ -1936,28 +1891,29 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
         startJellyPulseAnimation();
 
-        // Logika Klik Jelly (Tidur / Bangun ala WA VN)
         bubbleView.setOnClickListener(v -> {
+            playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                playTone(ToneGenerator.TONE_CDMA_PIP, 150); // Bunyi 'Pip' Bangun
                 bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
+                
+                // Minta Sutradara Audio Pusat untuk buka telinga
+                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(true); } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
-                playTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 150); // Bunyi 'Bloop' Tidur
                 bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
-                if (speechRecognizer != null) speechRecognizer.stopListening();
+                
+                // Minta Sutradara Audio Pusat untuk tutup telinga
+                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch(Exception e){}
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
 
-        // Smart Drag to Close dengan Hover Detection
         bubbleView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
             private boolean isDragging = false;
-            private boolean isHoveringX = false;
             
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
@@ -1966,7 +1922,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         isDragging = false;
-                        isHoveringX = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
                         if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
@@ -1976,34 +1931,23 @@ public class FloatingBubbleView implements EventBus.EventListener {
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
                         if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
-                        
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
                         
-                        // Deteksi area X (Zona Bawah)
                         if (params.y > metrics.heightPixels - 500) {
-                            if (!isHoveringX) {
-                                isHoveringX = true;
-                                playTone(ToneGenerator.TONE_CDMA_KEYPAD_VOLUME_KEY_LITE, 50); // Bunyi Tik (Masuk zona hapus)
-                                closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
-                                closeTargetView.setAlpha(1.0f);
-                            }
+                            closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                            closeTargetView.setAlpha(1.0f);
                         } else {
-                            if (isHoveringX) {
-                                isHoveringX = false;
-                                closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
-                                closeTargetView.setAlpha(0.7f);
-                            }
+                            closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                            closeTargetView.setAlpha(0.7f);
                         }
                         return true;
                         
                     case MotionEvent.ACTION_UP:
                         if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
-                        
-                        // Jika dilepas tepat di zona X
-                        if (isHoveringX) {
-                            playTone(ToneGenerator.TONE_CDMA_NETWORK_BUSY_ONE_SHOT, 200); // Bunyi Tong Sampah WA
+                        if (params.y > metrics.heightPixels - 500) {
+                            playUISound(AudioManager.FX_KEYPRESS_DELETE);
                             isListeningMode = false;
                             context.stopService(new Intent(context, NovaForegroundService.class));
                         }
@@ -2049,19 +1993,12 @@ public class FloatingBubbleView implements EventBus.EventListener {
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
-        try { 
-            windowManager.addView(bubbleView, params); 
-            isAdded = true; 
-            playTone(ToneGenerator.TONE_CDMA_PIP, 200); // Bunyi saat awal Jelly muncul
-            speechRecognizer.startListening(speechIntent); 
-        } catch (Exception e) {}
+        try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
     }
 
     public void remove() {
         isListeningMode = false;
         if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
-        if (speechRecognizer != null) speechRecognizer.destroy();
-        if (toneGen != null) toneGen.release();
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -2069,14 +2006,8 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
-            
             if ("NOVA_SPEAKING_START".equals(state)) {
-                isMicMutedBySystem = true;
-                speechRecognizer.stopListening();
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
-            } else if ("RESUME_LISTENING".equals(state)) {
-                isMicMutedBySystem = false;
-                if (isListeningMode) bubbleView.post(() -> speechRecognizer.startListening(speechIntent));
             }
         }
     }
@@ -3996,13 +3927,12 @@ public class PromptRegistry {
         "INGATAN JANGKA PANJANG TENTANG USER:\n%s\n\n" +
         "KESADARAN SEMANTIK & HUKUM:\n" +
         "1. PAHAMI KONTEKS: Analisis nama aplikasi dan susunan layar sebelum bertindak.\n" +
-        "2. SELF-HEALING: Jika di memori ada peringatan bahwa tindakan Anda sebelumnya GAGAL, CARI CARA LAIN. JANGAN ulangi kesalahan.\n" +
-        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban di 'speech'.\n" +
-        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', 'open_app'.\n" +
-        "5. INGATAN LOKAL (PENTING): Jika user memberi tahu fakta penting tentang dirinya (misal: 'istri saya namanya Siti', 'saya suka kopi'), gunakan action: 'save_memory' dan isi faktanya di 'textToType'.\n" +
-        "6. HARDWARE: Aksi hardware lokal diintersep sebelum LLM, tapi jika tembus ke Anda, arahkan user dengan 'speech'.\n\n" +
+        "2. SELF-HEALING: Anda memiliki insting bertahan hidup. Jika aksi Anda gagal, sistem akan otomatis melakukan scroll untuk Anda. Tugas Anda adalah memberikan kordinat target baru yang belum terlihat sebelumnya.\n" +
+        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban elegan/futuristik di 'speech'.\n" +
+        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', atau 'open_app'.\n" +
+        "5. INGATAN LOKAL: Jika user memberi info penting tentang profilnya (misal: 'istri saya namanya Siti'), gunakan action: 'save_memory' dan isi faktanya di 'textToType'.\n\n" +
         "FORMAT OUTPUT (JSON MURNI WAJIB):\n" +
-        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara\"}";
+        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara singkat\"}";
 
     public static String buildSystemPrompt(String longTermMemory) {
         if (longTermMemory == null || longTermMemory.isEmpty()) longTermMemory = "Belum ada ingatan khusus.";

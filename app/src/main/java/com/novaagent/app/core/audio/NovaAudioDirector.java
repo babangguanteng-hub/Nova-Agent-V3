@@ -16,23 +16,16 @@ import com.novaagent.app.core.bus.EventBus;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/**
- * 10x KOMPLEKSITAS: SUTRADARA AUDIO TUNGGAL (SINGLETON PATTERN).
- * Mengatur lalu lintas antara Telinga (SpeechRecognizer) dan Mulut (TTS) secara absolut.
- * Menjamin tidak ada tabrakan Audio Focus yang membuat AI menjadi tuli.
- */
 public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.OnInitListener {
     private static final String TAG = "NovaAudioDirector";
     
     private final Context context;
     private final Handler mainHandler;
     
-    // Komponen Suara
     private SpeechRecognizer ear;
     private Intent earIntent;
     private TextToSpeech mouth;
     
-    // State Mesin
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
@@ -41,7 +34,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
         
-        // Inisialisasi wajib di Main Thread
         mainHandler.post(() -> {
             initMouth();
             initEar();
@@ -51,9 +43,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
-    // ==========================================
-    // 👄 SISTEM MULUT (TEXT-TO-SPEECH)
-    // ==========================================
     private void initMouth() {
         mouth = new TextToSpeech(context, this);
     }
@@ -61,8 +50,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            mouth.setLanguage(new Locale("id", "ID"));
-            // BACA PENGATURAN KARAKTER SUARA 
+            // FIX BISU: Fallback ke Default Locale jika id-ID belum lengkap diinstal di OS
+            int result = mouth.setLanguage(new Locale("id", "ID"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                mouth.setLanguage(Locale.getDefault()); 
+            }
+            
             float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
             mouth.setPitch(pitch);
             isMouthReady = true;
@@ -70,13 +63,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
-                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga sementara.");
+                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga.");
                 }
                 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga kembali.");
-                    // Jeda 500ms agar gema speaker tidak masuk ke mic
+                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga.");
                     mainHandler.postDelayed(() -> resumeListening(), 500);
                 }
                 
@@ -85,18 +77,16 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     mainHandler.post(() -> resumeListening());
                 }
             });
+        } else {
+            Log.e(TAG, "TTS Initialization Failed!");
         }
     }
 
-    // ==========================================
-    // 👂 SISTEM TELINGA (SPEECH RECOGNIZER)
-    // ==========================================
     private void initEar() {
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        // Memaksa pengenalan parsial agar lebih responsif
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
@@ -107,13 +97,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEndOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); }
             
             @Override public void onError(int error) {
-                // LOGIKA ANTI-TULI: Restart mic jika error timeout/no match, KECUALI jika AI sedang bicara
                 if (isListeningAbadi && !isCurrentlySpeaking) {
                     mainHandler.postDelayed(() -> {
                         if (isListeningAbadi && !isCurrentlySpeaking) {
-                            ear.startListening(earIntent);
+                            try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 100);
+                    }, 500);
                 }
             }
 
@@ -123,7 +112,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     String command = matches.get(0);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
                     
-                    // Lempar ke otak untuk diproses
                     try {
                         com.novaagent.app.core.di.ServiceLocator.getInstance()
                             .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
@@ -137,16 +125,17 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEvent(int eventType, Bundle params) {}
         });
         
-        // Mulai pendengaran perdana
         resumeListening();
     }
 
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null) {
-                ear.cancel(); // Bersihkan antrean
-                ear.startListening(earIntent);
+            if (ear != null && !isCurrentlySpeaking) {
+                try {
+                    ear.cancel(); 
+                    ear.startListening(earIntent);
+                } catch (Exception e) {}
             }
         });
     }
@@ -154,15 +143,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
         if (!isActive) {
-            mainHandler.post(() -> { if (ear != null) ear.stopListening(); });
+            mainHandler.post(() -> { if (ear != null) ear.cancel(); });
         } else {
             resumeListening();
         }
     }
 
-    // ==========================================
-    // 📡 MANAJER EVENT BUS
-    // ==========================================
     @Override
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
@@ -171,6 +157,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mainHandler.post(() -> {
                     // MUTLAK: Matikan telinga sebelum mulut terbuka!
                     if (ear != null) ear.cancel(); 
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
                     mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
