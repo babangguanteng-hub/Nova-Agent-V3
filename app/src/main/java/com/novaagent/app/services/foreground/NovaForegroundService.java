@@ -129,6 +129,10 @@ public class NovaForegroundService extends Service {
         locator.register(ConditionalSentinelEngine.class, null);
         locator.register(HologramAuraManager.class, null);
         locator.register(LongTermMemoryEngine.class, null);
+        // Matikan total EventBus agar tidak ada Thread Zombi yang menguras baterai
+        try {
+            com.novaagent.app.core.bus.EventBus.getInstance().shutdown();
+        } catch(Exception e){}
     }
 
     @Nullable

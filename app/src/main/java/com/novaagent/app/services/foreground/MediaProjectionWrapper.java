@@ -40,6 +40,7 @@ public class MediaProjectionWrapper {
     private int density;
 
     private volatile boolean isCaptureRequested = false;
+    private MediaProjection.Callback projectionCallback;
 
     public MediaProjectionWrapper(Context context, MediaProjection mediaProjection, MlKitOcrEngine ocrEngine, ScreenCache screenCache) {
         this.mediaProjection = mediaProjection;
@@ -58,6 +59,14 @@ public class MediaProjectionWrapper {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
+        projectionCallback = new MediaProjection.Callback() {
+            @Override public void onStop() {
+                Log.e(TAG, "MediaProjection dihentikan oleh OS/Pengguna secara sepihak!");
+                stop();
+            }
+        };
+        mediaProjection.registerCallback(projectionCallback, backgroundHandler);
+
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         
         imageReader.setOnImageAvailableListener(reader -> {
@@ -65,7 +74,7 @@ public class MediaProjectionWrapper {
             try {
                 image = reader.acquireLatestImage();
                 try { 
-                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
+                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().find(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
                     if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); 
                 } catch (Exception e) {}
                 
@@ -142,6 +151,8 @@ public class MediaProjectionWrapper {
         pauseVision();
         if (imageReader != null) imageReader.close();
         if (backgroundThread != null) backgroundThread.quitSafely();
+        if (mediaProjection != null && projectionCallback != null) mediaProjection.unregisterCallback(projectionCallback);
+        if (ocrEngine != null) ocrEngine.shutdown();
         if (mediaProjection != null) mediaProjection.stop();
     }
 

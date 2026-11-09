@@ -29,9 +29,11 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     @Override
+    @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_MEMORY);
-        onCreate(db);
+        Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
+        // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
+        // Gunakan ALTER TABLE di sini jika di masa depan ada penambahan kolom.
     }
 
     public void saveFact(String fact) {

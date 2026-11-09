@@ -26,6 +26,14 @@ public class MlKitOcrEngine {
         ocrThread = Executors.newSingleThreadExecutor();
     }
 
+    public void shutdown() {
+        try {
+            recognizer.close();
+            ocrThread.shutdownNow();
+            Log.i(TAG, "Mesin OCR ML Kit berhasil dimatikan.");
+        } catch (Exception e) { Log.e(TAG, "Gagal mematikan OCR", e); }
+    }
+
     public void processImage(Bitmap incomingBitmap) {
         if (incomingBitmap == null || incomingBitmap.isRecycled()) return;
 

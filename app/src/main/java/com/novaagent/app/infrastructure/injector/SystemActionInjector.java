@@ -114,6 +114,21 @@ public class SystemActionInjector {
                 } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 return;
+            case "approve_action":
+                try {
+                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
+                    if (safety != null) safety.approvePendingAction();
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "reject_action":
+                try {
+                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
+                    if (safety != null) safety.rejectPendingAction();
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "IDLE"));
+                return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;

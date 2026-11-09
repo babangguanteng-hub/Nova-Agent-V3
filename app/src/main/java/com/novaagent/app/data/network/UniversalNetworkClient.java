@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -18,12 +17,15 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * FASE AUDIT TAHAP 4 [N011]: Network Resource Cleanup & Timeout Handling
+ */
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 2; // Batas wajar retry
+    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -35,7 +37,7 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS) // Waktu tunggu optimal
+                .readTimeout(35, TimeUnit.SECONDS)
                 .build();
     }
 
@@ -45,17 +47,16 @@ public class UniversalNetworkClient {
         String apiKey = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        // 🛡️ Mencegah model kosong
         if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
+            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
             else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
             else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
-            else modelName = "llama-3.3-70b-versatile";
+            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
+            else modelName = "llama-3.1-8b-instant";
         }
 
         if (apiKey.isEmpty()) {
-            callback.onError("Maaf Bos, API Key Anda masih kosong.");
+            callback.onError("API Key (" + provider + ") Kosong!");
             return;
         }
 
@@ -130,42 +131,42 @@ public class UniversalNetworkClient {
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Maaf Bos, jaringan internet sedang tidak stabil.");
+                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        int code = response.code();
-                        
-                        // 🛡️ ANTI-LEMOT & ANTI-NGELANTUR: Tangani Error Secara Cerdas!
-                        if (code == 429) {
-                            // KUOTA HABIS (Langsung lapor bahasa Indonesia, tanpa retry)
-                            callback.onError("Maaf Bos, kuota " + provider + " Anda sudah habis. Silakan ganti API Key.");
-                            return;
-                        } 
-                        else if (code == 401 || code == 403 || code == 400) {
-                            // KUNCI SALAH / FORMAT DITOLAK (Langsung lapor bahasa Indonesia, tanpa retry)
-                            callback.onError("Maaf Bos, API Key salah atau ditolak oleh server " + provider + ".");
-                            return;
-                        } 
-                        else if (code >= 500) {
-                            // SERVER DOWN (Baru boleh di-retry)
-                            handleRetry(messages, callback, retryCount, "Server " + provider + " sedang sibuk.");
-                            return;
-                        } else {
-                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
+                    try {
+                        if (!response.isSuccessful()) {
+                            int code = response.code();
+                            String errorBody = response.body() != null ? response.body().string() : "";
+                            String errorMsg = "HTTP " + code;
+                            try {
+                                JSONObject errObj = new JSONObject(errorBody);
+                                if(errObj.has("error")) {
+                                    Object err = errObj.get("error");
+                                    if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
+                                    else if(err instanceof String) errorMsg = (String)err;
+                                }
+                            } catch (Exception ignored) {}
+                            
+                            if (code == 400 || code == 401 || code == 403 || code == 404) {
+                                callback.onError(provider + ": " + errorMsg);
+                            } else {
+                                handleRetry(messages, callback, retryCount, errorMsg);
+                            }
                             return;
                         }
-                    }
-                    try {
+                        
                         String respBody = response.body().string();
                         String content = "";
                         if (provider.equals("Gemini (Google Studio)")) {
                             JSONObject jsonResponse = new JSONObject(respBody);
                             JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+                            
                             if (candidate.has("content")) {
                                 content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
                             } else {
-                                callback.onError("Maaf Bos, jawaban diblokir oleh filter keamanan Google.");
+                                String finishReason = candidate.optString("finishReason", "UNKNOWN");
+                                callback.onError("Gemini memblokir respon (Safety Filter: " + finishReason + ")");
                                 return;
                             }
                         } else {
@@ -173,23 +174,27 @@ public class UniversalNetworkClient {
                         }
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Maaf Bos, gagal membaca struktur AI dari " + provider);
+                        callback.onError("Gagal parse JSON " + provider);
+                    } finally {
+                        // AUDIT FIX [N011]: Wajib menutup Response agar tidak terjadi Memory Leak & Penyumbatan Koneksi!
+                        if (response != null) {
+                            try { response.close(); } catch (Exception ignored) {}
+                        }
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Maaf Bos, gagal merakit permintaan jaringan.");
+            callback.onError("Gagal merakit request " + provider);
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String humanReason) {
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            // Setelah mentok retry, jangan kasih kode Inggris, kasih pesan lokal kita.
-            callback.onError(humanReason);
+            callback.onError(reason + " (Gagal 3x)");
         }
     }
 }

@@ -14,6 +14,7 @@ FILE: ./app/src/main/AndroidManifest.xml
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
     <application
         android:allowBackup="false"
@@ -36,7 +37,7 @@ FILE: ./app/src/main/AndroidManifest.xml
         <service
             android:name=".services.foreground.NovaForegroundService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|microphone" />
 
         <service
             android:name=".services.accessibility.NovaAccessibilityService"
@@ -85,6 +86,16 @@ public class EventBus {
     private final ExecutorService computationLane = Executors.newFixedThreadPool(2);
 
     private EventBus() {}
+
+    public void shutdown() {
+        try {
+            ioLane.shutdownNow();
+            computationLane.shutdownNow();
+            listeners.clear();
+            instance = null;
+            Log.i(TAG, "EventBus berhasil dimatikan secara total.");
+        } catch (Exception e) {}
+    }
 
     public static EventBus getInstance() {
         if (instance == null) {
@@ -408,11 +419,13 @@ package com.novaagent.app.core.engine;
 
 import android.util.Log;
 import com.novaagent.app.data.model.ActionCommandDto;
+import org.json.JSONObject;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * PENJAGA GERBANG NIAT (FASE 1, 2, 3, & 7)
+ * PENJAGA GERBANG NIAT (FASE 1, 2, 3, & 7) - AUDITED VERSION [N010]
+ * JSON dibangun menggunakan JSONObject murni untuk mencegah error parsing/injeksi.
  */
 public class LocalIntentRouter {
     private static final String TAG = "LocalIntentRouter";
@@ -435,30 +448,38 @@ public class LocalIntentRouter {
         }
     }
 
+    private ActionCommandDto safeCmd(String action, String text, String dir, int x) {
+        try {
+            JSONObject j = new JSONObject();
+            j.put("action", action);
+            if (text != null) j.put("textToType", text);
+            if (dir != null) j.put("direction", dir);
+            if (x != -1) j.put("x", x);
+            return new ActionCommandDto(j.toString());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public RoutingResult route(String rawCommand) {
         String c = rawCommand.toLowerCase().trim();
         Log.i(TAG, "Menganalisis Niat: " + c);
 
         try {
             // --- FASE 7: PENJADWALAN & KONDISI (SENTINEL) ---
-            // Niat: "Dalam 5 menit buka youtube" atau "nanti 10 menit lagi matikan wifi"
             Matcher timeMatcher = Pattern.compile(".*(dalam|nanti)\\s+(\\d+)\\s+menit\\s+(.*)").matcher(c);
             if (timeMatcher.matches()) {
                 int menit = Integer.parseInt(timeMatcher.group(2));
                 String task = timeMatcher.group(3).replace("lagi", "").trim();
-                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"schedule_time\", \"x\":" + menit + ", \"textToType\":\"" + task + "\"}");
-                return new RoutingResult(true, cmd, "Baik bos, tugas dijadwalkan dalam " + menit + " menit.");
+                return new RoutingResult(true, safeCmd("schedule_time", task, null, menit), "Baik bos, tugas dijadwalkan dalam " + menit + " menit.");
             }
 
-            // Niat: "Kalau baterai sisa 15% matikan wifi"
             Matcher batteryMatcher = Pattern.compile(".*baterai.*(\\d+)%.*(matikan|hidupkan|nyalakan|buka|redupkan|terangkan)\\s+(.*)").matcher(c);
             if (batteryMatcher.matches()) {
                 int level = Integer.parseInt(batteryMatcher.group(1));
                 String action = batteryMatcher.group(2);
                 String target = batteryMatcher.group(3);
-                String task = action + " " + target;
-                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"schedule_battery\", \"x\":" + level + ", \"textToType\":\"" + task + "\"}");
-                return new RoutingResult(true, cmd, "Sentinel aktif. Saya akan eksekusi saat baterai menyentuh " + level + " persen.");
+                return new RoutingResult(true, safeCmd("schedule_battery", action + " " + target, null, level), "Sentinel aktif. Eksekusi saat baterai " + level + " persen.");
             }
 
             // --- FASE 3: DETEKSI PERINTAH HIBRIDA (BATON PASS) ---
@@ -466,48 +487,39 @@ public class LocalIntentRouter {
             if (hybridMatcher.matches()) {
                 String appName = hybridMatcher.group(2).trim();
                 String nextTask = hybridMatcher.group(4).trim();
-                ActionCommandDto cmd = new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + appName + "\"}");
-                return new RoutingResult(true, cmd, "Membuka " + appName + ", dan melanjutkan tugas...", nextTask);
+                return new RoutingResult(true, safeCmd("open_app", appName, null, -1), "Membuka " + appName + ", dan melanjutkan tugas...", nextTask);
             }
+
+        // --- FASE AUDIT 3: OTORISASI KEAMANAN (SETUJU/TOLAK) ---
+        if (c.matches(".*(setuju|iya|lanjutkan|izinkan|oke|lanjut).*")) return new RoutingResult(true, safeCmd("approve_action", null, null, -1), null);
+        if (c.matches(".*(tolak|batal|jangan|cancel|berhenti).*")) return new RoutingResult(true, safeCmd("reject_action", null, null, -1), null);
 
             // --- FASE 1 & 2: GUDANG SENJATA LURING ---
-            if (c.matches("^(buka|bka|bukka|open)\\s+.*")) {
-                String appName = c.replaceFirst("^(buka|bka|bukka|open)\\s+", "").trim();
-                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"open_app\", \"textToType\":\"" + appName + "\"}"), "Membuka " + appName);
-            }
-            if (c.matches(".*(kembali|balik|back|mundur).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"back\"}"), null);
-            if (c.matches(".*(beranda|ke home|keluar dari aplikasi).*") || c.equals("home")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"home\"}"), null);
-            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?bawah.*") || c.matches(".*turun.*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}"), null);
-            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?atas.*") || c.matches(".*naik.*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"up\"}"), null);
-            if (c.matches(".*(notifikasi|pemberitahuan).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"notifications\"}"), null);
-            if (c.matches(".*(recent apps|aplikasi terakhir|multitasking).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"recent_apps\"}"), null);
+            if (c.matches("^(buka|bka|bukka|open)\\s+.*")) return new RoutingResult(true, safeCmd("open_app", c.replaceFirst("^(buka|bka|bukka|open)\\s+", "").trim(), null, -1), "Membuka aplikasi.");
+            if (c.matches(".*(kembali|balik|back|mundur).*")) return new RoutingResult(true, safeCmd("back", null, null, -1), null);
+            if (c.matches(".*(beranda|ke home|keluar dari aplikasi).*") || c.equals("home")) return new RoutingResult(true, safeCmd("home", null, null, -1), null);
+            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?bawah.*") || c.matches(".*turun.*")) return new RoutingResult(true, safeCmd("scroll", null, "down", -1), null);
+            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?atas.*") || c.matches(".*naik.*")) return new RoutingResult(true, safeCmd("scroll", null, "up", -1), null);
+            if (c.matches(".*(notifikasi|pemberitahuan).*")) return new RoutingResult(true, safeCmd("notifications", null, null, -1), null);
+            if (c.matches(".*(recent apps|aplikasi terakhir|multitasking).*")) return new RoutingResult(true, safeCmd("recent_apps", null, null, -1), null);
 
-            if (c.matches(".*(senter|lampu|flashlight).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"toggle_flashlight\"}"), "Siap.");
-            if (c.matches(".*(wifi|internet|data|hotspot|bluetooth).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Membuka panel jaringan.");
-            if (c.matches(".*(kamera|camera|galeri|gallery).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Membuka media.");
-            if (c.matches(".*(volume|suara)\\s*(naik|tambah|besar|turun|kurang|kecil).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), null);
-            if (c.matches(".*(musik|lagu|putar|berhenti|stop|lanjut|sebelumnya).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"local_hardware\", \"textToType\":\"" + c + "\"}"), "Memproses media player.");
+            if (c.matches(".*(senter|lampu|flashlight).*")) return new RoutingResult(true, safeCmd("toggle_flashlight", null, null, -1), "Siap.");
+            if (c.matches(".*(wifi|internet|data|hotspot|bluetooth).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Membuka panel jaringan.");
+            if (c.matches(".*(kamera|camera|galeri|gallery).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Membuka media.");
+            if (c.matches(".*(volume|suara)\\s*(naik|tambah|besar|turun|kurang|kecil).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), null);
+            if (c.matches(".*(musik|lagu|putar|berhenti|stop|lanjut|sebelumnya).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Memproses media player.");
 
-            if (c.matches(".*(alarm|timer|waktu mundur).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_alarm\", \"textToType\":\"" + c + "\"}"), "Membuka pengaturan jam.");
-            if (c.matches("^(telepon|hubungi|panggil|call|telpon)\\s+.*")) {
-                String target = c.replaceFirst("^(telepon|hubungi|panggil|call|telpon)\\s+", "").trim();
-                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"dial_number\", \"textToType\":\"" + target + "\"}"), "Menyiapkan panggilan ke " + target);
-            }
-            if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_brightness\"}"), "Membuka pengaturan layar.");
-            if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"set_dnd\"}"), "Membuka mode jangan ganggu.");
+            if (c.matches(".*(alarm|timer|waktu mundur).*")) return new RoutingResult(true, safeCmd("set_alarm", c, null, -1), "Membuka pengaturan jam.");
+            if (c.matches("^(telepon|hubungi|panggil|call|telpon)\\s+.*")) return new RoutingResult(true, safeCmd("dial_number", c.replaceFirst("^(telepon|hubungi|panggil|call|telpon)\\s+", "").trim(), null, -1), "Menyiapkan panggilan.");
+            if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, safeCmd("set_brightness", null, null, -1), "Membuka pengaturan layar.");
+            if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, safeCmd("set_dnd", null, null, -1), "Membuka mode jangan ganggu.");
 
-            if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
-            if (c.matches(".*(jam berapa|waktu).*")) {
-                String time = new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date());
-                return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Sekarang jam " + time + " bos.");
-            }
-            if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, new ActionCommandDto("{\"action\":\"done\"}"), "Sama-sama bos! Ada lagi?");
+            if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
+            if (c.matches(".*(jam berapa|waktu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sekarang jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date()) + " bos.");
+            if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sama-sama bos! Ada lagi?");
 
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal memproses niat lokal", e);
-        }
+        } catch (Exception e) { Log.e(TAG, "Gagal memproses niat lokal", e); }
 
-        // DEFAULT
         return new RoutingResult(false, null, null);
     }
 }
@@ -838,6 +850,15 @@ public class ActionVerificationScore {
         }
 
         // 5. TARGET NODE DISAPPEAR / MANIPULATED (+0.4)
+        // Validasi ekstra ketat untuk aksi mengetik (Memastikan teks benar-benar muncul)
+        if ("type".equals(command.action) && command.textToType != null && !command.textToType.isEmpty()) {
+             String allTextAfter = extractAllText(ctxAfter).toLowerCase();
+             if (allTextAfter.contains(command.textToType.toLowerCase())) {
+                 score += 0.5;
+                 reasons.append("[Teks terketik berhasil divalidasi +0.5] ");
+             }
+        }
+
         if ("tap".equals(command.action) || "click".equals(command.action) || "type".equals(command.action)) {
             String nodeBefore = ctxBefore.getTextAtCoordinate(command.x, command.y);
             String nodeAfter = ctxAfter.getTextAtCoordinate(command.x, command.y);
@@ -912,6 +933,7 @@ FILE: ./app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java
 
 package com.novaagent.app.core.engine;
 
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.novaagent.app.core.bus.AgentEvent;
@@ -923,9 +945,7 @@ import com.novaagent.app.data.model.UnifiedScreenContext;
 import java.util.regex.Pattern;
 
 /**
- * Firewall & Kebijakan Keamanan (Refactored: Resolusi H001)
- * Menambahkan alur persetujuan pengguna (User Confirmation) untuk tindakan di "Zona Merah"
- * alih-alih langsung menolak perintah.
+ * FASE AUDIT TAHAP 3 [N007]: Sistem Otorisasi Aman (Pending Actions)
  */
 public class SafetyPolicyEngine {
     private static final String TAG = "SafetyPolicyEngine";
@@ -936,6 +956,11 @@ public class SafetyPolicyEngine {
             "bca|mandiri|bri|bni|dana|gopay|ovo|shopeepay)"
     );
 
+    // Penyimpanan Tindakan yang Tertahan
+    private ActionCommandDto pendingCommand = null;
+    private long pendingTimestamp = 0;
+    private static final long EXPIRATION_MS = 30000; // 30 detik untuk memberikan persetujuan
+
     public void evaluateAction(ActionCommandDto command, UnifiedScreenContext currentContext) {
         if (command == null || command.action == null) {
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Invalid Command"));
@@ -945,34 +970,54 @@ public class SafetyPolicyEngine {
         boolean requiresConfirmation = false;
         String triggerReason = "";
 
-        // Evaluasi Berdasarkan Teks Input
         if (command.textToType != null && RED_ZONE_PATTERN.matcher(command.textToType).find()) {
             requiresConfirmation = true;
-            triggerReason = "Deteksi kata kunci sensitif pada input teks.";
+            triggerReason = "Input teks sensitif.";
         }
-
-        // Evaluasi Berdasarkan Teks Target (Jika mengeklik tombol)
         if (!requiresConfirmation && "tap".equals(command.action) && currentContext != null) {
             String targetText = currentContext.getTextAtCoordinate(command.x, command.y);
             if (targetText != null && RED_ZONE_PATTERN.matcher(targetText).find()) {
                 requiresConfirmation = true;
-                triggerReason = "Mengeklik elemen UI berisiko tinggi ('" + targetText + "').";
+                triggerReason = "Target klik sensitif.";
             }
         }
 
         if (requiresConfirmation) {
-            Log.w(TAG, "Tindakan ditahan untuk konfirmasi pengguna. Alasan: " + triggerReason);
-            // Membekukan AI dan meminta intervensi pengguna
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.USER_CONFIRMATION.name()));
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Tindakan ini memerlukan persetujuan Anda."));
+            Log.w(TAG, "Tindakan ditahan untuk otorisasi pengguna. Alasan: " + triggerReason);
             
-            // Simpan perintah yang tertahan sementara (opsional, bisa diteruskan ke UI)
-            // Di implementasi ini, UI Bubble akan bertanggung jawab menahan objek ini (lihat langkah 2)
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_REQUESTED, command)); // Overload penggunaan untuk meneruskan perintah tertahan
+            // Simpan aksi ke dalam antrean memori
+            pendingCommand = command;
+            pendingTimestamp = SystemClock.elapsedRealtime();
+            
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.USER_CONFIRMATION.name()));
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Tindakan ini berisiko tinggi. Tolong katakan SETUJU untuk lanjut, atau TOLAK untuk membatalkan."));
         } else {
-            // Zona Hijau: Lanjutkan eksekusi
             Log.i(TAG, "Tindakan dinilai aman. Melanjutkan...");
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, command));
+        }
+    }
+
+    public void approvePendingAction() {
+        if (pendingCommand != null) {
+            long elapsed = SystemClock.elapsedRealtime() - pendingTimestamp;
+            if (elapsed < EXPIRATION_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Otorisasi diterima. Melaksanakan sekarang."));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, pendingCommand));
+            } else {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, waktu otorisasi sudah kedaluwarsa."));
+            }
+            pendingCommand = null;
+        } else {
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Tidak ada tindakan yang membutuhkan persetujuan saat ini."));
+        }
+    }
+
+    public void rejectPendingAction() {
+        if (pendingCommand != null) {
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Siap bos. Tindakan dibatalkan demi keamanan."));
+            pendingCommand = null;
+        } else {
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Tidak ada tindakan yang sedang tertahan."));
         }
     }
 }
@@ -1001,23 +1046,16 @@ import com.novaagent.app.core.bus.EventBus;
 import java.util.ArrayList;
 import java.util.Locale;
 
-/**
- * 10x KOMPLEKSITAS: SUTRADARA AUDIO TUNGGAL (SINGLETON PATTERN).
- * Mengatur lalu lintas antara Telinga (SpeechRecognizer) dan Mulut (TTS) secara absolut.
- * Menjamin tidak ada tabrakan Audio Focus yang membuat AI menjadi tuli.
- */
 public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.OnInitListener {
     private static final String TAG = "NovaAudioDirector";
     
     private final Context context;
     private final Handler mainHandler;
     
-    // Komponen Suara
     private SpeechRecognizer ear;
     private Intent earIntent;
     private TextToSpeech mouth;
     
-    // State Mesin
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
@@ -1026,7 +1064,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
         
-        // Inisialisasi wajib di Main Thread
         mainHandler.post(() -> {
             initMouth();
             initEar();
@@ -1036,9 +1073,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
-    // ==========================================
-    // 👄 SISTEM MULUT (TEXT-TO-SPEECH)
-    // ==========================================
     private void initMouth() {
         mouth = new TextToSpeech(context, this);
     }
@@ -1046,8 +1080,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            mouth.setLanguage(new Locale("id", "ID"));
-            // BACA PENGATURAN KARAKTER SUARA 
+            // FIX BISU: Fallback ke Default Locale jika id-ID belum lengkap diinstal di OS
+            int result = mouth.setLanguage(new Locale("id", "ID"));
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                mouth.setLanguage(Locale.getDefault()); 
+            }
+            
             float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
             mouth.setPitch(pitch);
             isMouthReady = true;
@@ -1055,13 +1093,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
-                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga sementara.");
+                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga.");
                 }
                 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga kembali.");
-                    // Jeda 500ms agar gema speaker tidak masuk ke mic
+                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga.");
                     mainHandler.postDelayed(() -> resumeListening(), 500);
                 }
                 
@@ -1070,18 +1107,16 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     mainHandler.post(() -> resumeListening());
                 }
             });
+        } else {
+            Log.e(TAG, "TTS Initialization Failed!");
         }
     }
 
-    // ==========================================
-    // 👂 SISTEM TELINGA (SPEECH RECOGNIZER)
-    // ==========================================
     private void initEar() {
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        // Memaksa pengenalan parsial agar lebih responsif
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
@@ -1092,13 +1127,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEndOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); }
             
             @Override public void onError(int error) {
-                // LOGIKA ANTI-TULI: Restart mic jika error timeout/no match, KECUALI jika AI sedang bicara
                 if (isListeningAbadi && !isCurrentlySpeaking) {
                     mainHandler.postDelayed(() -> {
                         if (isListeningAbadi && !isCurrentlySpeaking) {
-                            ear.startListening(earIntent);
+                            try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 100);
+                    }, 500);
                 }
             }
 
@@ -1108,7 +1142,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     String command = matches.get(0);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
                     
-                    // Lempar ke otak untuk diproses
                     try {
                         com.novaagent.app.core.di.ServiceLocator.getInstance()
                             .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
@@ -1122,16 +1155,17 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onEvent(int eventType, Bundle params) {}
         });
         
-        // Mulai pendengaran perdana
         resumeListening();
     }
 
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null) {
-                ear.cancel(); // Bersihkan antrean
-                ear.startListening(earIntent);
+            if (ear != null && !isCurrentlySpeaking) {
+                try {
+                    ear.cancel(); 
+                    ear.startListening(earIntent);
+                } catch (Exception e) {}
             }
         });
     }
@@ -1139,15 +1173,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
         if (!isActive) {
-            mainHandler.post(() -> { if (ear != null) ear.stopListening(); });
+            mainHandler.post(() -> { if (ear != null) ear.cancel(); });
         } else {
             resumeListening();
         }
     }
 
-    // ==========================================
-    // 📡 MANAJER EVENT BUS
-    // ==========================================
     @Override
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
@@ -1156,6 +1187,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mainHandler.post(() -> {
                     // MUTLAK: Matikan telinga sebelum mulut terbuka!
                     if (ear != null) ear.cancel(); 
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
                     mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
@@ -1210,9 +1242,11 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     @Override
+    @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_MEMORY);
-        onCreate(db);
+        Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
+        // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
+        // Gunakan ALTER TABLE di sini jika di masa depan ada penambahan kolom.
     }
 
     public void saveFact(String fact) {
@@ -1438,6 +1472,15 @@ public class ServiceLocator {
      * Akan melempar pengecualian jika layanan dicari sebelum diregistrasi.
      */
     @SuppressWarnings("unchecked")
+    /**
+     * Mengambil layanan tanpa melempar Exception jika belum terdaftar.
+     * Digunakan oleh Watchdog & Recovery untuk menghindari Crash Loop.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T find(Class<T> serviceClass) {
+        return (T) services.get(serviceClass);
+    }
+
     public <T> T resolve(Class<T> serviceClass) {
         Object service = services.get(serviceClass);
         if (service == null) {
@@ -1519,6 +1562,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
+    private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
     
@@ -1534,6 +1578,8 @@ public class MainActivity extends AppCompatActivity {
         
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        
+        // Memicu Popup Perizinan Cerdas
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
@@ -1568,6 +1614,7 @@ public class MainActivity extends AppCompatActivity {
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
 
+        // SENSOR BUNGLON (AUTO-DETECT)
         apiKeyInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -1585,7 +1632,7 @@ public class MainActivity extends AppCompatActivity {
                     int pos = adapter.getPosition(detectedProvider);
                     if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
                         spinnerProvider.setSelection(pos);
-                        Toast.makeText(MainActivity.this, "🤖 Auto-Detect: " + detectedProvider, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "🤖 Provider Terdeteksi: " + detectedProvider, Toast.LENGTH_SHORT).show();
                         playClickSound();
                     }
                 }
@@ -1606,14 +1653,30 @@ public class MainActivity extends AppCompatActivity {
                 RadioButton rb = findViewById(checkedId);
                 selectedModel = rb.getTag().toString();
             }
+
             prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
-            Toast.makeText(this, "Tersimpan: " + selectedProvider, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
-        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+        findViewById(R.id.btnSettings).setOnClickListener(v -> {
+            playClickSound();
+            showSettingsDialog();
+        });
+
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
+            playClickSound();
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        });
+
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
+            playClickSound();
+            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        });
+
+        findViewById(R.id.btnStart).setOnClickListener(v -> {
+            playClickSound();
+            checkPermissionsAndStart();
+        });
     }
 
     @Override
@@ -1621,6 +1684,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
+        
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
         if(tvOverlay != null) {
             tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
@@ -1632,31 +1696,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 🌟 INJEKSI 3 MODEL TERBARU DARI SETIAP PROVIDER 
     private void updateModelList(String provider) {
         rgModel.removeAllViews();
         List<String[]> models = new ArrayList<>();
         
         if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3.3 70B (Versatile/Pintar)", "llama-3.3-70b-versatile"});
-            models.add(new String[]{"Llama 3.1 8B (Super Cepat)", "llama-3.1-8b-instant"});
-            models.add(new String[]{"DeepSeek R1 70B (Logika Ekstra)", "deepseek-r1-distill-llama-70b"});
+            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
+            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
+            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
         } else if (provider.equals("Gemini (Google Studio)")) {
-            models.add(new String[]{"Gemini 2.0 Flash (Paling Baru & Cepat)", "gemini-2.0-flash"});
+            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
             models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
-            models.add(new String[]{"Gemini 3.5 Flash (Custom/TokoVPN)", "gemini-3.5-flash"});
+            models.add(new String[]{"Gemini 3.5 Flash (Custom/Proxy)", "gemini-3.5-flash"});
+            models.add(new String[]{"Gemini 3.8 Flash (Custom/Proxy)", "gemini-3.8-flash"});
         } else if (provider.equals("DeepSeek")) {
-            models.add(new String[]{"DeepSeek Chat V3 (Standar Utama)", "deepseek-chat"});
-            models.add(new String[]{"DeepSeek Reasoner R1 (Pemikir Cerdas)", "deepseek-reasoner"});
-            models.add(new String[]{"DeepSeek Coder (Koding)", "deepseek-coder"});
+            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
+            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
         } else if (provider.equals("OpenAI")) {
+            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
             models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
-            models.add(new String[]{"GPT-4o Mini (Kecil & Hemat)", "gpt-4o-mini"});
-            models.add(new String[]{"o3-mini (Reasoning Tercepat)", "o3-mini"});
         } else if (provider.equals("TokoVPN (Proxy)")) {
-            models.add(new String[]{"Claude 3.7 Sonnet (Paling Tangguh)", "claude-3-7-sonnet"});
-            models.add(new String[]{"GPT-4.5 Preview (Pro)", "gpt-4.5-preview"});
-            models.add(new String[]{"Gemini 2.5 Pro (Custom)", "gemini-2.5-pro"});
+            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
+            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
         }
 
         String savedModel = prefs.getString("ai_model", "");
@@ -1702,9 +1763,35 @@ public class MainActivity extends AppCompatActivity {
         try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){}
     }
 
+    // 🛡️ FITUR BARU: POPUP PERIZINAN MUTLAK
     private void requestBasicPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
+        List<String> permissionsNeeded = new ArrayList<>();
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+            }
+        }
+        
+        // Notifikasi untuk Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
+        if (!permissionsNeeded.isEmpty()) {
+            // Mencegat dengan Popup Kustom sebelum izin asli sistem muncul
+            new AlertDialog.Builder(this)
+                .setTitle("🎙️ Izin Wajib Nova AI")
+                .setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.\n\nMohon izinkan pada menu selanjutnya.")
+                .setPositiveButton("Beri Izin", (dialog, which) -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
+                    }
+                })
+                .setCancelable(false) // Tidak bisa ditutup sembarangan
+                .show();
         }
     }
 
@@ -1730,6 +1817,14 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show();
             return;
         }
+        
+        // Pengecekan ekstra sebelum start
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu agar Nova tidak bisu/tuli!", Toast.LENGTH_LONG).show();
+            requestBasicPermissions();
+            return;
+        }
+
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
@@ -1838,14 +1933,9 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
-import android.media.ToneGenerator;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -1859,8 +1949,12 @@ import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import java.util.ArrayList;
+import com.novaagent.app.core.audio.NovaAudioDirector;
 
+/**
+ * UI MURNI (DUMB COMPONENT)
+ * Sekarang 100% bersih dari SpeechRecognizer. Hanya mengatur Animasi dan Drag!
+ */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
@@ -1873,30 +1967,19 @@ public class FloatingBubbleView implements EventBus.EventListener {
     
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private boolean isMicMutedBySystem = false; 
-
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechIntent;
     private AnimatorSet pulseAnimator;
-    
-    // PEMBANGKIT SUARA (Bisa bunyi biarpun HP disilent, ala Voice Note WA)
-    private ToneGenerator toneGen;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-        this.toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
-        
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
-        setupSpeechRecognizer();
     }
 
-    private void playTone(int toneType, int durationMs) {
-        try {
-            if (toneGen != null) toneGen.startTone(toneType, durationMs);
-        } catch (Exception e) {}
+    private void playUISound(int soundEffectType) {
+        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+        if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
     }
 
     private void initCloseTarget() {
@@ -1909,44 +1992,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
         closeParams.y = 150;
     }
 
-    private void setupSpeechRecognizer() {
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
-        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { bubbleView.setAlpha(1.0f); }
-            @Override public void onBeginningOfSpeech() { }
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { }
-            
-            @Override public void onError(int error) { 
-                if (isListeningMode && !isMicMutedBySystem) {
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (isListeningMode && !isMicMutedBySystem) speechRecognizer.startListening(speechIntent);
-                    }, 500);
-                }
-            }
-            
-            @Override public void onResults(Bundle results) {
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches != null && !matches.isEmpty()) {
-                    String command = matches.get(0);
-                    try {
-                        AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                        if (engine != null) engine.startTask(command);
-                    } catch (Exception e) {}
-                } else if (isListeningMode && !isMicMutedBySystem) {
-                    speechRecognizer.startListening(speechIntent);
-                }
-            }
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
-    }
-
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
@@ -1954,28 +1999,29 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
         startJellyPulseAnimation();
 
-        // Logika Klik Jelly (Tidur / Bangun ala WA VN)
         bubbleView.setOnClickListener(v -> {
+            playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                playTone(ToneGenerator.TONE_CDMA_PIP, 150); // Bunyi 'Pip' Bangun
                 bubbleView.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
+                
+                // Minta Sutradara Audio Pusat untuk buka telinga
+                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(true); } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             } else {
-                playTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 150); // Bunyi 'Bloop' Tidur
                 bubbleView.setAlpha(0.4f);
                 if (pulseAnimator != null) pulseAnimator.pause();
-                if (speechRecognizer != null) speechRecognizer.stopListening();
+                
+                // Minta Sutradara Audio Pusat untuk tutup telinga
+                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch(Exception e){}
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
 
-        // Smart Drag to Close dengan Hover Detection
         bubbleView.setOnTouchListener(new View.OnTouchListener() {
             private int initialX, initialY; private float initialTouchX, initialTouchY; private WindowManager.LayoutParams params;
             private boolean isDragging = false;
-            private boolean isHoveringX = false;
             
             @Override public boolean onTouch(View v, MotionEvent event) {
                 if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
@@ -1984,7 +2030,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         isDragging = false;
-                        isHoveringX = false;
                         initialX = params.x; initialY = params.y;
                         initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
                         if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
@@ -1994,34 +2039,23 @@ public class FloatingBubbleView implements EventBus.EventListener {
                         int diffX = (int) (event.getRawX() - initialTouchX);
                         int diffY = (int) (event.getRawY() - initialTouchY);
                         if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
-                        
                         params.x = initialX + diffX;
                         params.y = initialY + diffY;
                         windowManager.updateViewLayout(bubbleView, params);
                         
-                        // Deteksi area X (Zona Bawah)
                         if (params.y > metrics.heightPixels - 500) {
-                            if (!isHoveringX) {
-                                isHoveringX = true;
-                                playTone(ToneGenerator.TONE_CDMA_KEYPAD_VOLUME_KEY_LITE, 50); // Bunyi Tik (Masuk zona hapus)
-                                closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
-                                closeTargetView.setAlpha(1.0f);
-                            }
+                            closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                            closeTargetView.setAlpha(1.0f);
                         } else {
-                            if (isHoveringX) {
-                                isHoveringX = false;
-                                closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
-                                closeTargetView.setAlpha(0.7f);
-                            }
+                            closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                            closeTargetView.setAlpha(0.7f);
                         }
                         return true;
                         
                     case MotionEvent.ACTION_UP:
                         if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
-                        
-                        // Jika dilepas tepat di zona X
-                        if (isHoveringX) {
-                            playTone(ToneGenerator.TONE_CDMA_NETWORK_BUSY_ONE_SHOT, 200); // Bunyi Tong Sampah WA
+                        if (params.y > metrics.heightPixels - 500) {
+                            playUISound(AudioManager.FX_KEYPRESS_DELETE);
                             isListeningMode = false;
                             context.stopService(new Intent(context, NovaForegroundService.class));
                         }
@@ -2067,19 +2101,12 @@ public class FloatingBubbleView implements EventBus.EventListener {
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
-        try { 
-            windowManager.addView(bubbleView, params); 
-            isAdded = true; 
-            playTone(ToneGenerator.TONE_CDMA_PIP, 200); // Bunyi saat awal Jelly muncul
-            speechRecognizer.startListening(speechIntent); 
-        } catch (Exception e) {}
+        try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
     }
 
     public void remove() {
         isListeningMode = false;
         if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
-        if (speechRecognizer != null) speechRecognizer.destroy();
-        if (toneGen != null) toneGen.release();
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -2087,14 +2114,8 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
-            
             if ("NOVA_SPEAKING_START".equals(state)) {
-                isMicMutedBySystem = true;
-                speechRecognizer.stopListening();
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
-            } else if ("RESUME_LISTENING".equals(state)) {
-                isMicMutedBySystem = false;
-                if (isListeningMode) bubbleView.post(() -> speechRecognizer.startListening(speechIntent));
             }
         }
     }
@@ -2275,10 +2296,10 @@ public class RecoveryManager implements EventBus.EventListener {
         try {
             if (level >= 1) {
                 // LEVEL 1: SOFT RESET (Menghapus Ingatan / Cache)
-                NodeCache nodeCache = locator.resolve(NodeCache.class);
+                NodeCache nodeCache = locator.find(NodeCache.class);
                 if (nodeCache != null) nodeCache.invalidate();
                 
-                ScreenCache screenCache = locator.resolve(ScreenCache.class);
+                ScreenCache screenCache = locator.find(ScreenCache.class);
                 if (screenCache != null) screenCache.invalidate();
 
                 // Kembalikan Otak ke posisi siaga
@@ -2288,7 +2309,7 @@ public class RecoveryManager implements EventBus.EventListener {
 
             if (level >= 2) {
                 // LEVEL 2: COMPONENT REBIND (Membangun ulang mata visual)
-                MediaProjectionWrapper projection = locator.resolve(MediaProjectionWrapper.class);
+                MediaProjectionWrapper projection = locator.find(MediaProjectionWrapper.class);
                 if (projection != null) {
                     projection.rebind();
                     Log.i(TAG, "Level 2 Sukses: MediaProjection di-rebind tanpa mematikan Service.");
@@ -2325,6 +2346,7 @@ import android.util.Log;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import android.os.SystemClock;
 
 /**
  * Pengawas Keamanan Sistem (Refactored: Resolusi C002)
@@ -2343,9 +2365,9 @@ public class NovaWatchdog implements EventBus.EventListener {
     private boolean isRunning = false;
     private boolean isTaskActive = false; // Hanya pantau AI & Vision jika ada tugas aktif
 
-    private long lastA11yPing = System.currentTimeMillis();
-    private long lastEnginePing = System.currentTimeMillis();
-    private long lastVisionPing = System.currentTimeMillis();
+    private long lastA11yPing = SystemClock.elapsedRealtime();
+    private long lastEnginePing = SystemClock.elapsedRealtime();
+    private long lastVisionPing = SystemClock.elapsedRealtime();
 
     public NovaWatchdog() {
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
@@ -2372,14 +2394,14 @@ public class NovaWatchdog implements EventBus.EventListener {
     }
 
     public void ping(PingSource source) {
-        long now = System.currentTimeMillis();
+        long now = SystemClock.elapsedRealtime();
         if (source == PingSource.A11Y) lastA11yPing = now;
         else if (source == PingSource.ENGINE) lastEnginePing = now;
         else if (source == PingSource.VISION) lastVisionPing = now;
     }
 
     private void resetPings() {
-        long now = System.currentTimeMillis();
+        long now = SystemClock.elapsedRealtime();
         lastA11yPing = now;
         lastEnginePing = now;
         lastVisionPing = now;
@@ -2405,7 +2427,7 @@ public class NovaWatchdog implements EventBus.EventListener {
         public void run() {
             if (!isRunning) return;
 
-            long now = System.currentTimeMillis();
+            long now = SystemClock.elapsedRealtime();
             boolean a11yDead = (now - lastA11yPing) > TIMEOUT_A11Y_MS;
             boolean engineDead = isTaskActive && ((now - lastEnginePing) > TIMEOUT_ENGINE_MS);
             boolean visionDead = isTaskActive && ((now - lastVisionPing) > TIMEOUT_VISION_MS);
@@ -2542,6 +2564,21 @@ public class SystemActionInjector {
                     if (batSentinel != null) batSentinel.scheduleBatteryTask(cmd.x, cmd.textToType);
                 } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "approve_action":
+                try {
+                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
+                    if (safety != null) safety.approvePendingAction();
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "reject_action":
+                try {
+                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
+                    if (safety != null) safety.rejectPendingAction();
+                } catch(Exception e){}
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "IDLE"));
                 return;
             case "done":
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
@@ -2718,6 +2755,14 @@ public class MlKitOcrEngine {
         ocrThread = Executors.newSingleThreadExecutor();
     }
 
+    public void shutdown() {
+        try {
+            recognizer.close();
+            ocrThread.shutdownNow();
+            Log.i(TAG, "Mesin OCR ML Kit berhasil dimatikan.");
+        } catch (Exception e) { Log.e(TAG, "Gagal mematikan OCR", e); }
+    }
+
     public void processImage(Bitmap incomingBitmap) {
         if (incomingBitmap == null || incomingBitmap.isRecycled()) return;
 
@@ -2877,7 +2922,7 @@ public class NovaAccessibilityService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         // Heartbeat untuk NovaWatchdog
         try {
-            NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(NovaWatchdog.class);
+            NovaWatchdog watchdog = ServiceLocator.getInstance().find(NovaWatchdog.class);
             watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.A11Y);
         } catch (Exception ignored) {}
     }
@@ -3082,6 +3127,7 @@ public class MediaProjectionWrapper {
     private int density;
 
     private volatile boolean isCaptureRequested = false;
+    private MediaProjection.Callback projectionCallback;
 
     public MediaProjectionWrapper(Context context, MediaProjection mediaProjection, MlKitOcrEngine ocrEngine, ScreenCache screenCache) {
         this.mediaProjection = mediaProjection;
@@ -3100,6 +3146,14 @@ public class MediaProjectionWrapper {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
 
+        projectionCallback = new MediaProjection.Callback() {
+            @Override public void onStop() {
+                Log.e(TAG, "MediaProjection dihentikan oleh OS/Pengguna secara sepihak!");
+                stop();
+            }
+        };
+        mediaProjection.registerCallback(projectionCallback, backgroundHandler);
+
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
         
         imageReader.setOnImageAvailableListener(reader -> {
@@ -3107,7 +3161,7 @@ public class MediaProjectionWrapper {
             try {
                 image = reader.acquireLatestImage();
                 try { 
-                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
+                    com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().find(com.novaagent.app.infrastructure.system.NovaWatchdog.class); 
                     if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.VISION); 
                 } catch (Exception e) {}
                 
@@ -3184,6 +3238,8 @@ public class MediaProjectionWrapper {
         pauseVision();
         if (imageReader != null) imageReader.close();
         if (backgroundThread != null) backgroundThread.quitSafely();
+        if (mediaProjection != null && projectionCallback != null) mediaProjection.unregisterCallback(projectionCallback);
+        if (ocrEngine != null) ocrEngine.shutdown();
         if (mediaProjection != null) mediaProjection.stop();
     }
 
@@ -3331,6 +3387,10 @@ public class NovaForegroundService extends Service {
         locator.register(ConditionalSentinelEngine.class, null);
         locator.register(HologramAuraManager.class, null);
         locator.register(LongTermMemoryEngine.class, null);
+        // Matikan total EventBus agar tidak ada Thread Zombi yang menguras baterai
+        try {
+            com.novaagent.app.core.bus.EventBus.getInstance().shutdown();
+        } catch(Exception e){}
     }
 
     @Nullable
@@ -3689,7 +3749,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -3703,12 +3762,15 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * FASE AUDIT TAHAP 4 [N011]: Network Resource Cleanup & Timeout Handling
+ */
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 2; // Batas wajar retry
+    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -3720,7 +3782,7 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS) // Waktu tunggu optimal
+                .readTimeout(35, TimeUnit.SECONDS)
                 .build();
     }
 
@@ -3730,17 +3792,16 @@ public class UniversalNetworkClient {
         String apiKey = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        // 🛡️ Mencegah model kosong
         if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
+            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
             else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
             else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
-            else modelName = "llama-3.3-70b-versatile";
+            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
+            else modelName = "llama-3.1-8b-instant";
         }
 
         if (apiKey.isEmpty()) {
-            callback.onError("Maaf Bos, API Key Anda masih kosong.");
+            callback.onError("API Key (" + provider + ") Kosong!");
             return;
         }
 
@@ -3815,42 +3876,42 @@ public class UniversalNetworkClient {
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Maaf Bos, jaringan internet sedang tidak stabil.");
+                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        int code = response.code();
-                        
-                        // 🛡️ ANTI-LEMOT & ANTI-NGELANTUR: Tangani Error Secara Cerdas!
-                        if (code == 429) {
-                            // KUOTA HABIS (Langsung lapor bahasa Indonesia, tanpa retry)
-                            callback.onError("Maaf Bos, kuota " + provider + " Anda sudah habis. Silakan ganti API Key.");
-                            return;
-                        } 
-                        else if (code == 401 || code == 403 || code == 400) {
-                            // KUNCI SALAH / FORMAT DITOLAK (Langsung lapor bahasa Indonesia, tanpa retry)
-                            callback.onError("Maaf Bos, API Key salah atau ditolak oleh server " + provider + ".");
-                            return;
-                        } 
-                        else if (code >= 500) {
-                            // SERVER DOWN (Baru boleh di-retry)
-                            handleRetry(messages, callback, retryCount, "Server " + provider + " sedang sibuk.");
-                            return;
-                        } else {
-                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
+                    try {
+                        if (!response.isSuccessful()) {
+                            int code = response.code();
+                            String errorBody = response.body() != null ? response.body().string() : "";
+                            String errorMsg = "HTTP " + code;
+                            try {
+                                JSONObject errObj = new JSONObject(errorBody);
+                                if(errObj.has("error")) {
+                                    Object err = errObj.get("error");
+                                    if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
+                                    else if(err instanceof String) errorMsg = (String)err;
+                                }
+                            } catch (Exception ignored) {}
+                            
+                            if (code == 400 || code == 401 || code == 403 || code == 404) {
+                                callback.onError(provider + ": " + errorMsg);
+                            } else {
+                                handleRetry(messages, callback, retryCount, errorMsg);
+                            }
                             return;
                         }
-                    }
-                    try {
+                        
                         String respBody = response.body().string();
                         String content = "";
                         if (provider.equals("Gemini (Google Studio)")) {
                             JSONObject jsonResponse = new JSONObject(respBody);
                             JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+                            
                             if (candidate.has("content")) {
                                 content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
                             } else {
-                                callback.onError("Maaf Bos, jawaban diblokir oleh filter keamanan Google.");
+                                String finishReason = candidate.optString("finishReason", "UNKNOWN");
+                                callback.onError("Gemini memblokir respon (Safety Filter: " + finishReason + ")");
                                 return;
                             }
                         } else {
@@ -3858,23 +3919,27 @@ public class UniversalNetworkClient {
                         }
                         callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Maaf Bos, gagal membaca struktur AI dari " + provider);
+                        callback.onError("Gagal parse JSON " + provider);
+                    } finally {
+                        // AUDIT FIX [N011]: Wajib menutup Response agar tidak terjadi Memory Leak & Penyumbatan Koneksi!
+                        if (response != null) {
+                            try { response.close(); } catch (Exception ignored) {}
+                        }
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Maaf Bos, gagal merakit permintaan jaringan.");
+            callback.onError("Gagal merakit request " + provider);
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String humanReason) {
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
-            // Setelah mentok retry, jangan kasih kode Inggris, kasih pesan lokal kita.
-            callback.onError(humanReason);
+            callback.onError(reason + " (Gagal 3x)");
         }
     }
 }

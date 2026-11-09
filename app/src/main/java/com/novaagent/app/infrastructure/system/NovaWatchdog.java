@@ -6,6 +6,7 @@ import android.util.Log;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import android.os.SystemClock;
 
 /**
  * Pengawas Keamanan Sistem (Refactored: Resolusi C002)
@@ -24,9 +25,9 @@ public class NovaWatchdog implements EventBus.EventListener {
     private boolean isRunning = false;
     private boolean isTaskActive = false; // Hanya pantau AI & Vision jika ada tugas aktif
 
-    private long lastA11yPing = System.currentTimeMillis();
-    private long lastEnginePing = System.currentTimeMillis();
-    private long lastVisionPing = System.currentTimeMillis();
+    private long lastA11yPing = SystemClock.elapsedRealtime();
+    private long lastEnginePing = SystemClock.elapsedRealtime();
+    private long lastVisionPing = SystemClock.elapsedRealtime();
 
     public NovaWatchdog() {
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
@@ -53,14 +54,14 @@ public class NovaWatchdog implements EventBus.EventListener {
     }
 
     public void ping(PingSource source) {
-        long now = System.currentTimeMillis();
+        long now = SystemClock.elapsedRealtime();
         if (source == PingSource.A11Y) lastA11yPing = now;
         else if (source == PingSource.ENGINE) lastEnginePing = now;
         else if (source == PingSource.VISION) lastVisionPing = now;
     }
 
     private void resetPings() {
-        long now = System.currentTimeMillis();
+        long now = SystemClock.elapsedRealtime();
         lastA11yPing = now;
         lastEnginePing = now;
         lastVisionPing = now;
@@ -86,7 +87,7 @@ public class NovaWatchdog implements EventBus.EventListener {
         public void run() {
             if (!isRunning) return;
 
-            long now = System.currentTimeMillis();
+            long now = SystemClock.elapsedRealtime();
             boolean a11yDead = (now - lastA11yPing) > TIMEOUT_A11Y_MS;
             boolean engineDead = isTaskActive && ((now - lastEnginePing) > TIMEOUT_ENGINE_MS);
             boolean visionDead = isTaskActive && ((now - lastVisionPing) > TIMEOUT_VISION_MS);

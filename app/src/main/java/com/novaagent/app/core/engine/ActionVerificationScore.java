@@ -51,6 +51,15 @@ public class ActionVerificationScore {
         }
 
         // 5. TARGET NODE DISAPPEAR / MANIPULATED (+0.4)
+        // Validasi ekstra ketat untuk aksi mengetik (Memastikan teks benar-benar muncul)
+        if ("type".equals(command.action) && command.textToType != null && !command.textToType.isEmpty()) {
+             String allTextAfter = extractAllText(ctxAfter).toLowerCase();
+             if (allTextAfter.contains(command.textToType.toLowerCase())) {
+                 score += 0.5;
+                 reasons.append("[Teks terketik berhasil divalidasi +0.5] ");
+             }
+        }
+
         if ("tap".equals(command.action) || "click".equals(command.action) || "type".equals(command.action)) {
             String nodeBefore = ctxBefore.getTextAtCoordinate(command.x, command.y);
             String nodeAfter = ctxAfter.getTextAtCoordinate(command.x, command.y);

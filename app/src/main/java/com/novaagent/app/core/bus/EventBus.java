@@ -25,6 +25,16 @@ public class EventBus {
 
     private EventBus() {}
 
+    public void shutdown() {
+        try {
+            ioLane.shutdownNow();
+            computationLane.shutdownNow();
+            listeners.clear();
+            instance = null;
+            Log.i(TAG, "EventBus berhasil dimatikan secara total.");
+        } catch (Exception e) {}
+    }
+
     public static EventBus getInstance() {
         if (instance == null) {
             synchronized (EventBus.class) {

@@ -52,7 +52,7 @@ public class NovaAccessibilityService extends AccessibilityService {
     public void onAccessibilityEvent(AccessibilityEvent event) {
         // Heartbeat untuk NovaWatchdog
         try {
-            NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(NovaWatchdog.class);
+            NovaWatchdog watchdog = ServiceLocator.getInstance().find(NovaWatchdog.class);
             watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.A11Y);
         } catch (Exception ignored) {}
     }

@@ -49,10 +49,10 @@ public class RecoveryManager implements EventBus.EventListener {
         try {
             if (level >= 1) {
                 // LEVEL 1: SOFT RESET (Menghapus Ingatan / Cache)
-                NodeCache nodeCache = locator.resolve(NodeCache.class);
+                NodeCache nodeCache = locator.find(NodeCache.class);
                 if (nodeCache != null) nodeCache.invalidate();
                 
-                ScreenCache screenCache = locator.resolve(ScreenCache.class);
+                ScreenCache screenCache = locator.find(ScreenCache.class);
                 if (screenCache != null) screenCache.invalidate();
 
                 // Kembalikan Otak ke posisi siaga
@@ -62,7 +62,7 @@ public class RecoveryManager implements EventBus.EventListener {
 
             if (level >= 2) {
                 // LEVEL 2: COMPONENT REBIND (Membangun ulang mata visual)
-                MediaProjectionWrapper projection = locator.resolve(MediaProjectionWrapper.class);
+                MediaProjectionWrapper projection = locator.find(MediaProjectionWrapper.class);
                 if (projection != null) {
                     projection.rebind();
                     Log.i(TAG, "Level 2 Sukses: MediaProjection di-rebind tanpa mematikan Service.");

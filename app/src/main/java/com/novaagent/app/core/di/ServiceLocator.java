@@ -38,6 +38,15 @@ public class ServiceLocator {
      * Akan melempar pengecualian jika layanan dicari sebelum diregistrasi.
      */
     @SuppressWarnings("unchecked")
+    /**
+     * Mengambil layanan tanpa melempar Exception jika belum terdaftar.
+     * Digunakan oleh Watchdog & Recovery untuk menghindari Crash Loop.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T find(Class<T> serviceClass) {
+        return (T) services.get(serviceClass);
+    }
+
     public <T> T resolve(Class<T> serviceClass) {
         Object service = services.get(serviceClass);
         if (service == null) {
