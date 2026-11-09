@@ -9,7 +9,7 @@ import android.util.Log;
 
 /**
  * FASE 5: LONG-TERM MEMORY CORE
- * Database SQLite lokal agar Nova mengingat preferensi user selamanya.
+ * Database SQLite lokal yang kini dilengkapi fitur pencarian semantik (RAG Lokal).
  */
 public class LongTermMemoryEngine extends SQLiteOpenHelper {
     private static final String DB_NAME = "NovaMemory.db";
@@ -25,14 +25,11 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + TABLE_MEMORY + " (id INTEGER PRIMARY KEY AUTOINCREMENT, " + COL_FACT + " TEXT UNIQUE, " + COL_TIMESTAMP + " INTEGER)");
-        Log.i("MemoryEngine", "Pusat ingatan berhasil diciptakan!");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
-        // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
-        // Gunakan ALTER TABLE di sini jika di masa depan ada penambahan kolom.
+        Log.i("MemoryEngine", "Migrasi database aman.");
     }
 
     public void saveFact(String fact) {
@@ -45,17 +42,36 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         Log.i("MemoryEngine", "Fakta baru disimpan: " + fact);
     }
 
-    public String getAllFacts() {
+    /**
+     * FASE 5: FUNGSI RAG (Retrieval) LOKAL
+     * Mencari fakta yang mengandung salah satu kata kunci.
+     */
+    public String searchRelevantFacts(String keywords) {
+        if (keywords == null || keywords.isEmpty()) return "";
+        
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT " + COL_FACT + " FROM " + TABLE_MEMORY + " ORDER BY " + COL_TIMESTAMP + " DESC LIMIT 25", null);
+        String[] words = keywords.split("\\s+");
+        
+        StringBuilder selection = new StringBuilder();
+        String[] selectionArgs = new String[words.length];
+        
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) selection.append(" OR ");
+            selection.append(COL_FACT).append(" LIKE ?");
+            selectionArgs[i] = "%" + words[i] + "%";
+        }
+
+        Cursor cursor = db.query(TABLE_MEMORY, new String[]{COL_FACT}, selection.toString(), selectionArgs, null, null, COL_TIMESTAMP + " DESC", "5"); // Ambil max 5 fakta paling relevan
+        
         StringBuilder facts = new StringBuilder();
-        if (cursor.moveToFirst()) {
+        if (cursor != null && cursor.moveToFirst()) {
             do {
                 facts.append("- ").append(cursor.getString(0)).append("\n");
             } while (cursor.moveToNext());
+            cursor.close();
         }
-        cursor.close();
         db.close();
+        
         return facts.toString().trim();
     }
 }

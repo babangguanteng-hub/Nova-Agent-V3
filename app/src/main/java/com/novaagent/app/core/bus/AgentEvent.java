@@ -1,12 +1,9 @@
 package com.novaagent.app.core.bus;
 
-/**
- * Data Transfer Object murni untuk komunikasi antar-layer.
- * Didesain Immutable (Tidak dapat diubah setelah dibuat) agar aman melintasi Multi-Thread.
- */
 public class AgentEvent {
     public enum EventType {
-        SCREEN_UPDATED, 
+        RAW_SCREEN_SCANNED, // FASE 2: Data mentah dari OS
+        SCREEN_UPDATED,     // FASE 2: Data matang dari PerceptionCoordinator
         STATE_CHANGED, 
         ACTION_REQUESTED, 
         ACTION_VALIDATED,

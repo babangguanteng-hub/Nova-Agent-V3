@@ -3,17 +3,18 @@ package com.novaagent.app.core.brain;
 import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.data.network.UniversalNetworkClient;
 import com.novaagent.app.data.repository.PromptRegistry;
+import android.util.Log;
 
 public class CognitiveCore {
-    private final ConversationMemory memory;
+    private static final String TAG = "CognitiveCore";
     private final UniversalNetworkClient networkClient;
     private final ContextManager contextManager;
     private final TaskPlanner taskPlanner;
+    private final MemoryCoordinator memoryCoordinator; // FASE 5: Penambahan Coordinator
 
     public interface CoreCallback {
         void onDecisionMade(ActionCommandDto command);
@@ -21,36 +22,38 @@ public class CognitiveCore {
     }
 
     public CognitiveCore(Context context) {
-        this.memory = new ConversationMemory();
         this.networkClient = new UniversalNetworkClient(context);
         this.contextManager = new ContextManager();
         this.taskPlanner = new TaskPlanner();
+        this.memoryCoordinator = new MemoryCoordinator();
     }
 
     public TaskPlanner getPlanner() { return taskPlanner; }
-    public void wipeMemory() { memory.clearAmnesia(); taskPlanner.abortPlan(); }
+    
+    public void wipeMemory() { 
+        memoryCoordinator.wipeShortTermMemory(); 
+        taskPlanner.abortPlan(); 
+    }
 
     public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
         try {
-            // 1. Persiapan Perencanaan (Goal Management)
             if (!taskPlanner.hasActivePlan()) {
                 taskPlanner.setMainGoal(userCommand);
             }
 
-            // 2. Kompresi Layar (Hemat Token Input)
             String compressedUI = contextManager.compressContext(rawContext);
-
-            // 3. Bangun Prompt Terarah
             JSONArray finalMessages = new JSONArray();
-            String facts = "";
-            try {
-                LongTermMemoryEngine db = ServiceLocator.getInstance().resolve(LongTermMemoryEngine.class);
-                if (db != null) facts = db.getAllFacts();
-            } catch (Exception e) {}
-            
-            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.buildSystemPrompt(facts)));
 
-            JSONArray history = memory.getMemoryAsJsonArray();
+            // FASE 5: LOCAL RAG INJECTION
+            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini, bukan semua database!
+            String relevantFacts = memoryCoordinator.retrieveRelevantFacts(userCommand);
+            if (!relevantFacts.isEmpty()) {
+                Log.i(TAG, "RAG Aktif. Fakta ditemukan: \n" + relevantFacts);
+            }
+
+            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.buildSystemPrompt(relevantFacts)));
+
+            JSONArray history = memoryCoordinator.getRecentChatHistory();
             for (int i = 0; i < history.length(); i++) finalMessages.put(history.getJSONObject(i));
 
             String activeTask = taskPlanner.getGoalAndProgress();
@@ -60,16 +63,14 @@ public class CognitiveCore {
             }
 
             finalMessages.put(new JSONObject().put("role", "user").put("content", contextPrompt));
-            memory.addUserMessage(activeTask);
+            memoryCoordinator.addContext("user", activeTask);
 
-            // 4. Eksekusi Jaringan
             networkClient.executeCall(finalMessages, new UniversalNetworkClient.NetworkCallback() {
                 @Override public void onSuccess(String rawJsonContent) {
                     try {
                         ActionCommandDto cmd = new ActionCommandDto(rawJsonContent);
-                        if (cmd.speech != null && !cmd.speech.isEmpty()) memory.addAssistantMessage(cmd.speech);
+                        if (cmd.speech != null && !cmd.speech.isEmpty()) memoryCoordinator.addContext("assistant", cmd.speech);
                         
-                        // Update Rencana Lokal
                         if (!cmd.subTasks.isEmpty()) taskPlanner.setNewPlan(cmd.subTasks);
                         if (cmd.stepComplete) taskPlanner.markStepComplete();
 

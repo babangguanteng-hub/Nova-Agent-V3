@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * FASE 7: CONDITIONAL SENTINELS
- * Menjalankan perintah secara otomatis berdasarkan waktu atau kondisi sistem (seperti Baterai).
+ * Menjalankan perintah secara otomatis berdasarkan waktu atau kondisi sistem.
  */
 public class ConditionalSentinelEngine {
     private static final String TAG = "SentinelEngine";
@@ -61,7 +61,6 @@ public class ConditionalSentinelEngine {
 
     // --- 2. PEMANTAUAN KONDISI BATERAI ---
     public void scheduleBatteryTask(int targetLevel, String command) {
-        // Asumsi jika minta 15%, berarti minta dieksekusi saat baterai TURUN menyentuh 15% atau ke bawah
         batteryTasks.add(new BatteryTask(targetLevel, command, true));
         Log.i(TAG, "Sentinel Baterai aktif: Menunggu level " + targetLevel + "%.");
         registerBatteryReceiver();
@@ -79,8 +78,7 @@ public class ConditionalSentinelEngine {
         public void onReceive(Context context, Intent intent) {
             int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
             int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            float batteryPct = level * 100 / (float) scale;
-            int currentLevel = Math.round(batteryPct);
+            int currentLevel = Math.round(level * 100 / (float) scale);
 
             Iterator<BatteryTask> iterator = batteryTasks.iterator();
             while (iterator.hasNext()) {
@@ -89,11 +87,10 @@ public class ConditionalSentinelEngine {
                     Log.i(TAG, "Kondisi baterai terpenuhi (" + currentLevel + "%). Mengeksekusi: " + task.command);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baterai menyentuh " + currentLevel + " persen. Mengeksekusi tugas darurat."));
                     executeTask(task.command);
-                    iterator.remove(); // Hapus tugas setelah dieksekusi 1x
+                    iterator.remove(); 
                 }
             }
 
-            // Jika tidak ada tugas baterai lagi, matikan sensor agar hemat baterai
             if (batteryTasks.isEmpty() && isReceiverRegistered) {
                 context.unregisterReceiver(this);
                 isReceiverRegistered = false;
@@ -104,13 +101,8 @@ public class ConditionalSentinelEngine {
     private void executeTask(String command) {
         try {
             AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-            if (engine != null) {
-                // Mengirim kembali perintah ke otak utama seolah-olah user yang bicara
-                engine.startTask(command);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal mengeksekusi tugas terjadwal", e);
-        }
+            if (engine != null) engine.startTask(command);
+        } catch (Exception e) {}
     }
 
     public void shutdown() {

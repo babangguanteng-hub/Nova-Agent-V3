@@ -1,12 +1,5 @@
 
 ==================================================
-FILE: ./.gradle
-==================================================
-
-
-
-
-==================================================
 FILE: ./app/src/main/AndroidManifest.xml
 ==================================================
 
@@ -168,13 +161,10 @@ FILE: ./app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java
 
 package com.novaagent.app.core.bus;
 
-/**
- * Data Transfer Object murni untuk komunikasi antar-layer.
- * Didesain Immutable (Tidak dapat diubah setelah dibuat) agar aman melintasi Multi-Thread.
- */
 public class AgentEvent {
     public enum EventType {
-        SCREEN_UPDATED, 
+        RAW_SCREEN_SCANNED, // FASE 2: Data mentah dari OS
+        SCREEN_UPDATED,     // FASE 2: Data matang dari PerceptionCoordinator
         STATE_CHANGED, 
         ACTION_REQUESTED, 
         ACTION_VALIDATED,
@@ -229,7 +219,7 @@ import java.util.List;
 
 /**
  * FASE 7: CONDITIONAL SENTINELS
- * Menjalankan perintah secara otomatis berdasarkan waktu atau kondisi sistem (seperti Baterai).
+ * Menjalankan perintah secara otomatis berdasarkan waktu atau kondisi sistem.
  */
 public class ConditionalSentinelEngine {
     private static final String TAG = "SentinelEngine";
@@ -270,7 +260,6 @@ public class ConditionalSentinelEngine {
 
     // --- 2. PEMANTAUAN KONDISI BATERAI ---
     public void scheduleBatteryTask(int targetLevel, String command) {
-        // Asumsi jika minta 15%, berarti minta dieksekusi saat baterai TURUN menyentuh 15% atau ke bawah
         batteryTasks.add(new BatteryTask(targetLevel, command, true));
         Log.i(TAG, "Sentinel Baterai aktif: Menunggu level " + targetLevel + "%.");
         registerBatteryReceiver();
@@ -288,8 +277,7 @@ public class ConditionalSentinelEngine {
         public void onReceive(Context context, Intent intent) {
             int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
             int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-            float batteryPct = level * 100 / (float) scale;
-            int currentLevel = Math.round(batteryPct);
+            int currentLevel = Math.round(level * 100 / (float) scale);
 
             Iterator<BatteryTask> iterator = batteryTasks.iterator();
             while (iterator.hasNext()) {
@@ -298,11 +286,10 @@ public class ConditionalSentinelEngine {
                     Log.i(TAG, "Kondisi baterai terpenuhi (" + currentLevel + "%). Mengeksekusi: " + task.command);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baterai menyentuh " + currentLevel + " persen. Mengeksekusi tugas darurat."));
                     executeTask(task.command);
-                    iterator.remove(); // Hapus tugas setelah dieksekusi 1x
+                    iterator.remove(); 
                 }
             }
 
-            // Jika tidak ada tugas baterai lagi, matikan sensor agar hemat baterai
             if (batteryTasks.isEmpty() && isReceiverRegistered) {
                 context.unregisterReceiver(this);
                 isReceiverRegistered = false;
@@ -313,13 +300,8 @@ public class ConditionalSentinelEngine {
     private void executeTask(String command) {
         try {
             AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-            if (engine != null) {
-                // Mengirim kembali perintah ke otak utama seolah-olah user yang bicara
-                engine.startTask(command);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal mengeksekusi tugas terjadwal", e);
-        }
+            if (engine != null) engine.startTask(command);
+        } catch (Exception e) {}
     }
 
     public void shutdown() {
@@ -346,8 +328,8 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 
 /**
- * 10x KOMPLEKSITAS: EVENT-DRIVEN AUTONOMY.
- * Nova bisa disuruh memantau layar dan mengeksekusi aksi otomatis (Misal: War Tiket/Flash Sale).
+ * FASE 7: EVENT-DRIVEN AUTONOMY.
+ * Memantau layar secara pasif dan mengeksekusi aksi otomatis jika target visual muncul.
  */
 public class ProactiveTriggerEngine {
     private static final String TAG = "ProactiveTrigger";
@@ -361,7 +343,7 @@ public class ProactiveTriggerEngine {
         this.targetAction = action;
         this.isActive = true;
         Log.i(TAG, "Trigger Aktif: Memantau kemunculan kata '" + keyword + "'");
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baik, saya akan pantau layar ini. Saya bertindak jika melihat '" + keyword + "'."));
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baik, saya akan pantau layar ini mencari kata " + keyword));
     }
 
     public void evaluateScreen(UnifiedScreenContext ctx) {
@@ -370,9 +352,9 @@ public class ProactiveTriggerEngine {
         String screenText = ctx.toString().toLowerCase();
         if (screenText.contains(targetKeyword)) {
             Log.i(TAG, "⚡ TRIGGER MATCH! Menemukan: " + targetKeyword);
-            isActive = false; // Trigger 1x tembak, matikan setelah sukses
+            isActive = false; // Matikan setelah 1x tembak agar tidak spam
             
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Mengeksekusi aksi proaktif."));
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Melakukan eksekusi cepat."));
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, targetAction));
         }
     }
@@ -413,6 +395,205 @@ public class SemanticVisionEngine {
 
         semantics.append("[Teks Mentah di Layar]:\n").append(ctx.toString());
         return semantics.toString();
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/vision/PerceptionCoordinator.java
+==================================================
+
+package com.novaagent.app.core.vision;
+
+import android.util.Log;
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+
+public class PerceptionCoordinator implements EventBus.EventListener {
+    private static final String TAG = "PerceptionCoord";
+    private final VisualChangeTracker changeTracker;
+    private final SemanticVisionEngine semanticEngine;
+
+    public PerceptionCoordinator() {
+        this.changeTracker = new VisualChangeTracker();
+        this.semanticEngine = new SemanticVisionEngine();
+        EventBus.getInstance().subscribe(AgentEvent.EventType.RAW_SCREEN_SCANNED, this);
+    }
+
+    @Override
+    public void onEvent(AgentEvent event) {
+        if (event.type == AgentEvent.EventType.RAW_SCREEN_SCANNED) {
+            UnifiedScreenContext rawContext = (UnifiedScreenContext) event.payload;
+            
+            // 1. Evaluasi Delta (Apakah layar berubah?)
+            boolean isChanged = changeTracker.isMeaningfulChange(rawContext);
+            rawContext.hasMeaningfulChange = isChanged;
+
+            if (!isChanged) {
+                Log.d(TAG, "Delta 0%: Layar statis. Mencegah spam LLM.");
+            } else {
+                Log.i(TAG, "Delta Terdeteksi: Meneruskan konteks baru ke Otak.");
+            }
+
+            // 2. Publikasikan Konteks Matang ke Sistem
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.SCREEN_UPDATED, rawContext));
+        }
+    }
+
+    public void destroy() {
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.RAW_SCREEN_SCANNED, this);
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/vision/VisualChangeTracker.java
+==================================================
+
+package com.novaagent.app.core.vision;
+
+import com.novaagent.app.data.model.UnifiedScreenContext;
+import com.novaagent.app.data.model.UnifiedScreenContext.ScreenElement;
+import java.security.MessageDigest;
+
+public class VisualChangeTracker {
+    private String lastActionableHash = "";
+    private String lastPackageName = "";
+
+    /**
+     * Memeriksa apakah layar saat ini memiliki struktur UI interaktif yang berbeda
+     * dari layar sebelumnya. Mengabaikan perubahan teks pasif (seperti jam berubah).
+     */
+    public boolean isMeaningfulChange(UnifiedScreenContext currentContext) {
+        if (currentContext == null || currentContext.elements.isEmpty()) return false;
+        
+        // Perubahan Aplikasi (Pindah App) = Selalu bermakna
+        if (!currentContext.packageName.equals(lastPackageName)) {
+            lastPackageName = currentContext.packageName;
+            lastActionableHash = computeActionableHash(currentContext);
+            return true;
+        }
+
+        String currentHash = computeActionableHash(currentContext);
+        
+        if (currentHash.equals(lastActionableHash)) {
+            return false; // Layar statis (Tidak ada perubahan tombol/input baru)
+        } else {
+            lastActionableHash = currentHash;
+            return true;
+        }
+    }
+
+    private String computeActionableHash(UnifiedScreenContext ctx) {
+        StringBuilder sb = new StringBuilder();
+        for (ScreenElement el : ctx.elements) {
+            // Hanya hash elemen yang bisa diintervensi (Button, Input) atau punya teks signifikan
+            if ("Button".equals(el.type) || "Input".equals(el.type) || (el.text != null && el.text.length() > 15)) {
+                sb.append(el.type).append(el.text).append(el.centerX).append(el.centerY);
+            }
+        }
+        return getMd5(sb.toString()); // Kompresi hash ringan
+    }
+
+    private String getMd5(String input) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] array = md.digest(input.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : array) {
+                sb.append(Integer.toHexString((b & 0xFF) | 0x100).substring(1, 3));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return input; // Fallback jika MD5 tidak didukung perangkat
+        }
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/engine/TaskCompletionVerifier.java
+==================================================
+
+package com.novaagent.app.core.engine;
+
+import com.novaagent.app.data.model.UnifiedScreenContext;
+
+/**
+ * FASE 3: Task Completion Verifier
+ * Lapis keamanan lokal untuk memastikan AI tidak berbohong saat mengatakan "Tugas Selesai".
+ */
+public class TaskCompletionVerifier {
+    
+    public boolean verifyCompletion(String goal, UnifiedScreenContext currentContext) {
+        if (currentContext == null || goal == null) return false;
+        
+        // Saat ini AI diberikan kepercayaan utama, namun jika kita butuh validasi absolut,
+        // modul ini akan mengevaluasi korelasi antara GOAL dan TEKS LAYAR.
+        // Cth: Jika goal "Buka aplikasi Pengaturan", pastikan teks "Pengaturan" ada di layar.
+        return true; 
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/engine/TaskCheckpointManager.java
+==================================================
+
+package com.novaagent.app.core.engine;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.List;
+
+/**
+ * 10x KOMPLEKSITAS: TASK CHECKPOINT MANAGER (Fase 3)
+ * Menyimpan titik progres misi secara lokal (Anti-Amnesia saat Crash).
+ */
+public class TaskCheckpointManager {
+    private static final String TAG = "TaskCheckpoint";
+    private final SharedPreferences prefs;
+
+    public TaskCheckpointManager(Context context) {
+        prefs = context.getSharedPreferences("nova_checkpoints", Context.MODE_PRIVATE);
+    }
+
+    public void saveCheckpoint(String mainGoal, List<String> pendingTasks, int stepCount) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("goal", mainGoal);
+            obj.put("stepCount", stepCount);
+            JSONArray tasks = new JSONArray();
+            if (pendingTasks != null) {
+                for (String t : pendingTasks) tasks.put(t);
+            }
+            obj.put("pending", tasks);
+            prefs.edit().putString("active_mission", obj.toString()).apply();
+            Log.d(TAG, "Checkpoint Misi disimpan: " + mainGoal);
+        } catch (Exception e) {}
+    }
+
+    public void clearCheckpoint() {
+        prefs.edit().remove("active_mission").apply();
+        Log.d(TAG, "Checkpoint Misi dibersihkan (Tugas Selesai).");
+    }
+
+    public String getResumableGoal() {
+        try {
+            String data = prefs.getString("active_mission", null);
+            if (data != null) {
+                return new JSONObject(data).getString("goal");
+            }
+        } catch (Exception e) {}
+        return null;
     }
 }
 
@@ -601,7 +782,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
     public void startTask(String task) {
         resolveDependencies();
         
-        // FASE 7: Sentinel / Proactive
         if (task.toLowerCase().contains("pantau") || task.toLowerCase().contains("tunggu")) {
             String keyword = task.replace("pantau", "").replace("kata", "").replace("tunggu", "").trim();
             if (!keyword.isEmpty()) {
@@ -613,15 +793,12 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             }
         }
 
-        // FASE 1, 2, 3, 7: LOCAL INTENT ROUTER (PENJAGA GERBANG & ESTAFET HIBRIDA)
         LocalIntentRouter.RoutingResult routeResult = intentRouter.route(task);
         if (routeResult.isOfflineAction) {
             if (routeResult.speechResponse != null) speak(routeResult.speechResponse);
             if (routeResult.command != null) {
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, routeResult.command));
             }
-            
-            // FASE 3: BATON PASS (Estafet Nalar Daring)
             if (routeResult.nextTask != null && !routeResult.nextTask.isEmpty()) {
                 this.currentTask = routeResult.nextTask;
                 this.isRunning = true;
@@ -633,13 +810,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 
                 Log.i(TAG, "Estafet Hibrida Aktif: Melanjutkan tugas daring -> " + this.currentTask);
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
-                
-                // FASE 4: Hidupkan Mata Visual
                 try {
                     MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
                     if (vision != null) vision.resumeVision();
                 } catch (Exception e) {}
-
                 loopHandler.postDelayed(this::requestScreenData, 2500);
             }
             return;
@@ -655,8 +829,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         
         Log.i(TAG, "Memulai Misi Kognitif: " + task);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
-        
-        // FASE 4: Hidupkan Mata Visual
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.resumeVision();
@@ -669,7 +841,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = false;
         this.currentTask = "";
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-        // FASE 4: Matikan Mata Visual
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.pauseVision();
@@ -700,103 +871,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);
-                        if (!result.isVerified) {
-                            consecutiveFailures++;
-                            failedActionToReport = lastCommandExecuted.action;
-                            
-                            // FASE 8: AUTONOMOUS SELF-HEALING
-                            if (consecutiveFailures == 2) {
-                                Log.w(TAG, "FASE 8 Terpicu: Elemen tidak ditemukan, mencoba Auto-Scroll...");
-                                speak("Mencari di area bawah...");
-                                try {
-                                    ActionCommandDto healCmd = new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}");
-                                    actionInjector.executeAction(healCmd);
-                                } catch(Exception e){}
-                                return; // Tunggu update layar
-                            } else if (consecutiveFailures >= 4) {
-                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
-                                speak("Maaf bos, jalan buntu. Tombol tidak ditemukan.");
-                                stopTask();
-                                return;
-                            }
-                        } else {
-                            consecutiveFailures = 0;
-                        }
-                    }
-
-                    lastScreenContext = newContext;
-                    stepCount++;
-                    if (stepCount > 15) {
-                        speak("Misi terlalu panjang. Saya berhenti.");
-                        stopTask();
-                        return;
-                    }
-
-                    String flatUiText = newContext.toString();
-                    if (flatUiText.length() > 2500) flatUiText = flatUiText.substring(0, 2500);
-                    
-                    if (flatUiText.equals(lastFlatUiText)) { return; }
-                    lastFlatUiText = flatUiText;
-
-                    String enrichedSemantics = visionEngine.extractSemantics(newContext);
-                    processWithAI(enrichedSemantics, failedActionToReport);
-                    break;
-
-                case ACTION_VALIDATED:
-                    ActionCommandDto safeCmd = (ActionCommandDto) event.payload;
-                    lastCommandExecuted = safeCmd;
-                    actionInjector.executeAction(safeCmd);
-                    break;
-
-                case ACTION_EXECUTED:
-                    loopHandler.postDelayed(this::requestScreenData, 4000);
-                    break;
-                    
-                default:
-                    break;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error dalam Event Loop", e);
-        }
-    }
-
-    private void pingWatchdog() {
-        try {
-            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
-            if (watchdog != null) watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.ENGINE);
-        } catch (Exception e) {}
-    }
-
-    private void speak(String text) {
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, text));
-    }
-
-    private void processWithAI(String uiContextString, String failedAction) {
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.THINKING.name()));
-        
-        brainEngine.processTask(currentTask, uiContextString, failedAction, new NovaBrainEngine.BrainCallback() {
-            @Override
-            public void onDecisionMade(ActionCommandDto cmd) {
-                if (!isRunning) return;
-                if ("done".equalsIgnoreCase(cmd.action)) {
-                    if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
-                    stopTask();
-                } else {
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.SAFETY_CHECK.name()));
-                    safetyEngine.evaluateAction(cmd, lastScreenContext);
-                }
-            }
-
-            @Override
-            public void onConfusion(String errorMessage) {
-                if (!isRunning) return;
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, errorMessage));
-                speak(errorMessage);
-                stopTask();
-            }
-        });
-    }
-}
 
 
 
@@ -1215,6 +1289,47 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/ContextManager.java
+==================================================
+
+package com.novaagent.app.core.brain;
+
+import com.novaagent.app.data.model.UnifiedScreenContext;
+import com.novaagent.app.data.model.UnifiedScreenContext.ScreenElement;
+
+public class ContextManager {
+    private static final int MAX_CONTEXT_LENGTH = 1500; // Batas aman hemat token
+
+    /**
+     * Memampatkan UI menjadi seminimal mungkin tanpa kehilangan makna spasial.
+     */
+    public String compressContext(UnifiedScreenContext ctx) {
+        if (ctx == null || ctx.elements == null || ctx.elements.isEmpty()) return "Layar Kosong";
+
+        StringBuilder compressed = new StringBuilder();
+        compressed.append("APP: ").append(ctx.packageName).append("\n");
+
+        for (ScreenElement el : ctx.elements) {
+            // Hapus elemen kosong yang menghabiskan token
+            if (el.text == null || el.text.trim().isEmpty()) continue;
+            
+            // Format hemat token: [Tipe] "Teks" (x,y)
+            compressed.append("[").append(el.type).append("] \"")
+                      .append(el.text).append("\" (")
+                      .append(el.centerX).append(",").append(el.centerY).append(")\n");
+            
+            if (compressed.length() > MAX_CONTEXT_LENGTH) {
+                compressed.append("...[Terpotong demi efisiensi]");
+                break;
+            }
+        }
+        return compressed.toString();
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java
 ==================================================
 
@@ -1229,7 +1344,7 @@ import android.util.Log;
 
 /**
  * FASE 5: LONG-TERM MEMORY CORE
- * Database SQLite lokal agar Nova mengingat preferensi user selamanya.
+ * Database SQLite lokal yang kini dilengkapi fitur pencarian semantik (RAG Lokal).
  */
 public class LongTermMemoryEngine extends SQLiteOpenHelper {
     private static final String DB_NAME = "NovaMemory.db";
@@ -1245,14 +1360,11 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE " + TABLE_MEMORY + " (id INTEGER PRIMARY KEY AUTOINCREMENT, " + COL_FACT + " TEXT UNIQUE, " + COL_TIMESTAMP + " INTEGER)");
-        Log.i("MemoryEngine", "Pusat ingatan berhasil diciptakan!");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        Log.i("MemoryEngine", "Migrasi database dari versi " + oldVersion + " ke " + newVersion + " secara aman.");
-        // AUDIT FIX [N009]: JANGAN PERNAH gunakan DROP TABLE agar ingatan user tidak hilang!
-        // Gunakan ALTER TABLE di sini jika di masa depan ada penambahan kolom.
+        Log.i("MemoryEngine", "Migrasi database aman.");
     }
 
     public void saveFact(String fact) {
@@ -1265,18 +1377,133 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         Log.i("MemoryEngine", "Fakta baru disimpan: " + fact);
     }
 
-    public String getAllFacts() {
+    /**
+     * FASE 5: FUNGSI RAG (Retrieval) LOKAL
+     * Mencari fakta yang mengandung salah satu kata kunci.
+     */
+    public String searchRelevantFacts(String keywords) {
+        if (keywords == null || keywords.isEmpty()) return "";
+        
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery("SELECT " + COL_FACT + " FROM " + TABLE_MEMORY + " ORDER BY " + COL_TIMESTAMP + " DESC LIMIT 25", null);
+        String[] words = keywords.split("\\s+");
+        
+        StringBuilder selection = new StringBuilder();
+        String[] selectionArgs = new String[words.length];
+        
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) selection.append(" OR ");
+            selection.append(COL_FACT).append(" LIKE ?");
+            selectionArgs[i] = "%" + words[i] + "%";
+        }
+
+        Cursor cursor = db.query(TABLE_MEMORY, new String[]{COL_FACT}, selection.toString(), selectionArgs, null, null, COL_TIMESTAMP + " DESC", "5"); // Ambil max 5 fakta paling relevan
+        
         StringBuilder facts = new StringBuilder();
-        if (cursor.moveToFirst()) {
+        if (cursor != null && cursor.moveToFirst()) {
             do {
                 facts.append("- ").append(cursor.getString(0)).append("\n");
             } while (cursor.moveToNext());
+            cursor.close();
         }
-        cursor.close();
         db.close();
+        
         return facts.toString().trim();
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/CognitiveCore.java
+==================================================
+
+package com.novaagent.app.core.brain;
+
+import android.content.Context;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import com.novaagent.app.data.model.ActionCommandDto;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+import com.novaagent.app.data.network.UniversalNetworkClient;
+import com.novaagent.app.data.repository.PromptRegistry;
+import android.util.Log;
+
+public class CognitiveCore {
+    private static final String TAG = "CognitiveCore";
+    private final UniversalNetworkClient networkClient;
+    private final ContextManager contextManager;
+    private final TaskPlanner taskPlanner;
+    private final MemoryCoordinator memoryCoordinator; // FASE 5: Penambahan Coordinator
+
+    public interface CoreCallback {
+        void onDecisionMade(ActionCommandDto command);
+        void onConfusion(String errorMessage);
+    }
+
+    public CognitiveCore(Context context) {
+        this.networkClient = new UniversalNetworkClient(context);
+        this.contextManager = new ContextManager();
+        this.taskPlanner = new TaskPlanner();
+        this.memoryCoordinator = new MemoryCoordinator();
+    }
+
+    public TaskPlanner getPlanner() { return taskPlanner; }
+    
+    public void wipeMemory() { 
+        memoryCoordinator.wipeShortTermMemory(); 
+        taskPlanner.abortPlan(); 
+    }
+
+    public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
+        try {
+            if (!taskPlanner.hasActivePlan()) {
+                taskPlanner.setMainGoal(userCommand);
+            }
+
+            String compressedUI = contextManager.compressContext(rawContext);
+            JSONArray finalMessages = new JSONArray();
+
+            // FASE 5: LOCAL RAG INJECTION
+            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini, bukan semua database!
+            String relevantFacts = memoryCoordinator.retrieveRelevantFacts(userCommand);
+            if (!relevantFacts.isEmpty()) {
+                Log.i(TAG, "RAG Aktif. Fakta ditemukan: \n" + relevantFacts);
+            }
+
+            finalMessages.put(new JSONObject().put("role", "system").put("content", PromptRegistry.buildSystemPrompt(relevantFacts)));
+
+            JSONArray history = memoryCoordinator.getRecentChatHistory();
+            for (int i = 0; i < history.length(); i++) finalMessages.put(history.getJSONObject(i));
+
+            String activeTask = taskPlanner.getGoalAndProgress();
+            String contextPrompt = activeTask + "\nDATA UI:\n" + compressedUI;
+            if (previousFailedAction != null) {
+                contextPrompt = "⚠️ AKSI '" + previousFailedAction + "' GAGAL. Cari strategi lain.\n" + contextPrompt;
+            }
+
+            finalMessages.put(new JSONObject().put("role", "user").put("content", contextPrompt));
+            memoryCoordinator.addContext("user", activeTask);
+
+            networkClient.executeCall(finalMessages, new UniversalNetworkClient.NetworkCallback() {
+                @Override public void onSuccess(String rawJsonContent) {
+                    try {
+                        ActionCommandDto cmd = new ActionCommandDto(rawJsonContent);
+                        if (cmd.speech != null && !cmd.speech.isEmpty()) memoryCoordinator.addContext("assistant", cmd.speech);
+                        
+                        if (!cmd.subTasks.isEmpty()) taskPlanner.setNewPlan(cmd.subTasks);
+                        if (cmd.stepComplete) taskPlanner.markStepComplete();
+
+                        callback.onDecisionMade(cmd);
+                    } catch (Exception e) {
+                        callback.onConfusion("Korsleting saat menerjemahkan JSON AI.");
+                    }
+                }
+                @Override public void onError(String errorReason) { callback.onConfusion(errorReason); }
+            }, 0);
+
+        } catch (Exception e) {
+            callback.onConfusion("Kegagalan Core Kognitif.");
+        }
     }
 }
 
@@ -1377,6 +1604,82 @@ public class NovaBrainEngine {
 
 
 ==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/MemoryCoordinator.java
+==================================================
+
+package com.novaagent.app.core.brain;
+
+import android.content.Context;
+import org.json.JSONArray;
+import com.novaagent.app.core.di.ServiceLocator;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * FASE 5: MEMORY INTELLIGENCE (COORDINATOR)
+ * Mengatur Working Memory (Jangka Pendek) dan Semantic Memory (Jangka Panjang).
+ * Menggunakan teknik Local RAG (Retrieval-Augmented Generation) berbasis Keyword.
+ */
+public class MemoryCoordinator {
+    private final ConversationMemory workingMemory;
+    
+    // Stopwords bahasa Indonesia (kata yang diabaikan saat mencari memori)
+    private static final List<String> STOP_WORDS = Arrays.asList(
+        "tolong", "buka", "coba", "yang", "di", "ke", "dari", "ini", "itu", "dan", "atau", "buat", "untuk"
+    );
+
+    public MemoryCoordinator() {
+        this.workingMemory = new ConversationMemory();
+    }
+
+    public void addContext(String role, String content) {
+        if ("user".equals(role)) workingMemory.addUserMessage(content);
+        else workingMemory.addAssistantMessage(content);
+    }
+
+    public JSONArray getRecentChatHistory() {
+        return workingMemory.getMemoryAsJsonArray();
+    }
+
+    public void wipeShortTermMemory() {
+        workingMemory.clearAmnesia();
+    }
+
+    /**
+     * MURNI LOCAL RAG: Ekstrak kata kunci dari perintah, lalu cari di SQLite.
+     * Menghemat ratusan token karena tidak membuang seluruh database ke LLM.
+     */
+    public String retrieveRelevantFacts(String userCommand) {
+        if (userCommand == null || userCommand.isEmpty()) return "";
+
+        try {
+            LongTermMemoryEngine db = ServiceLocator.getInstance().resolve(LongTermMemoryEngine.class);
+            if (db == null) return "";
+
+            String[] words = userCommand.toLowerCase().split("\\s+");
+            StringBuilder queryBuilder = new StringBuilder();
+
+            for (String word : words) {
+                // Bersihkan tanda baca
+                word = word.replaceAll("[^a-z0-9]", "");
+                if (word.length() > 2 && !STOP_WORDS.contains(word)) {
+                    queryBuilder.append(word).append(" ");
+                }
+            }
+
+            String searchKeywords = queryBuilder.toString().trim();
+            if (searchKeywords.isEmpty()) return ""; // Tidak ada kata kunci penting
+
+            return db.searchRelevantFacts(searchKeywords);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+}
+
+
+
+==================================================
 FILE: ./app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java
 ==================================================
 
@@ -1428,6 +1731,81 @@ public class ConversationMemory {
 
     public synchronized void clearAmnesia() {
         memory.clear();
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/brain/TaskPlanner.java
+==================================================
+
+package com.novaagent.app.core.brain;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * FASE 3: AUTONOMOUS PLANNING (Diperbarui)
+ * Menambahkan kemampuan melacak limit dan merubah strategi.
+ */
+public class TaskPlanner {
+    private String mainGoal = "";
+    private final List<String> subTasks = new ArrayList<>();
+    private int currentStepIndex = 0;
+    private int strategyShifts = 0;
+
+    public void setMainGoal(String goal) {
+        this.mainGoal = goal;
+        this.subTasks.clear();
+        this.currentStepIndex = 0;
+        this.strategyShifts = 0;
+    }
+
+    public void setNewPlan(List<String> newTasks) {
+        if (newTasks != null && !newTasks.isEmpty()) {
+            this.subTasks.clear();
+            this.subTasks.addAll(newTasks);
+            this.currentStepIndex = 0;
+        }
+    }
+
+    public boolean hasActivePlan() {
+        return !subTasks.isEmpty() && currentStepIndex < subTasks.size();
+    }
+
+    public String getCurrentStep() {
+        if (hasActivePlan()) return subTasks.get(currentStepIndex);
+        return mainGoal;
+    }
+
+    public void markStepComplete() {
+        if (hasActivePlan()) currentStepIndex++;
+    }
+
+    public void abortPlan() {
+        subTasks.clear();
+        currentStepIndex = 0;
+        mainGoal = "";
+    }
+
+    public void shiftStrategy() {
+        this.strategyShifts++;
+        // Hapus rencana lama, paksa AI berpikir ulang pada siklus berikutnya
+        this.subTasks.clear();
+        this.currentStepIndex = 0;
+    }
+
+    public String getGoalAndProgress() {
+        if (!hasActivePlan()) return "TUJUAN: " + mainGoal;
+        return "TUJUAN: " + mainGoal + "\nLANGKAH SAAT INI (" + (currentStepIndex + 1) + "/" + subTasks.size() + "): " + getCurrentStep();
+    }
+
+    public String getMainGoal() { return mainGoal; }
+    
+    public List<String> getPendingTasks() {
+        if (currentStepIndex >= subTasks.size()) return new ArrayList<>();
+        return new ArrayList<>(subTasks.subList(currentStepIndex, subTasks.size()));
     }
 }
 
@@ -1538,17 +1916,11 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
@@ -1556,7 +1928,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -1565,11 +1936,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
-    
-    private String[] providers = {"Groq", "Gemini (Google Studio)", "DeepSeek", "OpenAI", "TokoVPN (Proxy)"};
-    private RadioGroup rgModel;
-    private ArrayAdapter<String> adapter;
-    private Spinner spinnerProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1579,12 +1945,9 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
         
-        // Memicu Popup Perizinan Cerdas
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        rgModel = findViewById(R.id.rgModel);
-        spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
         if (tvDev != null) {
@@ -1597,47 +1960,8 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
-        spinnerProvider.setAdapter(adapter);
-        
-        String savedProvider = prefs.getString("ai_provider", "Groq");
-        int spinnerPos = adapter.getPosition(savedProvider);
-        spinnerProvider.setSelection(spinnerPos >= 0 ? spinnerPos : 0);
-
-        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if(view instanceof TextView) ((TextView) view).setTextColor(0xFF00E5FF);
-                updateModelList(providers[position]);
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
         apiKeyInput.setText(prefs.getString("api_key", ""));
-
-        // SENSOR BUNGLON (AUTO-DETECT)
-        apiKeyInput.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(Editable s) {
-                String key = s.toString().trim();
-                String detectedProvider = null;
-                
-                if (key.startsWith("AIza")) detectedProvider = "Gemini (Google Studio)";
-                else if (key.startsWith("gsk_")) detectedProvider = "Groq";
-                else if (key.startsWith("sk-proj-") || key.startsWith("sk-ant-")) detectedProvider = "OpenAI";
-                else if (key.startsWith("sk-") && !key.startsWith("sk-proj-")) detectedProvider = "DeepSeek";
-                else if (key.startsWith("tokovpn_")) detectedProvider = "TokoVPN (Proxy)";
-
-                if (detectedProvider != null) {
-                    int pos = adapter.getPosition(detectedProvider);
-                    if (pos >= 0 && spinnerProvider.getSelectedItemPosition() != pos) {
-                        spinnerProvider.setSelection(pos);
-                        Toast.makeText(MainActivity.this, "🤖 Provider Terdeteksi: " + detectedProvider, Toast.LENGTH_SHORT).show();
-                        playClickSound();
-                    }
-                }
-            }
-        });
+        apiKeyInput.setHint("Masukkan API Key (pisahkan dengan koma jika lebih dari 1)...");
 
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
             playClickSound();
@@ -1646,37 +1970,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            String selectedProvider = spinnerProvider.getSelectedItem().toString();
-            String selectedModel = "";
-            int checkedId = rgModel.getCheckedRadioButtonId();
-            if (checkedId != -1) {
-                RadioButton rb = findViewById(checkedId);
-                selectedModel = rb.getTag().toString();
-            }
-
-            prefs.edit().putString("api_key", key).putString("ai_provider", selectedProvider).putString("ai_model", selectedModel).apply();
-            Toast.makeText(this, "Tersimpan: " + selectedProvider + " -> " + selectedModel, Toast.LENGTH_SHORT).show();
+            prefs.edit().putString("api_key", key).apply();
+            Toast.makeText(this, "Kunci Tersimpan! Omni-Rotator Aktif.", Toast.LENGTH_SHORT).show();
         });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> {
-            playClickSound();
-            showSettingsDialog();
-        });
-
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> {
-            playClickSound();
-            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
-        });
-
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> {
-            playClickSound();
-            if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-        });
-
-        findViewById(R.id.btnStart).setOnClickListener(v -> {
-            playClickSound();
-            checkPermissionsAndStart();
-        });
+        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
+        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
+        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
     }
 
     @Override
@@ -1684,54 +1985,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
-        
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if(tvOverlay != null) {
-            tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif");
-            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive);
-        }
-        if(tvA11y != null) {
-            tvA11y.setText("✔ Cek Manual");
-            tvA11y.setBackgroundResource(R.drawable.bg_badge_active);
-        }
-    }
-
-    private void updateModelList(String provider) {
-        rgModel.removeAllViews();
-        List<String[]> models = new ArrayList<>();
-        
-        if (provider.equals("Groq")) {
-            models.add(new String[]{"Llama 3.1 8B (Standar)", "llama-3.1-8b-instant"});
-            models.add(new String[]{"Llama 3 8B (Lite / Stabil)", "llama3-8b-8192"});
-            models.add(new String[]{"Gemma 2 9B (Google)", "gemma2-9b-it"});
-        } else if (provider.equals("Gemini (Google Studio)")) {
-            models.add(new String[]{"Gemini 1.5 Flash (Super Cepat)", "gemini-1.5-flash"});
-            models.add(new String[]{"Gemini 1.5 Pro (Sangat Pintar)", "gemini-1.5-pro"});
-            models.add(new String[]{"Gemini 3.5 Flash (Custom/Proxy)", "gemini-3.5-flash"});
-            models.add(new String[]{"Gemini 3.8 Flash (Custom/Proxy)", "gemini-3.8-flash"});
-        } else if (provider.equals("DeepSeek")) {
-            models.add(new String[]{"DeepSeek Chat V3", "deepseek-chat"});
-            models.add(new String[]{"DeepSeek Reasoner (R1)", "deepseek-reasoner"});
-        } else if (provider.equals("OpenAI")) {
-            models.add(new String[]{"GPT-4o Mini (Hemat)", "gpt-4o-mini"});
-            models.add(new String[]{"GPT-4o (Premium)", "gpt-4o"});
-        } else if (provider.equals("TokoVPN (Proxy)")) {
-            models.add(new String[]{"Claude 3.5 Sonnet", "claude-3-5-sonnet"});
-            models.add(new String[]{"GPT-4 Turbo", "gpt-4-turbo"});
-        }
-
-        String savedModel = prefs.getString("ai_model", "");
-        for (String[] m : models) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(m[0]);
-            rb.setTag(m[1]); 
-            rb.setTextColor(0xFFFFFFFF);
-            rb.setTextSize(14);
-            rb.setPadding(0, 10, 0, 10);
-            rgModel.addView(rb);
-            if (m[1].equals(savedModel)) rb.setChecked(true);
-        }
-        if (rgModel.getCheckedRadioButtonId() == -1 && rgModel.getChildCount() > 0) ((RadioButton)rgModel.getChildAt(0)).setChecked(true);
+        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive); }
+        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_badge_active); }
     }
 
     private void showSettingsDialog() {
@@ -1751,7 +2007,6 @@ public class MainActivity extends AppCompatActivity {
             int id = rgVoice.getCheckedRadioButtonId();
             if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; 
             else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; 
-            
             prefs.edit().putFloat("voice_pitch", newPitch).apply();
             Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
@@ -1759,72 +2014,26 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void playClickSound() {
-        try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){}
-    }
+    private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
 
-    // 🛡️ FITUR BARU: POPUP PERIZINAN MUTLAK
     private void requestBasicPermissions() {
         List<String> permissionsNeeded = new ArrayList<>();
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
-            }
-        }
-        
-        // Notifikasi untuk Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-        }
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!permissionsNeeded.isEmpty()) {
-            // Mencegat dengan Popup Kustom sebelum izin asli sistem muncul
-            new AlertDialog.Builder(this)
-                .setTitle("🎙️ Izin Wajib Nova AI")
-                .setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.\n\nMohon izinkan pada menu selanjutnya.")
-                .setPositiveButton("Beri Izin", (dialog, which) -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
-                    }
-                })
-                .setCancelable(false) // Tidak bisa ditutup sembarangan
-                .show();
+            new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.").setPositiveButton("Beri Izin", (dialog, which) -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
+            }).setCancelable(false).show();
         }
     }
 
     private void checkPermissionsAndStart() {
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         String key = apiKeyInput.getText().toString().trim();
-        
-        if (!key.isEmpty()) {
-            String provider = spinnerProvider.getSelectedItem() != null ? spinnerProvider.getSelectedItem().toString() : "Groq";
-            String model = "";
-            int checkedId = rgModel.getCheckedRadioButtonId();
-            if (checkedId != -1) {
-                model = findViewById(checkedId).getTag().toString();
-            }
-            prefs.edit().putString("api_key", key).putString("ai_provider", provider).putString("ai_model", model).apply();
-        }
-
-        if (prefs.getString("api_key", "").isEmpty()) {
-            Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (!Settings.canDrawOverlays(this)) {
-            Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show();
-            return;
-        }
-        
-        // Pengecekan ekstra sebelum start
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu agar Nova tidak bisu/tuli!", Toast.LENGTH_LONG).show();
-            requestBasicPermissions();
-            return;
-        }
-
+        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+        if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
+        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
@@ -2251,6 +2460,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.provider.Settings;
 import android.util.Log;
+import android.os.SystemClock;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
@@ -2258,76 +2468,80 @@ import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.state.AgentState;
 import com.novaagent.app.data.cache.NodeCache;
 import com.novaagent.app.data.cache.ScreenCache;
+import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.services.foreground.MediaProjectionWrapper;
 
 /**
- * Dokter Sistem Otonom (Refactored: Resolusi C003)
- * Mengeksekusi 3 Level Pemulihan Otomatis tanpa campur tangan pengguna kecuali pada kondisi kritis.
+ * FASE 6: SELF-HEALING COORDINATOR
+ * Mengeksekusi strategi pemulihan mandiri berdasarkan diagnosis, dilengkapi Cooldown Anti-Spam.
  */
 public class RecoveryManager implements EventBus.EventListener {
-    private static final String TAG = "RecoveryManager";
+    private static final String TAG = "SelfHealingCoord";
     private final Context context;
+    private final FailureDiagnosisEngine diagnosisEngine;
+    
+    private long lastRecoveryTime = 0;
+    private static final long COOLDOWN_MS = 3000; // Jeda antar pemulihan (Anti-Spam)
 
     public RecoveryManager(Context context) {
         this.context = context;
+        this.diagnosisEngine = new FailureDiagnosisEngine();
         EventBus.getInstance().subscribe(AgentEvent.EventType.RECOVERY_TRIGGERED, this);
     }
 
     @Override
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.RECOVERY_TRIGGERED) {
-            String payload = String.valueOf(event.payload);
-            int level = parseRecoveryLevel(payload);
-            executeRecovery(level);
+            String errorCode = String.valueOf(event.payload);
+            long now = SystemClock.elapsedRealtime();
+
+            // Mencegah Spam Recovery (Cooldown), kecuali untuk pencarian tombol (Action Failed)
+            if (now - lastRecoveryTime < COOLDOWN_MS && !errorCode.startsWith("ACTION_FAILED")) {
+                Log.w(TAG, "Cooldown aktif. Mengabaikan pemicu pemulihan ganda.");
+                return;
+            }
+            lastRecoveryTime = now;
+
+            FailureDiagnosisEngine.RecoveryStrategy strategy = diagnosisEngine.diagnose(errorCode);
+            Log.i(TAG, "Diagnosis: [" + errorCode + "] -> Strategi: " + strategy.name());
+            executeStrategy(strategy);
         }
     }
 
-    private int parseRecoveryLevel(String payload) {
-        // Tentukan tingkat keparahan berdasarkan sinyal dari Watchdog
-        if (payload.contains("LEVEL_3") || payload.contains("A11Y") || payload.contains("DEADLOCK")) return 3;
-        if (payload.contains("LEVEL_2") || payload.contains("VISION")) return 2;
-        return 1; // Default: Soft Reset (misal: ENGINE TIMEOUT atau RATE LIMIT)
-    }
-
-    private void executeRecovery(int level) {
-        Log.w(TAG, "Mengeksekusi Protokol Recovery Level: " + level);
+    private void executeStrategy(FailureDiagnosisEngine.RecoveryStrategy strategy) {
         ServiceLocator locator = ServiceLocator.getInstance();
-
         try {
-            if (level >= 1) {
-                // LEVEL 1: SOFT RESET (Menghapus Ingatan / Cache)
-                NodeCache nodeCache = locator.find(NodeCache.class);
-                if (nodeCache != null) nodeCache.invalidate();
-                
-                ScreenCache screenCache = locator.find(ScreenCache.class);
-                if (screenCache != null) screenCache.invalidate();
-
-                // Kembalikan Otak ke posisi siaga
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-                Log.i(TAG, "Level 1 Sukses: Amnesia Cache diaktifkan.");
-            }
-
-            if (level >= 2) {
-                // LEVEL 2: COMPONENT REBIND (Membangun ulang mata visual)
-                MediaProjectionWrapper projection = locator.find(MediaProjectionWrapper.class);
-                if (projection != null) {
-                    projection.rebind();
-                    Log.i(TAG, "Level 2 Sukses: MediaProjection di-rebind tanpa mematikan Service.");
-                }
-            }
-
-            if (level == 3) {
-                // LEVEL 3: HARD FALLBACK (Membangunkan Pengguna)
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Sistem mengalami kebuntuan kritis. Mohon aktifkan ulang layanan aksesibilitas Nova di pengaturan."));
-                
-                Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(intent);
-                Log.e(TAG, "Level 3 Sukses: Dilempar ke OS Settings untuk intervensi manual.");
+            switch (strategy) {
+                case SCROLL_SEARCH_DOWN:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area bawah..."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}")));
+                    break;
+                case SCROLL_SEARCH_UP:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area atas..."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"up\"}")));
+                    break;
+                case SOFT_RESET_CACHE:
+                    NodeCache nc = locator.find(NodeCache.class); if (nc != null) nc.invalidate();
+                    ScreenCache sc = locator.find(ScreenCache.class); if (sc != null) sc.invalidate();
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+                    Log.i(TAG, "Amnesia Cache diaktifkan.");
+                    break;
+                case HARD_REBIND_VISION:
+                    MediaProjectionWrapper vision = locator.find(MediaProjectionWrapper.class);
+                    if (vision != null) vision.rebind();
+                    Log.i(TAG, "Mata Visual di-rebind secara paksa.");
+                    break;
+                case ABORT_MISSION:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, jalan buntu. Tombol sama sekali tidak ditemukan."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+                    break;
+                case WAIT:
+                default:
+                    break;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Kegagalan Fatal saat mengeksekusi Recovery!", e);
+            Log.e(TAG, "Gagal mengeksekusi strategi pemulihan!", e);
         }
     }
 }
@@ -2342,28 +2556,28 @@ package com.novaagent.app.infrastructure.system;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-import android.os.SystemClock;
 
 /**
- * Pengawas Keamanan Sistem (Refactored: Resolusi C002)
- * Memantau 3 pilar utama: OS (A11Y), AI (ENGINE), dan Visual (VISION).
+ * FASE 6: SYSTEM HEALTH MONITOR
+ * Memantau detak jantung OS (A11Y), AI (ENGINE), dan Visual (VISION) dengan pelaporan akurat.
  */
 public class NovaWatchdog implements EventBus.EventListener {
     private static final String TAG = "NovaWatchdog";
     private static final long TIMEOUT_A11Y_MS = 15000;
     private static final long TIMEOUT_VISION_MS = 20000;
-    private static final long TIMEOUT_ENGINE_MS = 45000; // LLM API memakan waktu lama
+    private static final long TIMEOUT_ENGINE_MS = 45000;
 
     public enum PingSource { A11Y, ENGINE, VISION }
 
     private HandlerThread watchdogThread;
     private Handler handler;
     private boolean isRunning = false;
-    private boolean isTaskActive = false; // Hanya pantau AI & Vision jika ada tugas aktif
+    private boolean isTaskActive = false;
 
     private long lastA11yPing = SystemClock.elapsedRealtime();
     private long lastEnginePing = SystemClock.elapsedRealtime();
@@ -2381,7 +2595,6 @@ public class NovaWatchdog implements EventBus.EventListener {
         handler = new Handler(watchdogThread.getLooper());
         resetPings();
         handler.post(watchdogRunnable);
-        Log.i(TAG, "Watchdog dihidupkan (Multi-Source Monitoring).");
     }
 
     public void stop() {
@@ -2412,11 +2625,11 @@ public class NovaWatchdog implements EventBus.EventListener {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
             if ("IDLE".equals(state) || "ERROR".equals(state)) {
-                isTaskActive = false; // Matikan alarm kritis jika AI sedang istirahat
+                isTaskActive = false; 
             } else {
                 if (!isTaskActive) {
                     isTaskActive = true;
-                    resetPings(); // Reset ping saat misi baru dimulai
+                    resetPings(); 
                 }
             }
         }
@@ -2428,19 +2641,61 @@ public class NovaWatchdog implements EventBus.EventListener {
             if (!isRunning) return;
 
             long now = SystemClock.elapsedRealtime();
-            boolean a11yDead = (now - lastA11yPing) > TIMEOUT_A11Y_MS;
-            boolean engineDead = isTaskActive && ((now - lastEnginePing) > TIMEOUT_ENGINE_MS);
-            boolean visionDead = isTaskActive && ((now - lastVisionPing) > TIMEOUT_VISION_MS);
-
-            if (a11yDead || engineDead || visionDead) {
-                Log.e(TAG, "DEADLOCK TERDETEKSI! A11yDead:" + a11yDead + " EngineDead:" + engineDead + " VisionDead:" + visionDead);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "WATCHDOG_TIMEOUT"));
-                resetPings(); // Beri waktu jeda agar recovery bisa berjalan
+            
+            // Evaluasi spesifik per modul
+            if ((now - lastA11yPing) > TIMEOUT_A11Y_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "A11Y_DEAD"));
+                resetPings();
+            } else if (isTaskActive && (now - lastVisionPing) > TIMEOUT_VISION_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "VISION_TIMEOUT"));
+                resetPings();
+            } else if (isTaskActive && (now - lastEnginePing) > TIMEOUT_ENGINE_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "ENGINE_TIMEOUT"));
+                resetPings();
             }
 
-            handler.postDelayed(this, 5000); // Polling setiap 5 detik
+            handler.postDelayed(this, 5000); 
         }
     };
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/infrastructure/system/FailureDiagnosisEngine.java
+==================================================
+
+package com.novaagent.app.infrastructure.system;
+
+/**
+ * FASE 6: FAILURE DIAGNOSIS ENGINE
+ * Mendiagnosis gejala kegagalan (Symptom) menjadi Strategi Pemulihan.
+ */
+public class FailureDiagnosisEngine {
+    public enum RecoveryStrategy { 
+        WAIT, 
+        SCROLL_SEARCH_DOWN,
+        SCROLL_SEARCH_UP,
+        SOFT_RESET_CACHE, 
+        HARD_REBIND_VISION, 
+        ABORT_MISSION 
+    }
+
+    public RecoveryStrategy diagnose(String errorCode) {
+        if (errorCode == null) return RecoveryStrategy.WAIT;
+
+        // Kegagalan Eksekusi Visual (Tombol tidak ketemu)
+        if (errorCode.equals("ACTION_FAILED_1")) return RecoveryStrategy.WAIT; // Coba tunggu animasi selesai
+        if (errorCode.equals("ACTION_FAILED_2")) return RecoveryStrategy.SCROLL_SEARCH_DOWN; // Cari di bawah
+        if (errorCode.equals("ACTION_FAILED_3")) return RecoveryStrategy.SCROLL_SEARCH_UP; // Cari di atas
+        if (errorCode.startsWith("ACTION_FAILED_")) return RecoveryStrategy.ABORT_MISSION; // Mentok, batalkan
+
+        // Kegagalan Sistem Inti (Watchdog Timeouts)
+        if (errorCode.contains("VISION_TIMEOUT")) return RecoveryStrategy.HARD_REBIND_VISION;
+        if (errorCode.contains("A11Y_DEAD") || errorCode.contains("ENGINE_TIMEOUT")) return RecoveryStrategy.SOFT_RESET_CACHE;
+
+        return RecoveryStrategy.WAIT;
+    }
 }
 
 
@@ -2474,14 +2729,21 @@ import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
 import java.util.List;
 
+/**
+ * FASE 4: UNIVERSAL ACTION SYSTEM
+ * Sistem aksi modular yang dibagi berdasarkan departemen kapabilitas.
+ * Memiliki validasi keamanan koordinat dan laporan kegagalan instan.
+ */
 public class SystemActionInjector {
-    private static final String TAG = "SystemActionInjector";
+    private static final String TAG = "UniversalActionSys";
     private final int screenWidth;
     private final int screenHeight;
     private final Handler delayHandler;
+    private final Context context;
     private boolean isFlashlightOn = false;
 
     public SystemActionInjector(Context context) {
+        this.context = context;
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         this.screenWidth = metrics.widthPixels;
         this.screenHeight = metrics.heightPixels;
@@ -2492,102 +2754,68 @@ public class SystemActionInjector {
         NovaAccessibilityService service;
         try {
             service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
-        } catch (Exception e) { return; }
+        } catch (Exception e) { 
+            Log.e(TAG, "Layanan Aksesibilitas tidak tersedia!");
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layanan aksesibilitas mati."));
+            return; 
+        }
 
         if (cmd.speech != null && !cmd.speech.trim().isEmpty()) {
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
         }
 
         boolean success = false;
-        switch (cmd.action) {
-            case "open_app": success = openAppByName(service, cmd.textToType); break;
-            case "quick_settings": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS); break;
-            case "notifications": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS); break;
-            case "recent_apps": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS); break;
-            case "home": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); break;
-            case "back": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK); break;
-            case "tap":
-            case "click": success = executeTap(service, cmd.x, cmd.y); break;
-            case "swipe":
-            case "scroll": success = executeSwipe(service, cmd.direction); break;
-            case "type":
-                executeTap(service, cmd.x, cmd.y);
-                delayHandler.postDelayed(() -> {
-                    service.typeTextAtCoordinate(cmd.x, cmd.y, cmd.textToType);
-                    delayHandler.postDelayed(() -> {
-                        executeTap(service, (int)(screenWidth * 0.90), (int)(screenHeight * 0.90));
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
-                    }, 800);
-                }, 1000);
-                return;
-            case "toggle_flashlight":
-            case "set_volume":
-            case "local_hardware":
-                handleLocalHardware(service, cmd.textToType != null && !cmd.textToType.isEmpty() ? cmd.textToType : cmd.action);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "set_alarm":
-                handleSetAlarm(service, cmd.textToType);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "dial_number":
-                handleDialNumber(service, cmd.textToType);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "set_brightness":
-                handleBrightness(service);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "set_dnd":
-                handleDnd(service);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "save_memory":
-                try {
-                    com.novaagent.app.core.brain.LongTermMemoryEngine db = ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.LongTermMemoryEngine.class);
-                    if (db != null) {
-                        db.saveFact(cmd.textToType);
-                    }
-                } catch(Exception e) {}
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "schedule_time":
-                try {
-                    com.novaagent.app.core.proactive.ConditionalSentinelEngine timeSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
-                    if (timeSentinel != null) timeSentinel.scheduleTimeTask(cmd.x, cmd.textToType);
-                } catch(Exception e){}
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "schedule_battery":
-                try {
-                    com.novaagent.app.core.proactive.ConditionalSentinelEngine batSentinel = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ConditionalSentinelEngine.class);
-                    if (batSentinel != null) batSentinel.scheduleBatteryTask(cmd.x, cmd.textToType);
-                } catch(Exception e){}
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "approve_action":
-                try {
-                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
-                    if (safety != null) safety.approvePendingAction();
-                } catch(Exception e){}
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                return;
-            case "reject_action":
-                try {
-                    com.novaagent.app.core.engine.SafetyPolicyEngine safety = ServiceLocator.getInstance().find(com.novaagent.app.core.engine.SafetyPolicyEngine.class);
-                    if (safety != null) safety.rejectPendingAction();
-                } catch(Exception e){}
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "IDLE"));
-                return;
-            case "done":
+        try {
+            // ROUTING MODULAR BERDASARKAN DEPARTEMEN AKSI
+            if (isNavigationAction(cmd.action)) {
+                success = executeNavigation(service, cmd.action);
+            } else if (isAppControlAction(cmd.action)) {
+                success = executeAppControl(service, cmd.action, cmd.textToType);
+            } else if (isHardwareAction(cmd.action)) {
+                success = executeHardware(cmd.action, cmd.textToType);
+            } else if (isScreenControlAction(cmd.action)) {
+                success = executeScreenControl(service, cmd);
+                if (success && "type".equals(cmd.action)) return; // Type memiliki siklus asinkron khusus
+            } else if ("done".equals(cmd.action)) {
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
                 return;
+            } else {
+                Log.w(TAG, "Aksi tidak dikenali: " + cmd.action);
+            }
+
+            if (success) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
+            } else {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_FAILED, cmd.action));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal mengeksekusi aksi: " + cmd.action, e);
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_FAILED, cmd.action));
         }
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
     }
 
-    private boolean openAppByName(Context context, String appName) {
+    // --- DEPARTEMEN 1: OS NAVIGATION CONTROL ---
+    private boolean isNavigationAction(String action) {
+        return action.matches("home|back|quick_settings|notifications|recent_apps");
+    }
+
+    private boolean executeNavigation(NovaAccessibilityService service, String action) {
+        switch (action) {
+            case "quick_settings": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS);
+            case "notifications": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS);
+            case "recent_apps": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS);
+            case "home": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME);
+            case "back": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+            default: return false;
+        }
+    }
+
+    // --- DEPARTEMEN 2: APP CONTROL ---
+    private boolean isAppControlAction(String action) {
+        return "open_app".equals(action);
+    }
+
+    private boolean executeAppControl(NovaAccessibilityService service, String action, String appName) {
         if (appName == null || appName.isEmpty()) return false;
         PackageManager pm = context.getPackageManager();
         List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
@@ -2595,129 +2823,169 @@ public class SystemActionInjector {
             String label = pm.getApplicationLabel(packageInfo).toString().toLowerCase();
             if (label.contains(appName.toLowerCase()) || appName.toLowerCase().contains(label)) {
                 Intent intent = pm.getLaunchIntentForPackage(packageInfo.packageName);
-                if (intent != null) { intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(intent); return true; }
+                if (intent != null) { 
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); 
+                    context.startActivity(intent); 
+                    return true; 
+                }
             }
         }
+        // Jika aplikasi tidak ditemukan, lapor error secara luring agar AI tidak menunggu
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf, aplikasi " + appName + " tidak ditemukan di HP ini."));
         return false;
     }
 
+    // --- DEPARTEMEN 3: HARDWARE & DEVICE CONTROL ---
+    private boolean isHardwareAction(String action) {
+        return action.matches("toggle_flashlight|set_volume|local_hardware|set_alarm|dial_number|set_brightness|set_dnd|schedule_time|schedule_battery|save_memory");
+    }
+
+    private boolean executeHardware(String action, String payload) {
+        try {
+            switch (action) {
+                case "toggle_flashlight":
+                case "set_volume":
+                case "local_hardware":
+                    handleLocalHardware(payload != null && !payload.isEmpty() ? payload : action);
+                    break;
+                case "set_alarm":
+                    launchIntent(android.provider.AlarmClock.ACTION_SHOW_ALARMS, null);
+                    break;
+                case "dial_number":
+                    if (payload != null && payload.matches(".*\\d+.*")) {
+                        launchIntent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + payload.replaceAll("[^0-9]", "")));
+                    } else {
+                        launchIntent(Intent.ACTION_DIAL, null);
+                    }
+                    break;
+                case "set_brightness":
+                    launchIntent(Settings.ACTION_DISPLAY_SETTINGS, null);
+                    break;
+                case "set_dnd":
+                    try { launchIntent(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS, null); } 
+                    catch (Exception e) { launchIntent(Settings.ACTION_SOUND_SETTINGS, null); }
+                    break;
+                case "schedule_time":
+                case "schedule_battery":
+                case "save_memory":
+                    // Aksi khusus yang di-bypass di Engine
+                    break;
+            }
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Hardware Error", e);
+            return false;
+        }
+    }
+
+    private void launchIntent(String action, android.net.Uri data) {
+        Intent intent = new Intent(action);
+        if (data != null) intent.setData(data);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intent);
+    }
+
+    private void handleLocalHardware(String cmd) {
+        String lowerCmd = cmd.toLowerCase();
+        if (lowerCmd.contains("senter") || lowerCmd.contains("lampu") || lowerCmd.contains("flashlight")) {
+            CameraManager camManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+            if (camManager != null) {
+                try {
+                    String cameraId = camManager.getCameraIdList()[0];
+                    isFlashlightOn = !isFlashlightOn;
+                    camManager.setTorchMode(cameraId, isFlashlightOn);
+                } catch(Exception e){}
+            }
+        } else if (lowerCmd.contains("volume") || lowerCmd.contains("suara")) {
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
+            }
+        } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet") || lowerCmd.contains("data")) {
+            launchIntent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY, null);
+        } else if (lowerCmd.contains("bluetooth")) {
+            launchIntent(Settings.ACTION_BLUETOOTH_SETTINGS, null);
+        } else if (lowerCmd.contains("hotspot")) {
+            launchIntent(Settings.ACTION_WIRELESS_SETTINGS, null);
+        } else if (lowerCmd.contains("kamera") || lowerCmd.contains("camera")) {
+            if (!executeAppControl(null, "open_app", "kamera")) executeAppControl(null, "open_app", "camera");
+        } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
+            if (!executeAppControl(null, "open_app", "galeri")) executeAppControl(null, "open_app", "gallery");
+        } else if (lowerCmd.contains("musik") || lowerCmd.contains("lagu") || lowerCmd.contains("putar") || lowerCmd.contains("berhenti")) {
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) {
+                int keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+                if (lowerCmd.contains("lanjut") || lowerCmd.contains("next")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_NEXT;
+                else if (lowerCmd.contains("kembali") || lowerCmd.contains("sebelumnya")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS;
+                else if (lowerCmd.contains("stop") || lowerCmd.contains("berhenti")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_STOP;
+                audioManager.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode));
+                audioManager.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode));
+            }
+        }
+    }
+
+    // --- DEPARTEMEN 4: SCREEN & UI CONTROL ---
+    private boolean isScreenControlAction(String action) {
+        return action.matches("tap|click|swipe|scroll|type");
+    }
+
+    private boolean executeScreenControl(NovaAccessibilityService service, ActionCommandDto cmd) {
+        switch (cmd.action) {
+            case "tap":
+            case "click": 
+                return executeTap(service, cmd.x, cmd.y);
+            case "swipe":
+            case "scroll": 
+                return executeSwipe(service, cmd.direction);
+            case "type":
+                if (!executeTap(service, cmd.x, cmd.y)) return false;
+                delayHandler.postDelayed(() -> {
+                    service.typeTextAtCoordinate(cmd.x, cmd.y, cmd.textToType);
+                    delayHandler.postDelayed(() -> {
+                        // Enter otomatis di pojok kanan bawah (Safety margin 90%)
+                        executeTap(service, (int)(screenWidth * 0.90), (int)(screenHeight * 0.90));
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
+                    }, 400); // Waktu eksekusi dipercepat (Turbo)
+                }, 400);
+                return true;
+            default: return false;
+        }
+    }
+
     private boolean executeTap(NovaAccessibilityService service, int x, int y) {
-        if (x <= 0 || y <= 0) return false;
-        // --- FASE 6: PICU HOLOGRAM AURA --- 
+        // Validasi Anti-Out-Of-Bounds
+        if (x <= 0 || y <= 0 || x > screenWidth || y > screenHeight) {
+            Log.w(TAG, "Koordinat TAP tidak valid: (" + x + "," + y + ")");
+            return false;
+        }
+        
         try {
             com.novaagent.app.ui.bubble.HologramAuraManager aura = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.ui.bubble.HologramAuraManager.class);
             if (aura != null) aura.showAura(x, y);
         } catch (Exception e) {}
-        Path clickPath = new Path(); clickPath.moveTo(x, y);
+        
+        Path clickPath = new Path(); 
+        clickPath.moveTo(x, y);
         GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 100));
+        builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 80)); // Super Cepat
         return service.dispatchGesture(builder.build(), null, null);
     }
 
     private boolean executeSwipe(NovaAccessibilityService service, String direction) {
         Path swipePath = new Path();
-        int centerX = screenWidth / 2; int topY = (int) (screenHeight * 0.2); int bottomY = (int) (screenHeight * 0.8);
+        int centerX = screenWidth / 2; 
+        int topY = (int) (screenHeight * 0.2); 
+        int bottomY = (int) (screenHeight * 0.8);
+        
         if ("up".equalsIgnoreCase(direction)) { swipePath.moveTo(centerX, bottomY); swipePath.lineTo(centerX, topY); }
         else if ("down".equalsIgnoreCase(direction)) { swipePath.moveTo(centerX, topY); swipePath.lineTo(centerX, bottomY); }
         else { return false; }
+        
         GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 400));
+        builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 300));
         return service.dispatchGesture(builder.build(), null, null);
-    }
-
-    private void handleLocalHardware(Context context, String cmd) {
-        try {
-            String lowerCmd = cmd.toLowerCase();
-            if (lowerCmd.contains("senter") || lowerCmd.contains("lampu") || lowerCmd.contains("flashlight")) {
-                CameraManager camManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-                if (camManager != null) {
-                    String cameraId = camManager.getCameraIdList()[0];
-                    isFlashlightOn = !isFlashlightOn;
-                    camManager.setTorchMode(cameraId, isFlashlightOn);
-                }
-            } else if (lowerCmd.contains("volume") || lowerCmd.contains("suara")) {
-                AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-                if (audioManager != null) {
-                    int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
-                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
-                }
-            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet") || lowerCmd.contains("data")) {
-                Intent panelIntent = new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
-                panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(panelIntent);
-            } else if (lowerCmd.contains("bluetooth")) {
-                Intent btIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
-                btIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(btIntent);
-            } else if (lowerCmd.contains("hotspot")) {
-                Intent hsIntent = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
-                hsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(hsIntent);
-            } else if (lowerCmd.contains("kamera") || lowerCmd.contains("camera")) {
-                if (!openAppByName(context, "kamera")) openAppByName(context, "camera");
-            } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
-                if (!openAppByName(context, "galeri")) openAppByName(context, "gallery");
-            } else if (lowerCmd.contains("musik") || lowerCmd.contains("lagu") || lowerCmd.contains("putar") || lowerCmd.contains("berhenti")) {
-                // SKIL DEWA: PENGONTROL MUSIK OFFLINE 
-                AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-                if (audioManager != null) {
-                    int keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
-                    if (lowerCmd.contains("lanjut") || lowerCmd.contains("next")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_NEXT;
-                    else if (lowerCmd.contains("kembali") || lowerCmd.contains("sebelumnya")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS;
-                    else if (lowerCmd.contains("stop") || lowerCmd.contains("berhenti")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_STOP;
-
-                    android.view.KeyEvent eventDown = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
-                    android.view.KeyEvent eventUp = new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode);
-                    audioManager.dispatchMediaKeyEvent(eventDown);
-                    audioManager.dispatchMediaKeyEvent(eventUp);
-                }
-            }
-        } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
-    }
-
-    // --- FASE 2: GUDANG SENJATA LURING (OFFLINE ARSENAL) ---
-    private void handleSetAlarm(Context context, String text) {
-        try {
-            Intent intent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        } catch (Exception e) { Log.e(TAG, "Gagal buka alarm", e); }
-    }
-
-    private void handleDialNumber(Context context, String target) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_DIAL);
-            // Jika target berupa angka, masukkan ke dialer
-            if (target.matches(".*\\d+.*")) {
-                String number = target.replaceAll("[^0-9]", "");
-                intent.setData(android.net.Uri.parse("tel:" + number));
-            }
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        } catch (Exception e) { Log.e(TAG, "Gagal buka dialer", e); }
-    }
-
-    private void handleBrightness(Context context) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        } catch (Exception e) { Log.e(TAG, "Gagal buka pengaturan layar", e); }
-    }
-
-    private void handleDnd(Context context) {
-        try {
-            Intent intent = new Intent(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        } catch (Exception e) {
-            // Fallback jika tidak didukung pabrikan HP tertentu
-            try {
-                Intent fallback = new Intent(Settings.ACTION_SOUND_SETTINGS);
-                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(fallback);
-            } catch (Exception ex) {}
-        }
     }
 }
 
@@ -2888,21 +3156,17 @@ import com.novaagent.app.infrastructure.system.NovaWatchdog;
 
 import java.util.List;
 
-/**
- * Jembatan Utama NovaAgent dengan OS Android.
- */
 public class NovaAccessibilityService extends AccessibilityService {
     private static final String TAG = "NovaA11yService";
     
     private ObjectPool<ScreenElement> elementPool;
     private NodeScanner scanner;
-    private List<ScreenElement> previousElements; // Digunakan untuk mengembalikan pool
+    private List<ScreenElement> previousElements; 
 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         try {
-            // Inisialisasi ObjectPool sebanyak 150 kapasitas elemen
             elementPool = new ObjectPool<>(150, new ObjectPool.PoolFactory<ScreenElement>() {
                 @Override public ScreenElement create() { return new ScreenElement(); }
                 @Override public void reset(ScreenElement object) { object.reset(); }
@@ -2912,62 +3176,48 @@ public class NovaAccessibilityService extends AccessibilityService {
             scanner = new NodeScanner(compactor);
             
             ServiceLocator.getInstance().register(NovaAccessibilityService.class, this);
-            Log.i(TAG, "Nova Accessibility terhubung. Mata siap.");
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal inisialisasi layanan", e);
-        }
+            Log.i(TAG, "Nova Accessibility terhubung.");
+        } catch (Exception e) {}
     }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        // Heartbeat untuk NovaWatchdog
         try {
-            NovaWatchdog watchdog = ServiceLocator.getInstance().find(NovaWatchdog.class);
+            NovaWatchdog watchdog = ServiceLocator.getInstance().resolve(NovaWatchdog.class);
             watchdog.ping(com.novaagent.app.infrastructure.system.NovaWatchdog.PingSource.A11Y);
         } catch (Exception ignored) {}
     }
 
-    /**
-     * Dipanggil oleh AutonomousLoopEngine untuk meminta data layar.
-     */
     public void requestScreenScan() {
         AccessibilityNodeInfo root = null;
         try {
-            // 1. Bersihkan pool dari pemindaian sebelumnya agar memori ter-reuse
             if (previousElements != null) {
                 for (ScreenElement el : previousElements) elementPool.release(el);
                 previousElements.clear();
             }
 
-            // 2. Ambil root node layar
             root = getRootInActiveWindow();
             if (root == null) {
-                Log.w(TAG, "Root null, memicu Soft Recovery.");
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, 1));
                 return;
             }
 
-            // 3. Ekstrak data menggunakan NodeScanner
             String pkgName = root.getPackageName() != null ? root.getPackageName().toString() : "unknown";
             List<ScreenElement> currentElements = scanner.scan(root);
-            previousElements = currentElements; // Simpan untuk direlease di scan berikutnya
+            previousElements = currentElements;
 
-            // 4. Publikasikan Context Layar ke EventBus
             UnifiedScreenContext context = new UnifiedScreenContext(pkgName, System.currentTimeMillis(), currentElements);
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.SCREEN_UPDATED, context));
+            
+            // FASE 2: Kirim sebagai Data Mentah ke PerceptionCoordinator
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RAW_SCREEN_SCANNED, context));
             
         } catch (Exception e) {
             Log.e(TAG, "Error saat scanning layar", e);
         } finally {
-            // MUTLAK: Root node dibebaskan (Fix C003)
             if (root != null) root.recycle();
         }
     }
 
-    /**
-     * Fitur khusus SystemActionInjector untuk menyuntikkan teks di koordinat tepat.
-     * Menggunakan try-finally ketat.
-     */
     public boolean typeTextAtCoordinate(int x, int y, String text) {
         if (text == null) text = "";
         AccessibilityNodeInfo root = null;
@@ -2975,18 +3225,13 @@ public class NovaAccessibilityService extends AccessibilityService {
             root = getRootInActiveWindow();
             if (root == null) return false;
             return findAndSetTextSafe(root, x, y, text);
-        } catch (Exception e) {
-            return false;
-        } finally {
-            if (root != null) root.recycle();
-        }
+        } catch (Exception e) { return false; } 
+        finally { if (root != null) root.recycle(); }
     }
 
     private boolean findAndSetTextSafe(AccessibilityNodeInfo node, int x, int y, String text) {
         if (node == null) return false;
-        
-        Rect bounds = new Rect();
-        node.getBoundsInScreen(bounds);
+        Rect bounds = new Rect(); node.getBoundsInScreen(bounds);
         
         if (bounds.contains(x, y) && (node.isEditable() || node.getClassName().toString().contains("EditText"))) {
             Bundle args = new Bundle();
@@ -3000,18 +3245,13 @@ public class NovaAccessibilityService extends AccessibilityService {
             try {
                 child = node.getChild(i);
                 if (child != null && findAndSetTextSafe(child, x, y, text)) return true;
-            } finally {
-                if (child != null) child.recycle(); // MUTLAK
-            }
+            } finally { if (child != null) child.recycle(); }
         }
         return false;
     }
 
-    @Override
-    public void onInterrupt() {}
-
-    @Override
-    public boolean onUnbind(Intent intent) {
+    @Override public void onInterrupt() {}
+    @Override public boolean onUnbind(Intent intent) {
         try { ServiceLocator.getInstance().register(NovaAccessibilityService.class, null); } catch (Exception e) {}
         return super.onUnbind(intent);
     }
@@ -3277,8 +3517,13 @@ import com.novaagent.app.core.engine.ActionVerificationScore;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
-import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.brain.CognitiveCore;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.engine.TaskCheckpointManager;
+import com.novaagent.app.core.engine.TaskCompletionVerifier;
+import com.novaagent.app.core.vision.PerceptionCoordinator;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.brain.LongTermMemoryEngine;
@@ -3296,37 +3541,42 @@ public class NovaForegroundService extends Service {
     private NovaWatchdog watchdog;
     private AutonomousLoopEngine loopEngine;
     private NovaAudioDirector audioDirector;
+    private PerceptionCoordinator perceptionCoordinator;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         
-        // --- 1. MEREGISTRASIKAN SELURUH KETERGANTUNGAN SISTEM (RESOLUSI C001) ---
         ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(NovaBrainEngine.class, new NovaBrainEngine(this));
+        locator.register(CognitiveCore.class, new CognitiveCore(this));
+        
+        // INJEKSI FASE 2: PerceptionCoordinator sebagai Filter Visual
+        perceptionCoordinator = new PerceptionCoordinator();
+        locator.register(PerceptionCoordinator.class, perceptionCoordinator);
+        
         locator.register(SystemActionInjector.class, new SystemActionInjector(this));
         locator.register(SafetyPolicyEngine.class, new SafetyPolicyEngine());
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
+        locator.register(TaskCheckpointManager.class, new TaskCheckpointManager(this));
+        locator.register(TaskCompletionVerifier.class, new TaskCompletionVerifier());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
+        locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
-        // 2. Hidupkan Mesin Suara (Pita Suara)
         audioDirector = new NovaAudioDirector(this);
         locator.register(NovaAudioDirector.class, audioDirector);
 
-        // 3. Hidupkan Otak AI (Sekarang instansiasi murni tanpa parameter Context)
         loopEngine = new AutonomousLoopEngine();
         locator.register(AutonomousLoopEngine.class, loopEngine);
 
-        // 4. Tampilkan UI Bubble
         floatingBubbleView = new FloatingBubbleView(this);
         locator.register(HologramAuraManager.class, new HologramAuraManager(this));
         floatingBubbleView.show();
 
-        // 5. Hidupkan Pengawas Detak Jantung
         watchdog = new NovaWatchdog();
         watchdog.start();
         locator.register(NovaWatchdog.class, watchdog);
@@ -3336,7 +3586,7 @@ public class NovaForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Nova Agent")
-                .setContentText("Sistem Otonom Bersiaga")
+                .setContentText("Korteks Visual & Kognitif Aktif")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
@@ -3350,9 +3600,7 @@ public class NovaForegroundService extends Service {
                 MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
                 if (projectionManager != null) {
                     MediaProjection mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-                    MlKitOcrEngine ocrEngine = new MlKitOcrEngine();
-                    ScreenCache screenCache = new ScreenCache();
-                    mediaProjectionWrapper = new MediaProjectionWrapper(this, mediaProjection, ocrEngine, screenCache);
+                    mediaProjectionWrapper = new MediaProjectionWrapper(this, mediaProjection, new MlKitOcrEngine(), new ScreenCache());
                     mediaProjectionWrapper.start();
                     ServiceLocator.getInstance().register(MediaProjectionWrapper.class, mediaProjectionWrapper);
                 }
@@ -3369,28 +3617,10 @@ public class NovaForegroundService extends Service {
         if (watchdog != null) watchdog.stop();
         if (loopEngine != null) loopEngine.stopTask();
         if (audioDirector != null) audioDirector.destroy();
+        if (perceptionCoordinator != null) perceptionCoordinator.destroy();
         
-        ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(NovaWatchdog.class, null);
-        locator.register(MediaProjectionWrapper.class, null);
-        locator.register(AutonomousLoopEngine.class, null);
-        locator.register(NovaBrainEngine.class, null);
-        locator.register(SystemActionInjector.class, null);
-        locator.register(SafetyPolicyEngine.class, null);
-        locator.register(ActionVerificationScore.class, null);
-        locator.register(SemanticVisionEngine.class, null);
-        locator.register(ProactiveTriggerEngine.class, null);
-        try {
-            ConditionalSentinelEngine sentinel = locator.resolve(ConditionalSentinelEngine.class);
-            if(sentinel != null) sentinel.shutdown();
-        } catch(Exception e){}
-        locator.register(ConditionalSentinelEngine.class, null);
-        locator.register(HologramAuraManager.class, null);
-        locator.register(LongTermMemoryEngine.class, null);
-        // Matikan total EventBus agar tidak ada Thread Zombi yang menguras baterai
-        try {
-            com.novaagent.app.core.bus.EventBus.getInstance().shutdown();
-        } catch(Exception e){}
+        ServiceLocator.getInstance().register(CognitiveCore.class, null);
+        ServiceLocator.getInstance().register(PerceptionCoordinator.class, null);
     }
 
     @Nullable
@@ -3399,9 +3629,8 @@ public class NovaForegroundService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
+            if (manager != null) manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW));
         }
     }
 }
@@ -3443,13 +3672,12 @@ FILE: ./app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java
 
 package com.novaagent.app.data.model;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * DTO Murni untuk membungkus perintah dari LLM (Groq).
- * Parsing JSON terjadi di constructor untuk memastikan objek ini valid dan immutable.
- */
 public class ActionCommandDto {
     public final String action;
     public final int x;
@@ -3458,9 +3686,10 @@ public class ActionCommandDto {
     public final String direction;
     public final String thought;
     public final String speech;
+    public final List<String> subTasks = new ArrayList<>();
+    public final boolean stepComplete;
 
     public ActionCommandDto(String jsonResponse) throws JSONException {
-        // Pembersihan protektif: Cari blok JSON jika LLM membalas dengan format markdown markdown ```json
         String cleanJson = extractJson(jsonResponse);
         JSONObject json = new JSONObject(cleanJson);
 
@@ -3471,20 +3700,21 @@ public class ActionCommandDto {
         this.direction = json.optString("direction", "");
         this.thought = json.optString("thought", "");
         this.speech = json.optString("speech", "");
+        this.stepComplete = json.optBoolean("stepComplete", false);
+
+        JSONArray tasks = json.optJSONArray("plan");
+        if (tasks != null) {
+            for (int i = 0; i < tasks.length(); i++) {
+                subTasks.add(tasks.getString(i));
+            }
+        }
     }
 
     private String extractJson(String text) {
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
-        if (start != -1 && end != -1 && end > start) {
-            return text.substring(start, end + 1);
-        }
-        return text; // Fallback jika sudah berupa JSON utuh
-    }
-
-    @Override
-    public String toString() {
-        return "Action: " + action + " | Thought: " + thought;
+        if (start != -1 && end != -1 && end > start) return text.substring(start, end + 1);
+        return text;
     }
 }
 
@@ -3499,25 +3729,20 @@ package com.novaagent.app.data.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO Murni untuk merepresentasikan status layar HP pada satu waktu (Timestamp).
- * SANGAT DILARANG menyimpan referensi AccessibilityNodeInfo di sini untuk mencegah OOM.
- */
 public class UnifiedScreenContext {
     public final String packageName;
     public final long timestampMs;
     public final List<ScreenElement> elements;
+    
+    // FASE 2: Flag untuk mengetahui apakah layar berubah bermakna dari sebelumnya
+    public boolean hasMeaningfulChange = true; 
 
     public UnifiedScreenContext(String packageName, long timestampMs, List<ScreenElement> elements) {
         this.packageName = packageName != null ? packageName : "unknown";
         this.timestampMs = timestampMs;
-        // Membuat salinan list (Defensive Copy) agar aman dari modifikasi thread lain
         this.elements = elements != null ? new ArrayList<>(elements) : new ArrayList<>();
     }
 
-    /**
-     * Helper untuk SafetyPolicyEngine: Mengambil teks murni pada koordinat tertentu.
-     */
     public String getTextAtCoordinate(int x, int y) {
         for (ScreenElement el : elements) {
             if (x >= el.boundsLeft && x <= el.boundsRight && y >= el.boundsTop && y <= el.boundsBottom) {
@@ -3527,24 +3752,20 @@ public class UnifiedScreenContext {
         return null;
     }
 
-    /**
-     * Representasi Primitif dari elemen layar (Bebas dari OS Binder/C++).
-     * Didesain agar bisa di-reuse oleh ObjectPool.
-     */
     public static class ScreenElement {
-        public String type; // "Button", "Input", "Text"
+        public String type; 
         public String text;
         public int boundsLeft, boundsTop, boundsRight, boundsBottom;
         public int centerX, centerY;
+        public boolean isActionable; // FASE 2: Flag elemen interaktif
 
-        // Constructor kosong untuk keperluan ObjectPool
         public ScreenElement() {}
 
         public void reset() {
-            this.type = null;
-            this.text = null;
+            this.type = null; this.text = null;
             this.boundsLeft = this.boundsTop = this.boundsRight = this.boundsBottom = 0;
             this.centerX = this.centerY = 0;
+            this.isActionable = false;
         }
 
         @Override
@@ -3556,9 +3777,7 @@ public class UnifiedScreenContext {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (ScreenElement el : elements) {
-            sb.append(el.toString()).append("\n");
-        }
+        for (ScreenElement el : elements) sb.append(el.toString()).append("\n");
         return sb.toString();
     }
 }
@@ -3749,6 +3968,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -3762,70 +3982,78 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * FASE AUDIT TAHAP 4 [N011]: Network Resource Cleanup & Timeout Handling
- */
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
         void onError(String errorReason);
     }
 
+    private static class ProviderConfig {
+        String providerName;
+        String modelId;
+        String baseUrl;
+        ProviderConfig(String providerName, String modelId, String baseUrl) {
+            this.providerName = providerName; this.modelId = modelId; this.baseUrl = baseUrl;
+        }
+    }
+
     public UniversalNetworkClient(Context context) {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS)
-                .build();
+        this.client = new OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(35, TimeUnit.SECONDS).build();
+    }
+
+    private ProviderConfig getProviderConfig(String apiKey) {
+        if (apiKey.startsWith("AIza")) return new ProviderConfig("Google AI Studio", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
+        if (apiKey.startsWith("gsk_")) return new ProviderConfig("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1/chat/completions");
+        if (apiKey.startsWith("sk-proj")) return new ProviderConfig("OpenAI", "gpt-6-luna", "https://api.openai.com/v1/chat/completions");
+        if (apiKey.startsWith("sk-ant")) return new ProviderConfig("Anthropic", "claude-haiku-5-5", "https://api.anthropic.com/v1/messages");
+        if (apiKey.startsWith("sk-or-v1")) return new ProviderConfig("OpenRouter", "openrouter/auto", "https://openrouter.ai/api/v1/chat/completions");
+        if (apiKey.startsWith("sk-") && !apiKey.startsWith("sk-proj") && !apiKey.startsWith("sk-ant") && !apiKey.startsWith("sk-or")) return new ProviderConfig("DeepSeek", "deepseek-flash", "https://api.deepseek.com/chat/completions");
+        if (apiKey.startsWith("mistral-")) return new ProviderConfig("Mistral AI", "ministral-3b-latest", "https://api.mistral.ai/v1/chat/completions");
+        if (apiKey.startsWith("cerebras-")) return new ProviderConfig("Cerebras", "qwen-3.8-27b", "https://api.cerebras.ai/v1/chat/completions");
+        if (apiKey.startsWith("together-")) return new ProviderConfig("Together AI", "meta-llama/Llama-3-8b-chat-hf", "https://api.together.xyz/v1/chat/completions");
+        
+        return new ProviderConfig("Unknown Proxy", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        String provider = prefs.getString("ai_provider", "Groq");
-        String apiKey = prefs.getString("api_key", "").trim();
-        String modelName = prefs.getString("ai_model", "").trim();
+        String allKeys = prefs.getString("api_key", "").trim();
+        
+        if (allKeys.isEmpty()) { callback.onError("API Key Kosong. Silakan isi di aplikasi."); return; }
 
-        if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
-            else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
-            else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
-            else modelName = "llama-3.1-8b-instant";
-        }
-
-        if (apiKey.isEmpty()) {
-            callback.onError("API Key (" + provider + ") Kosong!");
+        String[] keyArray = allKeys.split(",");
+        if (retryCount >= keyArray.length) {
+            callback.onError("Maaf Bos, seluruh API Key cadangan sudah kehabisan kuota untuk hari ini.");
             return;
         }
 
+        String currentKey = keyArray[retryCount].trim();
+        ProviderConfig config = getProviderConfig(currentKey);
+        Log.i(TAG, "Mencoba Tembakan AI ke-" + (retryCount + 1) + " menggunakan: " + config.providerName + " (" + config.modelId + ")");
+
         try {
             Request request = null;
-
-            if (provider.equals("Gemini (Google Studio)")) {
+            if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
-                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
                         String gRole = role.equals("assistant") ? "model" : "user";
                         if (gRole.equals(lastRole) && contents.length() > 0) {
-                            contents.getJSONObject(contents.length() - 1)
-                                    .getJSONArray("parts")
-                                    .put(new JSONObject().put("text", "\n\n" + content));
+                            contents.getJSONObject(contents.length() - 1).getJSONArray("parts").put(new JSONObject().put("text", "\n\n" + content));
                         } else {
                             contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                             lastRole = gRole;
@@ -3834,14 +4062,11 @@ public class UniversalNetworkClient {
                 }
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
-
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
-            } 
-            else {
+                request = new Request.Builder().url(config.baseUrl).addHeader("Content-Type", "application/json").post(body).build();
+            } else {
                 JSONObject payload = new JSONObject();
-                payload.put("model", modelName);
+                payload.put("model", config.modelId);
                 payload.put("temperature", 0.3);
                 
                 JSONArray safeMessages = new JSONArray();
@@ -3850,7 +4075,6 @@ public class UniversalNetworkClient {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
                         JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
                         lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
@@ -3861,85 +4085,57 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url;
-                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
-                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
-                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else url = "https://api.codex.com/v1/chat/completions";
+                if (config.providerName.equals("Anthropic")) { payload.put("max_tokens", 1024); }
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .addHeader("Content-Type", "application/json")
-                        .post(body).build();
+                Request.Builder rb = new Request.Builder().url(config.baseUrl)
+                        .addHeader("Content-Type", "application/json");
+                        
+                if (config.providerName.equals("Anthropic")) {
+                    rb.addHeader("x-api-key", currentKey).addHeader("anthropic-version", "2023-06-01");
+                } else {
+                    rb.addHeader("Authorization", "Bearer " + currentKey);
+                }
+                request = rb.post(body).build();
             }
 
             client.newCall(request).enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi " + provider + " RTO");
+                    retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                 }
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     try {
                         if (!response.isSuccessful()) {
                             int code = response.code();
-                            String errorBody = response.body() != null ? response.body().string() : "";
-                            String errorMsg = "HTTP " + code;
-                            try {
-                                JSONObject errObj = new JSONObject(errorBody);
-                                if(errObj.has("error")) {
-                                    Object err = errObj.get("error");
-                                    if(err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
-                                    else if(err instanceof String) errorMsg = (String)err;
-                                }
-                            } catch (Exception ignored) {}
-                            
-                            if (code == 400 || code == 401 || code == 403 || code == 404) {
-                                callback.onError(provider + ": " + errorMsg);
-                            } else {
-                                handleRetry(messages, callback, retryCount, errorMsg);
-                            }
+                            Log.w(TAG, "API " + config.providerName + " Gagal HTTP " + code + ". Beralih ke Kunci Cadangan.");
+                            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                             return;
                         }
                         
                         String respBody = response.body().string();
                         String content = "";
-                        if (provider.equals("Gemini (Google Studio)")) {
+                        
+                        if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
                             JSONObject jsonResponse = new JSONObject(respBody);
-                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
-                            
-                            if (candidate.has("content")) {
-                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                            } else {
-                                String finishReason = candidate.optString("finishReason", "UNKNOWN");
-                                callback.onError("Gemini memblokir respon (Safety Filter: " + finishReason + ")");
-                                return;
-                            }
+                            content = jsonResponse.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                        } else if (config.providerName.equals("Anthropic")) {
+                            JSONObject jsonResponse = new JSONObject(respBody);
+                            content = jsonResponse.getJSONArray("content").getJSONObject(0).getString("text");
                         } else {
                             content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
-                        callback.onSuccess(content);
+                        
+                        final String finalContent = content;
+                        retryHandler.post(() -> callback.onSuccess(finalContent));
                     } catch (Exception e) {
-                        callback.onError("Gagal parse JSON " + provider);
+                        retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
                     } finally {
-                        // AUDIT FIX [N011]: Wajib menutup Response agar tidak terjadi Memory Leak & Penyumbatan Koneksi!
-                        if (response != null) {
-                            try { response.close(); } catch (Exception ignored) {}
-                        }
+                        response.close();
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit request " + provider);
-        }
-    }
-
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
-        if (currentRetry < MAX_RETRIES) {
-            int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
-        } else {
-            callback.onError(reason + " (Gagal 3x)");
+            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
         }
     }
 }

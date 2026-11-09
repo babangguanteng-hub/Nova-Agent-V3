@@ -2,28 +2,28 @@ package com.novaagent.app.infrastructure.system;
 
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-import android.os.SystemClock;
 
 /**
- * Pengawas Keamanan Sistem (Refactored: Resolusi C002)
- * Memantau 3 pilar utama: OS (A11Y), AI (ENGINE), dan Visual (VISION).
+ * FASE 6: SYSTEM HEALTH MONITOR
+ * Memantau detak jantung OS (A11Y), AI (ENGINE), dan Visual (VISION) dengan pelaporan akurat.
  */
 public class NovaWatchdog implements EventBus.EventListener {
     private static final String TAG = "NovaWatchdog";
     private static final long TIMEOUT_A11Y_MS = 15000;
     private static final long TIMEOUT_VISION_MS = 20000;
-    private static final long TIMEOUT_ENGINE_MS = 45000; // LLM API memakan waktu lama
+    private static final long TIMEOUT_ENGINE_MS = 45000;
 
     public enum PingSource { A11Y, ENGINE, VISION }
 
     private HandlerThread watchdogThread;
     private Handler handler;
     private boolean isRunning = false;
-    private boolean isTaskActive = false; // Hanya pantau AI & Vision jika ada tugas aktif
+    private boolean isTaskActive = false;
 
     private long lastA11yPing = SystemClock.elapsedRealtime();
     private long lastEnginePing = SystemClock.elapsedRealtime();
@@ -41,7 +41,6 @@ public class NovaWatchdog implements EventBus.EventListener {
         handler = new Handler(watchdogThread.getLooper());
         resetPings();
         handler.post(watchdogRunnable);
-        Log.i(TAG, "Watchdog dihidupkan (Multi-Source Monitoring).");
     }
 
     public void stop() {
@@ -72,11 +71,11 @@ public class NovaWatchdog implements EventBus.EventListener {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
             if ("IDLE".equals(state) || "ERROR".equals(state)) {
-                isTaskActive = false; // Matikan alarm kritis jika AI sedang istirahat
+                isTaskActive = false; 
             } else {
                 if (!isTaskActive) {
                     isTaskActive = true;
-                    resetPings(); // Reset ping saat misi baru dimulai
+                    resetPings(); 
                 }
             }
         }
@@ -88,17 +87,20 @@ public class NovaWatchdog implements EventBus.EventListener {
             if (!isRunning) return;
 
             long now = SystemClock.elapsedRealtime();
-            boolean a11yDead = (now - lastA11yPing) > TIMEOUT_A11Y_MS;
-            boolean engineDead = isTaskActive && ((now - lastEnginePing) > TIMEOUT_ENGINE_MS);
-            boolean visionDead = isTaskActive && ((now - lastVisionPing) > TIMEOUT_VISION_MS);
-
-            if (a11yDead || engineDead || visionDead) {
-                Log.e(TAG, "DEADLOCK TERDETEKSI! A11yDead:" + a11yDead + " EngineDead:" + engineDead + " VisionDead:" + visionDead);
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "WATCHDOG_TIMEOUT"));
-                resetPings(); // Beri waktu jeda agar recovery bisa berjalan
+            
+            // Evaluasi spesifik per modul
+            if ((now - lastA11yPing) > TIMEOUT_A11Y_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "A11Y_DEAD"));
+                resetPings();
+            } else if (isTaskActive && (now - lastVisionPing) > TIMEOUT_VISION_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "VISION_TIMEOUT"));
+                resetPings();
+            } else if (isTaskActive && (now - lastEnginePing) > TIMEOUT_ENGINE_MS) {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "ENGINE_TIMEOUT"));
+                resetPings();
             }
 
-            handler.postDelayed(this, 5000); // Polling setiap 5 detik
+            handler.postDelayed(this, 5000); 
         }
     };
 }

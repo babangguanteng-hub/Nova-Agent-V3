@@ -7,8 +7,8 @@ import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 
 /**
- * 10x KOMPLEKSITAS: EVENT-DRIVEN AUTONOMY.
- * Nova bisa disuruh memantau layar dan mengeksekusi aksi otomatis (Misal: War Tiket/Flash Sale).
+ * FASE 7: EVENT-DRIVEN AUTONOMY.
+ * Memantau layar secara pasif dan mengeksekusi aksi otomatis jika target visual muncul.
  */
 public class ProactiveTriggerEngine {
     private static final String TAG = "ProactiveTrigger";
@@ -22,7 +22,7 @@ public class ProactiveTriggerEngine {
         this.targetAction = action;
         this.isActive = true;
         Log.i(TAG, "Trigger Aktif: Memantau kemunculan kata '" + keyword + "'");
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baik, saya akan pantau layar ini. Saya bertindak jika melihat '" + keyword + "'."));
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Baik, saya akan pantau layar ini mencari kata " + keyword));
     }
 
     public void evaluateScreen(UnifiedScreenContext ctx) {
@@ -31,9 +31,9 @@ public class ProactiveTriggerEngine {
         String screenText = ctx.toString().toLowerCase();
         if (screenText.contains(targetKeyword)) {
             Log.i(TAG, "⚡ TRIGGER MATCH! Menemukan: " + targetKeyword);
-            isActive = false; // Trigger 1x tembak, matikan setelah sukses
+            isActive = false; // Matikan setelah 1x tembak agar tidak spam
             
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Mengeksekusi aksi proaktif."));
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Melakukan eksekusi cepat."));
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, targetAction));
         }
     }

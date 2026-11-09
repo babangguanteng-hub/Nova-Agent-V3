@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.provider.Settings;
 import android.util.Log;
+import android.os.SystemClock;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
@@ -11,76 +12,80 @@ import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.state.AgentState;
 import com.novaagent.app.data.cache.NodeCache;
 import com.novaagent.app.data.cache.ScreenCache;
+import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.services.foreground.MediaProjectionWrapper;
 
 /**
- * Dokter Sistem Otonom (Refactored: Resolusi C003)
- * Mengeksekusi 3 Level Pemulihan Otomatis tanpa campur tangan pengguna kecuali pada kondisi kritis.
+ * FASE 6: SELF-HEALING COORDINATOR
+ * Mengeksekusi strategi pemulihan mandiri berdasarkan diagnosis, dilengkapi Cooldown Anti-Spam.
  */
 public class RecoveryManager implements EventBus.EventListener {
-    private static final String TAG = "RecoveryManager";
+    private static final String TAG = "SelfHealingCoord";
     private final Context context;
+    private final FailureDiagnosisEngine diagnosisEngine;
+    
+    private long lastRecoveryTime = 0;
+    private static final long COOLDOWN_MS = 3000; // Jeda antar pemulihan (Anti-Spam)
 
     public RecoveryManager(Context context) {
         this.context = context;
+        this.diagnosisEngine = new FailureDiagnosisEngine();
         EventBus.getInstance().subscribe(AgentEvent.EventType.RECOVERY_TRIGGERED, this);
     }
 
     @Override
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.RECOVERY_TRIGGERED) {
-            String payload = String.valueOf(event.payload);
-            int level = parseRecoveryLevel(payload);
-            executeRecovery(level);
+            String errorCode = String.valueOf(event.payload);
+            long now = SystemClock.elapsedRealtime();
+
+            // Mencegah Spam Recovery (Cooldown), kecuali untuk pencarian tombol (Action Failed)
+            if (now - lastRecoveryTime < COOLDOWN_MS && !errorCode.startsWith("ACTION_FAILED")) {
+                Log.w(TAG, "Cooldown aktif. Mengabaikan pemicu pemulihan ganda.");
+                return;
+            }
+            lastRecoveryTime = now;
+
+            FailureDiagnosisEngine.RecoveryStrategy strategy = diagnosisEngine.diagnose(errorCode);
+            Log.i(TAG, "Diagnosis: [" + errorCode + "] -> Strategi: " + strategy.name());
+            executeStrategy(strategy);
         }
     }
 
-    private int parseRecoveryLevel(String payload) {
-        // Tentukan tingkat keparahan berdasarkan sinyal dari Watchdog
-        if (payload.contains("LEVEL_3") || payload.contains("A11Y") || payload.contains("DEADLOCK")) return 3;
-        if (payload.contains("LEVEL_2") || payload.contains("VISION")) return 2;
-        return 1; // Default: Soft Reset (misal: ENGINE TIMEOUT atau RATE LIMIT)
-    }
-
-    private void executeRecovery(int level) {
-        Log.w(TAG, "Mengeksekusi Protokol Recovery Level: " + level);
+    private void executeStrategy(FailureDiagnosisEngine.RecoveryStrategy strategy) {
         ServiceLocator locator = ServiceLocator.getInstance();
-
         try {
-            if (level >= 1) {
-                // LEVEL 1: SOFT RESET (Menghapus Ingatan / Cache)
-                NodeCache nodeCache = locator.find(NodeCache.class);
-                if (nodeCache != null) nodeCache.invalidate();
-                
-                ScreenCache screenCache = locator.find(ScreenCache.class);
-                if (screenCache != null) screenCache.invalidate();
-
-                // Kembalikan Otak ke posisi siaga
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
-                Log.i(TAG, "Level 1 Sukses: Amnesia Cache diaktifkan.");
-            }
-
-            if (level >= 2) {
-                // LEVEL 2: COMPONENT REBIND (Membangun ulang mata visual)
-                MediaProjectionWrapper projection = locator.find(MediaProjectionWrapper.class);
-                if (projection != null) {
-                    projection.rebind();
-                    Log.i(TAG, "Level 2 Sukses: MediaProjection di-rebind tanpa mematikan Service.");
-                }
-            }
-
-            if (level == 3) {
-                // LEVEL 3: HARD FALLBACK (Membangunkan Pengguna)
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.ERROR.name()));
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Sistem mengalami kebuntuan kritis. Mohon aktifkan ulang layanan aksesibilitas Nova di pengaturan."));
-                
-                Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                context.startActivity(intent);
-                Log.e(TAG, "Level 3 Sukses: Dilempar ke OS Settings untuk intervensi manual.");
+            switch (strategy) {
+                case SCROLL_SEARCH_DOWN:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area bawah..."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}")));
+                    break;
+                case SCROLL_SEARCH_UP:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area atas..."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"up\"}")));
+                    break;
+                case SOFT_RESET_CACHE:
+                    NodeCache nc = locator.find(NodeCache.class); if (nc != null) nc.invalidate();
+                    ScreenCache sc = locator.find(ScreenCache.class); if (sc != null) sc.invalidate();
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+                    Log.i(TAG, "Amnesia Cache diaktifkan.");
+                    break;
+                case HARD_REBIND_VISION:
+                    MediaProjectionWrapper vision = locator.find(MediaProjectionWrapper.class);
+                    if (vision != null) vision.rebind();
+                    Log.i(TAG, "Mata Visual di-rebind secara paksa.");
+                    break;
+                case ABORT_MISSION:
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layar stuck"));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, jalan buntu. Tombol sama sekali tidak ditemukan."));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.IDLE.name()));
+                    break;
+                case WAIT:
+                default:
+                    break;
             }
         } catch (Exception e) {
-            Log.e(TAG, "Kegagalan Fatal saat mengeksekusi Recovery!", e);
+            Log.e(TAG, "Gagal mengeksekusi strategi pemulihan!", e);
         }
     }
 }

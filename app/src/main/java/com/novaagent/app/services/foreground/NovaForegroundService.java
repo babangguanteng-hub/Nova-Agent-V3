@@ -20,7 +20,12 @@ import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.core.brain.CognitiveCore;
+import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.core.engine.TaskCheckpointManager;
+import com.novaagent.app.core.engine.TaskCompletionVerifier;
+import com.novaagent.app.core.vision.PerceptionCoordinator;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.brain.LongTermMemoryEngine;
@@ -38,6 +43,7 @@ public class NovaForegroundService extends Service {
     private NovaWatchdog watchdog;
     private AutonomousLoopEngine loopEngine;
     private NovaAudioDirector audioDirector;
+    private PerceptionCoordinator perceptionCoordinator;
 
     @Override
     public void onCreate() {
@@ -45,13 +51,20 @@ public class NovaForegroundService extends Service {
         createNotificationChannel();
         
         ServiceLocator locator = ServiceLocator.getInstance();
-        // INJEKSI FASE 1: Menggunakan CognitiveCore menggantikan NovaBrainEngine
         locator.register(CognitiveCore.class, new CognitiveCore(this));
+        
+        // INJEKSI FASE 2: PerceptionCoordinator sebagai Filter Visual
+        perceptionCoordinator = new PerceptionCoordinator();
+        locator.register(PerceptionCoordinator.class, perceptionCoordinator);
         
         locator.register(SystemActionInjector.class, new SystemActionInjector(this));
         locator.register(SafetyPolicyEngine.class, new SafetyPolicyEngine());
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
+        locator.register(TaskCheckpointManager.class, new TaskCheckpointManager(this));
+        locator.register(TaskCompletionVerifier.class, new TaskCompletionVerifier());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
+        locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
@@ -75,7 +88,7 @@ public class NovaForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Nova Agent")
-                .setContentText("Core Kognitif Aktif")
+                .setContentText("Korteks Visual & Kognitif Aktif")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
@@ -106,7 +119,10 @@ public class NovaForegroundService extends Service {
         if (watchdog != null) watchdog.stop();
         if (loopEngine != null) loopEngine.stopTask();
         if (audioDirector != null) audioDirector.destroy();
+        if (perceptionCoordinator != null) perceptionCoordinator.destroy();
+        
         ServiceLocator.getInstance().register(CognitiveCore.class, null);
+        ServiceLocator.getInstance().register(PerceptionCoordinator.class, null);
     }
 
     @Nullable
