@@ -19,7 +19,7 @@ import com.novaagent.app.core.engine.ActionVerificationScore;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
-import com.novaagent.app.core.brain.NovaBrainEngine;
+import com.novaagent.app.core.brain.CognitiveCore;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
@@ -44,9 +44,10 @@ public class NovaForegroundService extends Service {
         super.onCreate();
         createNotificationChannel();
         
-        // --- 1. MEREGISTRASIKAN SELURUH KETERGANTUNGAN SISTEM (RESOLUSI C001) ---
         ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(NovaBrainEngine.class, new NovaBrainEngine(this));
+        // INJEKSI FASE 1: Menggunakan CognitiveCore menggantikan NovaBrainEngine
+        locator.register(CognitiveCore.class, new CognitiveCore(this));
+        
         locator.register(SystemActionInjector.class, new SystemActionInjector(this));
         locator.register(SafetyPolicyEngine.class, new SafetyPolicyEngine());
         locator.register(ActionVerificationScore.class, new ActionVerificationScore());
@@ -55,20 +56,16 @@ public class NovaForegroundService extends Service {
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
-        // 2. Hidupkan Mesin Suara (Pita Suara)
         audioDirector = new NovaAudioDirector(this);
         locator.register(NovaAudioDirector.class, audioDirector);
 
-        // 3. Hidupkan Otak AI (Sekarang instansiasi murni tanpa parameter Context)
         loopEngine = new AutonomousLoopEngine();
         locator.register(AutonomousLoopEngine.class, loopEngine);
 
-        // 4. Tampilkan UI Bubble
         floatingBubbleView = new FloatingBubbleView(this);
         locator.register(HologramAuraManager.class, new HologramAuraManager(this));
         floatingBubbleView.show();
 
-        // 5. Hidupkan Pengawas Detak Jantung
         watchdog = new NovaWatchdog();
         watchdog.start();
         locator.register(NovaWatchdog.class, watchdog);
@@ -78,7 +75,7 @@ public class NovaForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Nova Agent")
-                .setContentText("Sistem Otonom Bersiaga")
+                .setContentText("Core Kognitif Aktif")
                 .setSmallIcon(android.R.drawable.ic_menu_camera)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
@@ -92,9 +89,7 @@ public class NovaForegroundService extends Service {
                 MediaProjectionManager projectionManager = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
                 if (projectionManager != null) {
                     MediaProjection mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-                    MlKitOcrEngine ocrEngine = new MlKitOcrEngine();
-                    ScreenCache screenCache = new ScreenCache();
-                    mediaProjectionWrapper = new MediaProjectionWrapper(this, mediaProjection, ocrEngine, screenCache);
+                    mediaProjectionWrapper = new MediaProjectionWrapper(this, mediaProjection, new MlKitOcrEngine(), new ScreenCache());
                     mediaProjectionWrapper.start();
                     ServiceLocator.getInstance().register(MediaProjectionWrapper.class, mediaProjectionWrapper);
                 }
@@ -111,28 +106,7 @@ public class NovaForegroundService extends Service {
         if (watchdog != null) watchdog.stop();
         if (loopEngine != null) loopEngine.stopTask();
         if (audioDirector != null) audioDirector.destroy();
-        
-        ServiceLocator locator = ServiceLocator.getInstance();
-        locator.register(NovaWatchdog.class, null);
-        locator.register(MediaProjectionWrapper.class, null);
-        locator.register(AutonomousLoopEngine.class, null);
-        locator.register(NovaBrainEngine.class, null);
-        locator.register(SystemActionInjector.class, null);
-        locator.register(SafetyPolicyEngine.class, null);
-        locator.register(ActionVerificationScore.class, null);
-        locator.register(SemanticVisionEngine.class, null);
-        locator.register(ProactiveTriggerEngine.class, null);
-        try {
-            ConditionalSentinelEngine sentinel = locator.resolve(ConditionalSentinelEngine.class);
-            if(sentinel != null) sentinel.shutdown();
-        } catch(Exception e){}
-        locator.register(ConditionalSentinelEngine.class, null);
-        locator.register(HologramAuraManager.class, null);
-        locator.register(LongTermMemoryEngine.class, null);
-        // Matikan total EventBus agar tidak ada Thread Zombi yang menguras baterai
-        try {
-            com.novaagent.app.core.bus.EventBus.getInstance().shutdown();
-        } catch(Exception e){}
+        ServiceLocator.getInstance().register(CognitiveCore.class, null);
     }
 
     @Nullable
@@ -141,9 +115,8 @@ public class NovaForegroundService extends Service {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) manager.createNotificationChannel(channel);
+            if (manager != null) manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW));
         }
     }
 }

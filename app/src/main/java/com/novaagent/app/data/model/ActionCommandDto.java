@@ -1,12 +1,11 @@
 package com.novaagent.app.data.model;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * DTO Murni untuk membungkus perintah dari LLM (Groq).
- * Parsing JSON terjadi di constructor untuk memastikan objek ini valid dan immutable.
- */
 public class ActionCommandDto {
     public final String action;
     public final int x;
@@ -15,9 +14,10 @@ public class ActionCommandDto {
     public final String direction;
     public final String thought;
     public final String speech;
+    public final List<String> subTasks = new ArrayList<>();
+    public final boolean stepComplete;
 
     public ActionCommandDto(String jsonResponse) throws JSONException {
-        // Pembersihan protektif: Cari blok JSON jika LLM membalas dengan format markdown markdown ```json
         String cleanJson = extractJson(jsonResponse);
         JSONObject json = new JSONObject(cleanJson);
 
@@ -28,19 +28,20 @@ public class ActionCommandDto {
         this.direction = json.optString("direction", "");
         this.thought = json.optString("thought", "");
         this.speech = json.optString("speech", "");
+        this.stepComplete = json.optBoolean("stepComplete", false);
+
+        JSONArray tasks = json.optJSONArray("plan");
+        if (tasks != null) {
+            for (int i = 0; i < tasks.length(); i++) {
+                subTasks.add(tasks.getString(i));
+            }
+        }
     }
 
     private String extractJson(String text) {
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
-        if (start != -1 && end != -1 && end > start) {
-            return text.substring(start, end + 1);
-        }
-        return text; // Fallback jika sudah berupa JSON utuh
-    }
-
-    @Override
-    public String toString() {
-        return "Action: " + action + " | Thought: " + thought;
+        if (start != -1 && end != -1 && end > start) return text.substring(start, end + 1);
+        return text;
     }
 }
