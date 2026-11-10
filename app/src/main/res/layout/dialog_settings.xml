@@ -1,46 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/bg_card_cyber"
-    android:padding="24dp">
+    android:background="@drawable/bg_card_cyber">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="PENGATURAN SUARA NOVA"
-        android:textColor="#00E5FF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="20dp"
-        android:layout_gravity="center_horizontal"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Karakter Suara (Pitch):"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="8dp"/>
-        
-    <RadioGroup
-        android:id="@+id/rgVoicePitch"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
-        <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Besar" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Normal" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Imut" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-    </RadioGroup>
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <Button
-        android:id="@+id/btnSaveSettings"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:text="SIMPAN PENGATURAN"
-        android:backgroundTint="#00E5FF"
-        android:textColor="#000"
-        android:textStyle="bold"
-        android:layout_marginTop="10dp"/>
-</LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KUSTOMISASI NOVA"
+            android:textColor="#00E5FF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"
+            android:layout_gravity="center_horizontal"/>
+
+        <!-- 1. KARAKTER SUARA -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🗣️ Karakter Suara AI:"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Berat (Wibawa)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceMale" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Standar (Ramah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Elegan (Nova)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Imut (Ceria)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Robot (Glitch)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        </RadioGroup>
+
+        <!-- 2. WARNA JELLY & HOLOGRAM -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎨 Tema Warna (Jelly & Hologram):"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cyan (Bawaan)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbColorRed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Crimson Red (Bahaya)" android:textColor="#FFF" android:buttonTint="#FF003C"/>
+            <RadioButton android:id="@+id/rbColorGreen" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Matrix Green (Hacker)" android:textColor="#FFF" android:buttonTint="#00FF73"/>
+            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Neon Purple (Cyberpunk)" android:textColor="#FFF" android:buttonTint="#B000FF"/>
+        </RadioGroup>
+
+        <!-- 3. GAYA ANIMASI JELLY -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🌀 Gaya Animasi Jelly:"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgAnim" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbAnimBreathe" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Napas Halus (Santai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimHeartbeat" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Detak Jantung (Agresif)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimGlitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Glitch (Patah-patah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimStatic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Statis (Hemat Baterai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        </RadioGroup>
+
+        <!-- 4. TOGGLE HOLOGRAM -->
+        <CheckBox
+            android:id="@+id/cbHologram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✨ Aktifkan Efek Hologram saat Klik"
+            android:textColor="#FFFFFF"
+            android:buttonTint="#00E5FF"
+            android:layout_marginBottom="20dp"/>
+
+        <Button
+            android:id="@+id/btnSaveSettings"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="SIMPAN & TERAPKAN"
+            android:backgroundTint="#00E5FF"
+            android:textColor="#000"
+            android:textStyle="bold"/>
+    </LinearLayout>
+</ScrollView>

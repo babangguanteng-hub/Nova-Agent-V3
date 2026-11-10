@@ -1320,6 +1320,7 @@ package com.novaagent.app.core.audio;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -1334,19 +1335,20 @@ import android.widget.Toast;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.di.ServiceLocator;
+
 import java.util.ArrayList;
 import java.util.Locale;
 
 public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.OnInitListener {
     private static final String TAG = "NovaAudioDirector";
-    
     private final Context context;
     private final Handler mainHandler;
-    
+
     private SpeechRecognizer ear;
     private Intent earIntent;
     private TextToSpeech mouth;
-    
+
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
@@ -1355,13 +1357,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public NovaAudioDirector(Context context) {
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
-        
         mainHandler.post(() -> {
             initMouth();
             initEar();
         });
-        
         EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
+        EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -1377,20 +1378,20 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mouth.setLanguage(Locale.getDefault()); 
             }
             
-            float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
+            // TERAPKAN KUSTOMISASI SUARA (PITCH & SPEED)
+            SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+            float pitch = prefs.getFloat("voice_pitch", 1.2f); // Default Elegan
+            float speed = prefs.getFloat("voice_speed", 1.0f);
             mouth.setPitch(pitch);
+            mouth.setSpeechRate(speed);
             isMouthReady = true;
             
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override public void onStart(String utteranceId) {
-                    isCurrentlySpeaking = true;
-                }
-                
+                @Override public void onStart(String utteranceId) { isCurrentlySpeaking = true; }
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    mainHandler.postDelayed(() -> resumeListening(), 200); // Dipercepat untuk sensasi Duplex
+                    mainHandler.postDelayed(() -> resumeListening(), 200); 
                 }
-                
                 @Override public void onError(String utteranceId) {
                     isCurrentlySpeaking = false;
                     mainHandler.post(() -> resumeListening());
@@ -1402,10 +1403,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     }
 
     private void initEar() {
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            return;
-        }
-
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) return;
         try {
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
             if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
@@ -1415,73 +1413,51 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        
-        // ⚡ PHASE 3: STREAMING STT TIMEOUTS
-        // Dipercepat agar terasa seperti percakapan natural (tidak menunggu lama setelah selesai bicara)
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); // 1.5s hening = proses
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); 
         earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { 
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); 
-            }
-            @Override public void onBeginningOfSpeech() { 
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); 
-            }
-            
-            // 🎙️ PHASE 3: DYNAMIC AUDIO VISUALIZER (Kirim sinyal volume ke UI)
+            @Override public void onReadyForSpeech(Bundle params) { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); }
+            @Override public void onBeginningOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); }
             @Override public void onRmsChanged(float rmsdB) {
-                if (isListeningAbadi && !isCurrentlySpeaking) {
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsdB));
-                }
+                if (isListeningAbadi && !isCurrentlySpeaking) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsdB));
             }
-            
             @Override public void onBufferReceived(byte[] buffer) {}
             @Override public void onEndOfSpeech() { 
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); isStreamFirstChunk = true; 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); 
+                isStreamFirstChunk = true; // Reset stream state
             }
-            
             @Override public void onError(int error) {
                 if (isListeningAbadi && !isCurrentlySpeaking) {
                     mainHandler.postDelayed(() -> {
                         if (isListeningAbadi && !isCurrentlySpeaking) {
                             try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 400); // Restart cepat jika sunyi
+                    }, 400); 
                 }
             }
-
-            // ✍️ PHASE 3: LIVE TRANSCRIPTION (Menangkap kata-kata sementara diucapkan)
-        @Override public void onPartialResults(Bundle partialResults) {
-            ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-            if (matches != null && !matches.isEmpty()) {
-                String partialText = matches.get(0);
-                
-                // 🛑 FASE 6: FULL-DUPLEX INTERRUPTION (Penyelaan)
-                // Jika user bicara > 3 karakter saat Nova ngomong, langsung potong!
-                if (isCurrentlySpeaking && partialText.length() > 3) {
-                    mouth.stop();
-                    isCurrentlySpeaking = false;
-                    isStreamFirstChunk = true; // Reset status stream
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+            @Override public void onPartialResults(Bundle partialResults) {
+                ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    String partialText = matches.get(0);
+                    // 🛑 FASE 6: FULL-DUPLEX INTERRUPTION
+                    if (isCurrentlySpeaking && partialText.length() > 3) {
+                        mouth.stop();
+                        isCurrentlySpeaking = false;
+                        isStreamFirstChunk = true;
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+                    }
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PARTIAL:" + partialText));
                 }
-
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PARTIAL:" + partialText));
             }
-        }
-            }
-
             @Override public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String command = matches.get(0);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
-                    
                     try {
-                        com.novaagent.app.core.di.ServiceLocator.getInstance()
-                            .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
-                            .startTask(command);
+                        com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).startTask(command);
                     } catch (Exception e) {}
                 } else {
                     resumeListening();
@@ -1489,7 +1465,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             }
             @Override public void onEvent(int eventType, Bundle params) {}
         });
-        
         resumeListening();
     }
 
@@ -1497,53 +1472,51 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
             if (ear != null && !isCurrentlySpeaking) {
-                try {
-                    ear.cancel(); 
-                    ear.startListening(earIntent);
-                } catch (Exception e) {}
+                try { ear.cancel(); ear.startListening(earIntent); } catch (Exception e) {}
             }
         });
     }
 
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
-        if (!isActive) {
-            mainHandler.post(() -> {   });
-        } else {
-            resumeListening();
-        }
+        if (!isActive) mainHandler.post(() -> { if (ear != null) ear.cancel(); });
+        else resumeListening();
     }
 
     @Override
     public void onEvent(AgentEvent event) {
-    } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
-        String textChunk = String.valueOf(event.payload);
-        if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
-            mainHandler.post(() -> {
-                if (isStreamFirstChunk) {
-                    // MUTLAK: Matikan telinga dan bersihkan antrean lama untuk potongan PERTAMA
-                      
+        if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
+            String textToSpeak = String.valueOf(event.payload);
+            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
+                mainHandler.post(() -> {
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "nova_chunk_" + System.currentTimeMillis());
-                    isStreamFirstChunk = false;
-                } else {
-                    // Potongan SELANJUTNYA ditambahkan ke antrean (QUEUE_ADD) agar suara mengalir tanpa jeda
-                    mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "nova_chunk_" + System.currentTimeMillis());
-                }
-            });
-        }
-    }
+                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
+                });
+            }
+        } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
+            String textChunk = String.valueOf(event.payload);
+            if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
+                mainHandler.post(() -> {
+                    if (isStreamFirstChunk) {
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "nova_chunk_" + System.currentTimeMillis());
+                        isStreamFirstChunk = false;
+                    } else {
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "nova_chunk_" + System.currentTimeMillis());
+                    }
+                });
             }
         }
     }
-    
+
     public void destroy() {
         setListeningMode(false);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
         try {
-            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) audioManager.setMode(AudioManager.MODE_NORMAL);
+            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) am.setMode(AudioManager.MODE_NORMAL);
         } catch (Exception e) {}
         mainHandler.post(() -> {
             if (ear != null) { ear.destroy(); ear = null; }
@@ -2169,20 +2142,68 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         
-        RadioGroup rgVoice = view.findViewById(R.id.rgVoicePitch);
-        float currentPitch = prefs.getFloat("voice_pitch", 1.0f);
-        if (currentPitch == 0.5f) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
-        else if (currentPitch == 1.5f) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
+        RadioGroup rgColor = view.findViewById(R.id.rgColor);
+        RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
+        android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
+
+        // Load Preferences
+        String voice = prefs.getString("custom_voice", "nova");
+        if (voice.equals("jarvis")) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
+        else if (voice.equals("male")) ((RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
+        else if (voice.equals("friday")) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        else if (voice.equals("robot")) ((RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
         else ((RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
+
+        String color = prefs.getString("custom_color", "cyan");
+        if (color.equals("red")) ((RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
+        else if (color.equals("green")) ((RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
+        else if (color.equals("purple")) ((RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
+
+        String anim = prefs.getString("custom_anim", "breathe");
+        if (anim.equals("heartbeat")) ((RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
+        else if (anim.equals("glitch")) ((RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
+        else if (anim.equals("static")) ((RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
+
+        cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
-            float newPitch = 1.0f;
-            int id = rgVoice.getCheckedRadioButtonId();
-            if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; 
-            else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; 
-            prefs.edit().putFloat("voice_pitch", newPitch).apply();
-            Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();
+            
+            // Save Voice
+            String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
+            int vId = rgVoice.getCheckedRadioButtonId();
+            if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
+            else if (vId == R.id.rbVoiceMale) { newVoice = "male"; pitch = 0.8f; speed = 1.0f; }
+            else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
+            else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
+            
+            // Save Color
+            String newColor = "cyan";
+            int cId = rgColor.getCheckedRadioButtonId();
+            if (cId == R.id.rbColorRed) newColor = "red";
+            else if (cId == R.id.rbColorGreen) newColor = "green";
+            else if (cId == R.id.rbColorPurple) newColor = "purple";
+
+            // Save Anim
+            String newAnim = "breathe";
+            int aId = rgAnim.getCheckedRadioButtonId();
+            if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
+            else if (aId == R.id.rbAnimGlitch) newAnim = "glitch";
+            else if (aId == R.id.rbAnimStatic) newAnim = "static";
+
+            prefs.edit()
+                .putString("custom_voice", newVoice)
+                .putFloat("voice_pitch", pitch)
+                .putFloat("voice_speed", speed)
+                .putString("custom_color", newColor)
+                .putString("custom_anim", newAnim)
+                .putBoolean("enable_hologram", cbHologram.isChecked())
+                .apply();
+                
+            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();
@@ -2312,11 +2333,14 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -2324,6 +2348,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -2342,17 +2367,26 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private ImageView jellyFace;
     private LinearLayout panelExpand;
     private TextView tvStatus;
-    
+
     private View closeTargetView;
     private WindowManager.LayoutParams closeParams;
-    
+
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private AnimatorSet pulseAnimator;
+    private AnimatorSet currentAnimator;
+    
+    // Tema & Animasi Preferences
+    private String customColor;
+    private String customAnim;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        this.customColor = prefs.getString("custom_color", "cyan");
+        this.customAnim = prefs.getString("custom_anim", "breathe");
+        
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
@@ -2377,22 +2411,24 @@ public class FloatingBubbleView implements EventBus.EventListener {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
+        
+        // Cek jika ID panelExpand dan tvStatus ada di layout, jika tidak hindari crash
         panelExpand = bubbleView.findViewById(R.id.panelExpand);
         tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
-        startJellyPulseAnimation();
+        applyCustomTheme();
 
         bubbleView.setOnClickListener(v -> {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
                 jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
-                if (pulseAnimator != null) pulseAnimator.resume();
+                if (currentAnimator != null && !customAnim.equals("static")) currentAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 setStatus("MENDENGARKAN...");
             } else {
                 jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
-                if (pulseAnimator != null) pulseAnimator.pause();
+                if (currentAnimator != null) currentAnimator.pause();
                 setStatus("NOVA TIDUR");
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
@@ -2445,34 +2481,42 @@ public class FloatingBubbleView implements EventBus.EventListener {
         });
     }
 
-    private void startJellyPulseAnimation() {
+    private void applyCustomTheme() {
+        // Terapkan Warna
+        int baseColor = Color.parseColor("#CC00E5FF"); // Cyan
+        if (customColor.equals("red")) baseColor = Color.parseColor("#CCFF003C");
+        else if (customColor.equals("green")) baseColor = Color.parseColor("#CC00FF73");
+        else if (customColor.equals("purple")) baseColor = Color.parseColor("#CCB000FF");
+
+        if (jellyBg.getBackground() instanceof GradientDrawable) {
+            ((GradientDrawable) jellyBg.getBackground()).setColor(baseColor);
+        }
+
+        if (customAnim.equals("static")) return; // Jangan mulai animasi jika mode statis
+
+        // Terapkan Animasi
         ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.05f, 1f);
         ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.05f, 1f);
 
-        ValueAnimator colorAnim = ValueAnimator.ofObject(new ArgbEvaluator(), 
-            Color.parseColor("#CC00E5FF"), Color.parseColor("#CCFF00E5"), 
-            Color.parseColor("#CCE5FF00"), Color.parseColor("#CC00FF73"), 
-            Color.parseColor("#CC00E5FF"));
-            
-        colorAnim.addUpdateListener(anim -> {
-            if (jellyBg.getBackground() instanceof GradientDrawable) {
-                ((GradientDrawable) jellyBg.getBackground()).setColor((int) anim.getAnimatedValue());
-            }
-        });
+        long duration = 1200; // Breathe
+        if (customAnim.equals("heartbeat")) {
+            duration = 400; // Cepat
+            scaleX.setInterpolator(new BounceInterpolator());
+        } else if (customAnim.equals("glitch")) {
+            duration = 200; // Patah-patah
+            scaleX.setFloatValues(1f, 1.3f, 0.8f, 1.1f, 1f);
+        }
 
         scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
         scaleFaceX.setRepeatCount(ValueAnimator.INFINITE); scaleFaceY.setRepeatCount(ValueAnimator.INFINITE);
-        colorAnim.setRepeatCount(ValueAnimator.INFINITE);
-        
-        scaleX.setDuration(1200); scaleY.setDuration(1200);
-        scaleFaceX.setDuration(1200); scaleFaceY.setDuration(1200);
-        colorAnim.setDuration(4500); 
+        scaleX.setDuration(duration); scaleY.setDuration(duration);
+        scaleFaceX.setDuration(duration); scaleFaceY.setDuration(duration);
 
-        pulseAnimator = new AnimatorSet();
-        pulseAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY, colorAnim);
-        pulseAnimator.start();
+        currentAnimator = new AnimatorSet();
+        currentAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY);
+        currentAnimator.start();
     }
 
     private void setStatus(String text) {
@@ -2480,7 +2524,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
             tvStatus.post(() -> {
                 if (panelExpand.getVisibility() == View.GONE) panelExpand.setVisibility(View.VISIBLE);
                 tvStatus.setText(text);
-                // Sembunyikan otomatis setelah beberapa detik jika ini bukan transkripsi langsung
                 if (!text.startsWith("🗣️")) {
                     tvStatus.postDelayed(() -> {
                         if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
@@ -2509,34 +2552,25 @@ public class FloatingBubbleView implements EventBus.EventListener {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
             
-            // 🎙️ PHASE 3: ANIMASI VISUALISATOR REAL-TIME BERDASARKAN SUARA
+            // Visualisator Suara Dinamis
             if (state.startsWith("RMS:")) {
-                if (!isListeningMode) return;
+                if (!isListeningMode || customAnim.equals("static")) return; // Abaikan jika statis
                 try {
                     float rms = Float.parseFloat(state.substring(4));
-                    // Mengkalibrasi RMS dB (biasanya dari -2.0 hingga 10.0) menjadi skala ukuran 1.0f - 1.6f
                     float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
                     if (targetScale > 1.6f) targetScale = 1.6f;
                     
                     bubbleView.post(() -> {
-                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
-                               .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
-                               .setDuration(100).start();
+                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale).setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale).setDuration(100).start();
                     });
                 } catch (Exception e){}
             } 
-            // ✍️ PHASE 3: LIVE TRANSCRIPTION DI LAYAR
-            else if (state.startsWith("PARTIAL:")) {
-                String partial = state.substring(8);
-                setStatus("🗣️ " + partial + "...");
-            }
-        if ("INTERRUPT_TRIGGERED".equals(state)) {
-            setStatus("🛑 DIPOTONG...");
-            jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
-        } else 
-            else if ("NOVA_SPEAKING_START".equals(state)) {
-                jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
+            else if (state.startsWith("PARTIAL:")) setStatus("🗣️ " + state.substring(8) + "...");
+            else if ("NOVA_SPEAKING_START".equals(state)) jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
+            else if ("INTERRUPT_TRIGGERED".equals(state)) {
+                setStatus("🛑 DIPOTONG...");
+                jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
             }
             else if ("LISTENING_READY".equals(state)) {
                 if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
@@ -2556,6 +2590,8 @@ package com.novaagent.app.ui.bubble;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
@@ -2564,37 +2600,50 @@ import android.view.Gravity;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
+import android.graphics.drawable.GradientDrawable;
 
 import com.novaagent.app.R;
 
-/**
- * FASE 6: VISUAL EXECUTION AURA
- * Memunculkan riak (ripple) neon hologram tepat di koordinat yang disentuh AI.
- * Didesain 100% ephemeral (muncul -> animasi -> hancur) agar RAM tetap lega.
- */
 public class HologramAuraManager {
     private final Context context;
     private final WindowManager windowManager;
     private final Handler mainHandler;
+    private final boolean isEnabled;
+    private int customColorInt;
 
     public HologramAuraManager(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         this.mainHandler = new Handler(Looper.getMainLooper());
+        
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        this.isEnabled = prefs.getBoolean("enable_hologram", true);
+        
+        String colorPref = prefs.getString("custom_color", "cyan");
+        this.customColorInt = Color.parseColor("#4D00E5FF"); // Default Semi-transparent Cyan
+        if (colorPref.equals("red")) this.customColorInt = Color.parseColor("#4DFF003C");
+        else if (colorPref.equals("green")) this.customColorInt = Color.parseColor("#4D00FF73");
+        else if (colorPref.equals("purple")) this.customColorInt = Color.parseColor("#4DB000FF");
     }
 
     public void showAura(int x, int y) {
+        if (!isEnabled) return; // Jika hologram dimatikan dari pengaturan, abaikan
+        
         mainHandler.post(() -> {
             try {
-                // 1. Buat titik energi baru
                 ImageView auraView = new ImageView(context);
-                auraView.setImageResource(R.drawable.bg_hologram_aura);
+                
+                // Buat shape secara dinamis agar warnanya bisa diganti
+                GradientDrawable shape = new GradientDrawable();
+                shape.setShape(GradientDrawable.OVAL);
+                shape.setColor(customColorInt);
+                shape.setStroke(6, customColorInt | 0xFF000000); // Garis luarnya solid (buang alpha 4D jadi FF)
+                auraView.setBackground(shape);
 
-                int size = 100; // Ukuran riak energi
+                int size = 100; 
                 int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
 
-                // FLAG_NOT_TOUCHABLE agar animasi ini tembus pandang dan tidak mengganggu klik sistem
                 WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                         size, size, layoutFlag,
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -2602,29 +2651,24 @@ public class HologramAuraManager {
                 );
 
                 params.gravity = Gravity.TOP | Gravity.START;
-                params.x = x - (size / 2); // Pusatkan tepat di titik klik
+                params.x = x - (size / 2); 
                 params.y = y - (size / 2);
 
                 windowManager.addView(auraView, params);
 
-                // 2. Animasi Ledakan Energi (Membesar & Memudar)
                 ObjectAnimator scaleX = ObjectAnimator.ofFloat(auraView, "scaleX", 0.2f, 2.5f);
                 ObjectAnimator scaleY = ObjectAnimator.ofFloat(auraView, "scaleY", 0.2f, 2.5f);
                 ObjectAnimator alpha = ObjectAnimator.ofFloat(auraView, "alpha", 1f, 0f);
 
                 AnimatorSet animSet = new AnimatorSet();
                 animSet.playTogether(scaleX, scaleY, alpha);
-                animSet.setDuration(600); // 0.6 detik
-                animSet.setInterpolator(new DecelerateInterpolator()); // Cepat di awal, lambat di akhir
+                animSet.setDuration(600); 
+                animSet.setInterpolator(new DecelerateInterpolator()); 
                 animSet.start();
 
-                // 3. Sapu bersih (Hancurkan objek dari RAM) setelah animasi selesai
                 mainHandler.postDelayed(() -> {
-                    try {
-                        windowManager.removeView(auraView);
-                    } catch (Exception e) {}
+                    try { windowManager.removeView(auraView); } catch (Exception e) {}
                 }, 650);
-
             } catch (Exception e) {}
         });
     }
@@ -4486,51 +4530,93 @@ FILE: ./app/src/main/res/layout/dialog_settings.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/bg_card_cyber"
-    android:padding="24dp">
+    android:background="@drawable/bg_card_cyber">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="PENGATURAN SUARA NOVA"
-        android:textColor="#00E5FF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="20dp"
-        android:layout_gravity="center_horizontal"/>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Karakter Suara (Pitch):"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="8dp"/>
-        
-    <RadioGroup
-        android:id="@+id/rgVoicePitch"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="16dp">
-        <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Besar" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Normal" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Imut" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-    </RadioGroup>
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <Button
-        android:id="@+id/btnSaveSettings"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:text="SIMPAN PENGATURAN"
-        android:backgroundTint="#00E5FF"
-        android:textColor="#000"
-        android:textStyle="bold"
-        android:layout_marginTop="10dp"/>
-</LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="KUSTOMISASI NOVA"
+            android:textColor="#00E5FF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="20dp"
+            android:layout_gravity="center_horizontal"/>
+
+        <!-- 1. KARAKTER SUARA -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🗣️ Karakter Suara AI:"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Berat (Wibawa)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceMale" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Standar (Ramah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Elegan (Nova)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Imut (Ceria)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Robot (Glitch)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        </RadioGroup>
+
+        <!-- 2. WARNA JELLY & HOLOGRAM -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎨 Tema Warna (Jelly & Hologram):"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cyan (Bawaan)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbColorRed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Crimson Red (Bahaya)" android:textColor="#FFF" android:buttonTint="#FF003C"/>
+            <RadioButton android:id="@+id/rbColorGreen" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Matrix Green (Hacker)" android:textColor="#FFF" android:buttonTint="#00FF73"/>
+            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Neon Purple (Cyberpunk)" android:textColor="#FFF" android:buttonTint="#B000FF"/>
+        </RadioGroup>
+
+        <!-- 3. GAYA ANIMASI JELLY -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🌀 Gaya Animasi Jelly:"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgAnim" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbAnimBreathe" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Napas Halus (Santai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimHeartbeat" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Detak Jantung (Agresif)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimGlitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Glitch (Patah-patah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+            <RadioButton android:id="@+id/rbAnimStatic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Statis (Hemat Baterai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
+        </RadioGroup>
+
+        <!-- 4. TOGGLE HOLOGRAM -->
+        <CheckBox
+            android:id="@+id/cbHologram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✨ Aktifkan Efek Hologram saat Klik"
+            android:textColor="#FFFFFF"
+            android:buttonTint="#00E5FF"
+            android:layout_marginBottom="20dp"/>
+
+        <Button
+            android:id="@+id/btnSaveSettings"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="SIMPAN & TERAPKAN"
+            android:backgroundTint="#00E5FF"
+            android:textColor="#000"
+            android:textStyle="bold"/>
+    </LinearLayout>
+</ScrollView>
 
 
 

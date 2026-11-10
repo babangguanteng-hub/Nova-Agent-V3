@@ -3,6 +3,8 @@ package com.novaagent.app.ui.bubble;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
@@ -11,37 +13,50 @@ import android.view.Gravity;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageView;
+import android.graphics.drawable.GradientDrawable;
 
 import com.novaagent.app.R;
 
-/**
- * FASE 6: VISUAL EXECUTION AURA
- * Memunculkan riak (ripple) neon hologram tepat di koordinat yang disentuh AI.
- * Didesain 100% ephemeral (muncul -> animasi -> hancur) agar RAM tetap lega.
- */
 public class HologramAuraManager {
     private final Context context;
     private final WindowManager windowManager;
     private final Handler mainHandler;
+    private final boolean isEnabled;
+    private int customColorInt;
 
     public HologramAuraManager(Context context) {
         this.context = context;
         this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         this.mainHandler = new Handler(Looper.getMainLooper());
+        
+        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        this.isEnabled = prefs.getBoolean("enable_hologram", true);
+        
+        String colorPref = prefs.getString("custom_color", "cyan");
+        this.customColorInt = Color.parseColor("#4D00E5FF"); // Default Semi-transparent Cyan
+        if (colorPref.equals("red")) this.customColorInt = Color.parseColor("#4DFF003C");
+        else if (colorPref.equals("green")) this.customColorInt = Color.parseColor("#4D00FF73");
+        else if (colorPref.equals("purple")) this.customColorInt = Color.parseColor("#4DB000FF");
     }
 
     public void showAura(int x, int y) {
+        if (!isEnabled) return; // Jika hologram dimatikan dari pengaturan, abaikan
+        
         mainHandler.post(() -> {
             try {
-                // 1. Buat titik energi baru
                 ImageView auraView = new ImageView(context);
-                auraView.setImageResource(R.drawable.bg_hologram_aura);
+                
+                // Buat shape secara dinamis agar warnanya bisa diganti
+                GradientDrawable shape = new GradientDrawable();
+                shape.setShape(GradientDrawable.OVAL);
+                shape.setColor(customColorInt);
+                shape.setStroke(6, customColorInt | 0xFF000000); // Garis luarnya solid (buang alpha 4D jadi FF)
+                auraView.setBackground(shape);
 
-                int size = 100; // Ukuran riak energi
+                int size = 100; 
                 int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
                         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
 
-                // FLAG_NOT_TOUCHABLE agar animasi ini tembus pandang dan tidak mengganggu klik sistem
                 WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                         size, size, layoutFlag,
                         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -49,29 +64,24 @@ public class HologramAuraManager {
                 );
 
                 params.gravity = Gravity.TOP | Gravity.START;
-                params.x = x - (size / 2); // Pusatkan tepat di titik klik
+                params.x = x - (size / 2); 
                 params.y = y - (size / 2);
 
                 windowManager.addView(auraView, params);
 
-                // 2. Animasi Ledakan Energi (Membesar & Memudar)
                 ObjectAnimator scaleX = ObjectAnimator.ofFloat(auraView, "scaleX", 0.2f, 2.5f);
                 ObjectAnimator scaleY = ObjectAnimator.ofFloat(auraView, "scaleY", 0.2f, 2.5f);
                 ObjectAnimator alpha = ObjectAnimator.ofFloat(auraView, "alpha", 1f, 0f);
 
                 AnimatorSet animSet = new AnimatorSet();
                 animSet.playTogether(scaleX, scaleY, alpha);
-                animSet.setDuration(600); // 0.6 detik
-                animSet.setInterpolator(new DecelerateInterpolator()); // Cepat di awal, lambat di akhir
+                animSet.setDuration(600); 
+                animSet.setInterpolator(new DecelerateInterpolator()); 
                 animSet.start();
 
-                // 3. Sapu bersih (Hancurkan objek dari RAM) setelah animasi selesai
                 mainHandler.postDelayed(() -> {
-                    try {
-                        windowManager.removeView(auraView);
-                    } catch (Exception e) {}
+                    try { windowManager.removeView(auraView); } catch (Exception e) {}
                 }, 650);
-
             } catch (Exception e) {}
         });
     }

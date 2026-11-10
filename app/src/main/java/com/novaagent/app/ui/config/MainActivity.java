@@ -94,20 +94,68 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         
-        RadioGroup rgVoice = view.findViewById(R.id.rgVoicePitch);
-        float currentPitch = prefs.getFloat("voice_pitch", 1.0f);
-        if (currentPitch == 0.5f) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
-        else if (currentPitch == 1.5f) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
+        RadioGroup rgColor = view.findViewById(R.id.rgColor);
+        RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
+        android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
+
+        // Load Preferences
+        String voice = prefs.getString("custom_voice", "nova");
+        if (voice.equals("jarvis")) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
+        else if (voice.equals("male")) ((RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
+        else if (voice.equals("friday")) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        else if (voice.equals("robot")) ((RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
         else ((RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
+
+        String color = prefs.getString("custom_color", "cyan");
+        if (color.equals("red")) ((RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
+        else if (color.equals("green")) ((RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
+        else if (color.equals("purple")) ((RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
+
+        String anim = prefs.getString("custom_anim", "breathe");
+        if (anim.equals("heartbeat")) ((RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
+        else if (anim.equals("glitch")) ((RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
+        else if (anim.equals("static")) ((RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
+
+        cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
-            float newPitch = 1.0f;
-            int id = rgVoice.getCheckedRadioButtonId();
-            if (id == R.id.rbVoiceJarvis) newPitch = 0.5f; 
-            else if (id == R.id.rbVoiceFriday) newPitch = 1.5f; 
-            prefs.edit().putFloat("voice_pitch", newPitch).apply();
-            Toast.makeText(this, "Karakter Suara Disimpan!", Toast.LENGTH_SHORT).show();
+            
+            // Save Voice
+            String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
+            int vId = rgVoice.getCheckedRadioButtonId();
+            if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
+            else if (vId == R.id.rbVoiceMale) { newVoice = "male"; pitch = 0.8f; speed = 1.0f; }
+            else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
+            else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
+            
+            // Save Color
+            String newColor = "cyan";
+            int cId = rgColor.getCheckedRadioButtonId();
+            if (cId == R.id.rbColorRed) newColor = "red";
+            else if (cId == R.id.rbColorGreen) newColor = "green";
+            else if (cId == R.id.rbColorPurple) newColor = "purple";
+
+            // Save Anim
+            String newAnim = "breathe";
+            int aId = rgAnim.getCheckedRadioButtonId();
+            if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
+            else if (aId == R.id.rbAnimGlitch) newAnim = "glitch";
+            else if (aId == R.id.rbAnimStatic) newAnim = "static";
+
+            prefs.edit()
+                .putString("custom_voice", newVoice)
+                .putFloat("voice_pitch", pitch)
+                .putFloat("voice_speed", speed)
+                .putString("custom_color", newColor)
+                .putString("custom_anim", newAnim)
+                .putBoolean("enable_hologram", cbHologram.isChecked())
+                .apply();
+                
+            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();
