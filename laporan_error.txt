@@ -39,20 +39,51 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
-> Task :app:processDebugManifestForPackage
-> Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:processDebugResources
+> Task :app:compressDebugAssets
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeDebugJavaResource
+> Task :app:checkDebugDuplicateClasses
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
 
 > Task :app:compileDebugJavaWithJavac
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:195: error: local variables referenced from an inner class must be final or effectively final
-                                    if (isGeminiCore) {
-                                        ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:199: error: cannot find symbol
+        List<String> permissionsNeeded = new ArrayList<>();
+        ^
+  symbol:   class List
+  location: class MainActivity
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:199: error: cannot find symbol
+        List<String> permissionsNeeded = new ArrayList<>();
+                                             ^
+  symbol:   class ArrayList
+  location: class MainActivity
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: cannot find symbol
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                                                           ^
+  symbol: class AgentEvent
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: package AgentEvent does not exist
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                                                                                ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: cannot find symbol
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                        ^
+  symbol: variable EventBus
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: cannot find symbol
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                                                                                 ^
+  symbol: class AgentEvent
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: package AgentEvent does not exist
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                                                                                                      ^
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: cannot find symbol
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                                              ^
+  symbol: variable EventBus
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
-1 error
+8 errors
 
 > Task :app:compileDebugJavaWithJavac FAILED
 
@@ -257,5 +288,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 44s
-19 actionable tasks: 19 executed
+BUILD FAILED in 1m 27s
+21 actionable tasks: 21 executed
