@@ -28,8 +28,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
@@ -37,11 +35,13 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
     
+    // 🌟 8 PROVIDER MUTLAK
     private final String[] providers = {
         "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
         "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
     };
 
+    // 🌟 8 MODEL SESUAI PERMINTAAN BOS
     private final String[] models = {
         "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
         "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
@@ -86,11 +86,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Auto-Model Setter
         spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(view instanceof TextView) ((TextView) view).setTextColor(0xFF00E5FF);
                 tvAutoModel.setText(models[position]);
-                prefs.edit().putString("ai_provider", providers[position]).apply();
+                prefs.edit().putString("ai_provider", providers[position]).putString("ai_model", models[position]).apply();
             }
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
