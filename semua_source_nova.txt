@@ -2330,7 +2330,6 @@ FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
 package com.novaagent.app.ui.bubble;
 
 import android.animation.AnimatorSet;
-import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -2341,12 +2340,8 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -2356,13 +2351,14 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import com.novaagent.app.R;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import java.util.ArrayList;
 
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
@@ -2370,21 +2366,19 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private View bubbleView;
     private ImageView jellyBg;
     private ImageView jellyFace;
+    private LinearLayout panelExpand;
+    private TextView tvStatus;
 
     private View closeTargetView;
     private WindowManager.LayoutParams closeParams;
 
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private boolean isMicMutedBySystem = false; 
     private AnimatorSet currentAnimator;
     
     // Tema & Animasi Preferences
     private String customColor;
     private String customAnim;
-
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechIntent;
 
     public FloatingBubbleView(Context context) {
         this.context = context;
@@ -2397,7 +2391,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
-        setupSpeechRecognizer();
     }
 
     private void playUISound(int soundEffectType) {
@@ -2415,49 +2408,11 @@ public class FloatingBubbleView implements EventBus.EventListener {
         closeParams.y = 150;
     }
 
-    private void setupSpeechRecognizer() {
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
-        speechIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        speechIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-
-        speechRecognizer.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { bubbleView.setAlpha(1.0f); }
-            @Override public void onBeginningOfSpeech() { }
-            @Override public void onRmsChanged(float rmsdB) {}
-            @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { }
-            
-            @Override public void onError(int error) { 
-                if (isListeningMode && !isMicMutedBySystem) {
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (isListeningMode && !isMicMutedBySystem) speechRecognizer.startListening(speechIntent);
-                    }, 500);
-                }
-            }
-            
-            @Override public void onResults(Bundle results) {
-                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (matches != null && !matches.isEmpty()) {
-                    String command = matches.get(0);
-                    try {
-                        AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
-                        if (engine != null) engine.startTask(command);
-                    } catch (Exception e) {}
-                } else if (isListeningMode && !isMicMutedBySystem) {
-                    speechRecognizer.startListening(speechIntent);
-                }
-            }
-            @Override public void onPartialResults(Bundle partialResults) {}
-            @Override public void onEvent(int eventType, Bundle params) {}
-        });
-    }
-
     private void initView() {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
-        
+
         applyCustomTheme();
 
         bubbleView.setOnClickListener(v -> {
@@ -2470,7 +2425,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
             } else {
                 jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
                 if (currentAnimator != null) currentAnimator.pause();
-                if (speechRecognizer != null) speechRecognizer.stopListening();
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
@@ -2523,8 +2477,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
     }
 
     private void applyCustomTheme() {
-        // Terapkan Warna
-        int baseColor = Color.parseColor("#CC00E5FF"); // Cyan
+        int baseColor = Color.parseColor("#CC00E5FF"); 
         if (customColor.equals("red")) baseColor = Color.parseColor("#CCFF003C");
         else if (customColor.equals("green")) baseColor = Color.parseColor("#CC00FF73");
         else if (customColor.equals("purple")) baseColor = Color.parseColor("#CCB000FF");
@@ -2535,18 +2488,17 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
         if (customAnim.equals("static")) return;
 
-        // Terapkan Animasi
         ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.05f, 1f);
         ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.05f, 1f);
 
-        long duration = 1200; // Breathe
+        long duration = 1200;
         if (customAnim.equals("heartbeat")) {
-            duration = 400; // Cepat
+            duration = 400; 
             scaleX.setInterpolator(new BounceInterpolator());
         } else if (customAnim.equals("glitch")) {
-            duration = 200; // Patah-patah
+            duration = 200; 
             scaleX.setFloatValues(1f, 1.3f, 0.8f, 1.1f, 1f);
         }
 
@@ -2565,13 +2517,12 @@ public class FloatingBubbleView implements EventBus.EventListener {
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
-        try { windowManager.addView(bubbleView, params); isAdded = true; speechRecognizer.startListening(speechIntent); } catch (Exception e) {}
+        try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
     }
 
     public void remove() {
         isListeningMode = false;
         if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
-        if (speechRecognizer != null) speechRecognizer.destroy();
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
@@ -2580,31 +2531,27 @@ public class FloatingBubbleView implements EventBus.EventListener {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
             
-            // Visualisator Suara Dinamis
             if (state.startsWith("RMS:")) {
-                if (!isListeningMode || customAnim.equals("static")) return; // Abaikan jika statis
+                if (!isListeningMode || customAnim.equals("static")) return;
                 try {
                     float rms = Float.parseFloat(state.substring(4));
-                    float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
-                    if (targetScale > 1.6f) targetScale = 1.6f;
+                    float rawScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                    if (rawScale > 1.6f) rawScale = 1.6f;
+                    
+                    // SOLUSI LAMBDA: Mengunci variabel agar menjadi 'effectively final'
+                    final float finalScale = rawScale;
                     
                     bubbleView.post(() -> {
-                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale).setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale).setDuration(100).start();
+                        jellyBg.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).start();
                     });
                 } catch (Exception e){}
             } 
             else if ("NOVA_SPEAKING_START".equals(state)) {
-                isMicMutedBySystem = true;
-                speechRecognizer.stopListening();
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
-            } 
+            }
             else if ("INTERRUPT_TRIGGERED".equals(state)) {
                 jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
-            }
-            else if ("RESUME_LISTENING".equals(state)) {
-                isMicMutedBySystem = false;
-                if (isListeningMode) bubbleView.post(() -> speechRecognizer.startListening(speechIntent));
             }
         }
     }
