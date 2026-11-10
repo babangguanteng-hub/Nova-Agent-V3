@@ -4120,6 +4120,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.Random;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -4136,7 +4137,7 @@ public class UniversalNetworkClient {
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private Call activeCall; // FASE 6: Menyimpan panggilan aktif agar bisa dibatalkan
+    private Call activeCall; 
     private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
@@ -4149,7 +4150,7 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS) // Waktu baca diperpanjang untuk streaming
+                .readTimeout(60, TimeUnit.SECONDS) 
                 .build();
     }
 
@@ -4163,16 +4164,24 @@ public class UniversalNetworkClient {
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
-        String apiKey = prefs.getString("api_key", "").trim();
+        String rawKeys = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        if (modelName.isEmpty()) modelName = "llama-3.1-8b-instant";
-        if (apiKey.isEmpty()) { callback.onError("API Key Kosong!"); return; }
+        if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
+
+        // 🔄 OMNI-ROTATOR: Pisahkan API Key dengan koma, bersihkan spasi, dan pilih 1 secara acak
+        String[] keyArray = rawKeys.split(",");
+        String apiKey = keyArray[new Random().nextInt(keyArray.length)].trim();
+
+        // 🛡️ ANTI-404: Penyelaras Model & Provider Otomatis
+        if (modelName.isEmpty() || (provider.contains("Gemini") && !modelName.contains("gemini")) || (provider.contains("Groq") && modelName.contains("gemini"))) {
+            modelName = provider.contains("Gemini") ? "gemini-1.5-flash" : "llama-3.1-8b-instant";
+        }
 
         try {
             Request request = null;
 
-            if (provider.equals("Gemini (Google Studio)")) {
+            if (provider.contains("Gemini")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
                 
@@ -4197,7 +4206,6 @@ public class UniversalNetworkClient {
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
 
-                // ⚡ FASE 4: Menggunakan Endpoint Streaming (SSE) untuk Gemini
                 String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + apiKey;
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
@@ -4206,7 +4214,6 @@ public class UniversalNetworkClient {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.3);
-                // ⚡ FASE 4: Mengaktifkan Streaming untuk Groq/OpenAI/DeepSeek
                 payload.put("stream", true); 
                 
                 JSONArray safeMessages = new JSONArray();
@@ -4225,8 +4232,8 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url = provider.equals("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
-                if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
+                String url = provider.contains("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+                if (provider.contains("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
@@ -4244,7 +4251,6 @@ public class UniversalNetworkClient {
                         return;
                     }
                     
-                    // ⚡ FASE 4: STREAMING READER & PARTIAL JSON EXTRACTOR
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
                         String line;
                         StringBuilder fullResponse = new StringBuilder();
@@ -4259,7 +4265,7 @@ public class UniversalNetworkClient {
                                     JSONObject json = new JSONObject(data);
                                     String chunk = "";
                                     
-                                    if (provider.equals("Gemini (Google Studio)")) {
+                                    if (provider.contains("Gemini")) {
                                         JSONArray candidates = json.optJSONArray("candidates");
                                         if (candidates != null && candidates.length() > 0) {
                                             JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
@@ -4276,7 +4282,6 @@ public class UniversalNetworkClient {
                                     fullResponse.append(chunk);
                                     String textSoFar = fullResponse.toString();
                                     
-                                    // EKSTRAKTOR SUARA REAL-TIME DARI DALAM JSON
                                     int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
                                     if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
                                     
@@ -4296,7 +4301,6 @@ public class UniversalNetworkClient {
                                                     if (stop != -1 && (boundary == -1 || stop < boundary)) boundary = stop;
                                                 }
                                                 
-                                                // Jika menemukan tanda baca akhir kalimat, langsung bicara!
                                                 if (boundary != -1) {
                                                     String sentence = unqueued.substring(0, boundary + 1).trim();
                                                     if (!sentence.isEmpty()) {
@@ -4311,7 +4315,6 @@ public class UniversalNetworkClient {
                             }
                         }
                         
-                        // Bersihkan sisa kalimat terakhir yang belum diucapkan (jika tidak ada tanda baca)
                         String textSoFar = fullResponse.toString();
                         int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
                         if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
