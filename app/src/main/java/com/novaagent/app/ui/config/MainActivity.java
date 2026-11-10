@@ -91,33 +91,35 @@ public class MainActivity extends AppCompatActivity {
 
     private void showSettingsDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this).setView(view).create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         
-        RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
-        RadioGroup rgColor = view.findViewById(R.id.rgColor);
-        RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
+        android.widget.RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
+        android.widget.RadioGroup rgColor = view.findViewById(R.id.rgColor);
+        android.widget.RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
         android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
+
+        SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
 
         // Load Preferences
         String voice = prefs.getString("custom_voice", "nova");
-        if (voice.equals("jarvis")) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
-        else if (voice.equals("male")) ((RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
-        else if (voice.equals("friday")) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
-        else if (voice.equals("robot")) ((RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
-        else ((RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
+        if (voice.equals("jarvis")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
+        else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
+        else if (voice.equals("friday")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        else if (voice.equals("robot")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
+        else ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
 
         String color = prefs.getString("custom_color", "cyan");
-        if (color.equals("red")) ((RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
-        else if (color.equals("green")) ((RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
-        else if (color.equals("purple")) ((RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
-        else ((RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
+        if (color.equals("red")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
+        else if (color.equals("green")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
+        else if (color.equals("purple")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
+        else ((android.widget.RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
 
         String anim = prefs.getString("custom_anim", "breathe");
-        if (anim.equals("heartbeat")) ((RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
-        else if (anim.equals("glitch")) ((RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
-        else if (anim.equals("static")) ((RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
-        else ((RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
+        if (anim.equals("heartbeat")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
+        else if (anim.equals("glitch")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
+        else if (anim.equals("static")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
+        else ((android.widget.RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
 
         cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
 
@@ -155,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
                 .putBoolean("enable_hologram", cbHologram.isChecked())
                 .apply();
                 
-            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", android.widget.Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();

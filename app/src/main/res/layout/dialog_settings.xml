@@ -40,7 +40,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🎨 Tema Warna (Jelly & Hologram):"
+            android:text="🎨 Tema Warna (Jelly &amp; Hologram):"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:layout_marginBottom="8dp"/>
@@ -80,7 +80,7 @@
             android:id="@+id/btnSaveSettings"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:text="SIMPAN & TERAPKAN"
+            android:text="SIMPAN DAN TERAPKAN"
             android:backgroundTint="#00E5FF"
             android:textColor="#000"
             android:textStyle="bold"/>
