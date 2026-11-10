@@ -21,12 +21,14 @@ import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.core.brain.CognitiveCore;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ProactiveConversationEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.engine.TaskCheckpointManager;
 import com.novaagent.app.core.engine.TaskCompletionVerifier;
 import com.novaagent.app.core.vision.PerceptionCoordinator;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ProactiveConversationEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.brain.LongTermMemoryEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
@@ -64,8 +66,10 @@ public class NovaForegroundService extends Service {
         locator.register(TaskCompletionVerifier.class, new TaskCompletionVerifier());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 

@@ -173,6 +173,8 @@ public class AgentEvent {
         ACTION_VERIFIED, 
         OCR_COMPLETED, 
         VOICE_RECEIVED,
+        USER_INTERACTION,
+        VOICE_STREAM_CHUNK, // FASE 4: Potongan suara real-time
         RECOVERY_TRIGGERED, 
         ERROR
     }
@@ -357,6 +359,96 @@ public class ProactiveTriggerEngine {
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Target terlihat! Melakukan eksekusi cepat."));
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, targetAction));
         }
+    }
+}
+
+
+
+==================================================
+FILE: ./app/src/main/java/com/novaagent/app/core/proactive/ProactiveConversationEngine.java
+==================================================
+
+package com.novaagent.app.core.proactive;
+
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+
+/**
+ * FASE 8: PROACTIVE CONVERSATION ENGINE
+ * Deteksi diam (idle) menggunakan timer lokal (0 Token API!).
+ * Memiliki Anti-Spam dan pengalih mode (Proaktif/Pasif).
+ */
+public class ProactiveConversationEngine implements EventBus.EventListener {
+    private static final String TAG = "ProactiveConvEngine";
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    
+    private long lastInteractionTime = System.currentTimeMillis();
+    private boolean hasGreeted5Min = false;
+    private boolean hasGreeted30Min = false;
+    private boolean isProactiveMode = true; // Mode bawaan aktif
+
+    private final Runnable idleCheckRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isProactiveMode) {
+                handler.postDelayed(this, 60 * 1000); // Cek lagi menit depan
+                return;
+            }
+
+            long idleTime = System.currentTimeMillis() - lastInteractionTime;
+            
+            // 30 Menit Diam -> Sapaan Ringan
+            if (idleTime >= 30 * 60 * 1000 && !hasGreeted30Min) {
+                hasGreeted30Min = true;
+                Log.i(TAG, "Idle 30m: Memicu sapaan ringan.");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Bos, Nova masih standby kalau butuh sesuatu ya."));
+            } 
+            // 5 Menit Diam -> Sapaan Lanjutan
+            else if (idleTime >= 5 * 60 * 1000 && !hasGreeted5Min) {
+                hasGreeted5Min = true;
+                Log.i(TAG, "Idle 5m: Memicu sapaan lanjutan.");
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Ada yang mau dilanjut lagi obrolannya bos?"));
+            }
+
+            handler.postDelayed(this, 60 * 1000); // Evaluasi setiap 1 menit
+        }
+    };
+
+    public ProactiveConversationEngine() {
+        EventBus.getInstance().subscribe(AgentEvent.EventType.USER_INTERACTION, this);
+        EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
+        handler.postDelayed(idleCheckRunnable, 60 * 1000);
+        Log.i(TAG, "Mesin Percakapan Proaktif Dihidupkan.");
+    }
+
+    @Override
+    public void onEvent(AgentEvent event) {
+        // Reset timer jika user berbicara atau berinteraksi
+        if (event.type == AgentEvent.EventType.USER_INTERACTION || 
+           (event.type == AgentEvent.EventType.STATE_CHANGED && "USER_SPEAKING".equals(event.payload))) {
+            
+            lastInteractionTime = System.currentTimeMillis();
+            hasGreeted5Min = false;
+            hasGreeted30Min = false;
+        }
+    }
+
+    public void setProactiveMode(boolean isActive) {
+        this.isProactiveMode = isActive;
+        Log.i(TAG, "Mode Proaktif diubah menjadi: " + isActive);
+        // Reset timer saat mode diubah
+        lastInteractionTime = System.currentTimeMillis();
+        hasGreeted5Min = false;
+        hasGreeted30Min = false;
+    }
+
+    public void shutdown() {
+        handler.removeCallbacks(idleCheckRunnable);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.USER_INTERACTION, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 }
 
@@ -702,6 +794,10 @@ public class LocalIntentRouter {
             if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, safeCmd("set_brightness", null, null, -1), "Membuka pengaturan layar.");
             if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, safeCmd("set_dnd", null, null, -1), "Membuka mode jangan ganggu.");
 
+        // --- FASE 8: KONTROL MODE PROAKTIF ---
+        if (c.matches(".*(aktifkan|nyalakan).*proaktif.*")) return new RoutingResult(true, safeCmd("set_proactive", "true", null, -1), "Mode proaktif aktif. Saya akan menyapa jika Anda diam terlalu lama.");
+        if (c.matches(".*(matikan|nonaktifkan).*proaktif.*") || c.matches(".*mode pasif.*")) return new RoutingResult(true, safeCmd("set_proactive", "false", null, -1), "Mode pasif aktif. Saya hanya akan bicara jika dipanggil.");
+
             if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
             if (c.matches(".*(jam berapa|waktu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sekarang jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date()) + " bos.");
             if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sama-sama bos! Ada lagi?");
@@ -870,6 +966,19 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
         try {
             switch (event.type) {
+            case STATE_CHANGED:
+                String state = String.valueOf(event.payload);
+                if ("INTERRUPT_TRIGGERED".equals(state)) {
+                    Log.w(TAG, "🔥 INTERUPSI USER! Membatalkan misi dan generasi AI.");
+                    if (cognitiveCore != null) cognitiveCore.cancelProcessing();
+                    this.isRunning = false;
+                    this.currentTask = "";
+                    try {
+                        com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                        if (vision != null) vision.pauseVision();
+                    } catch (Exception e) {}
+                }
+                break;
                 case SCREEN_UPDATED:
                     if (!isRunning) return;
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
@@ -953,7 +1062,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 if ("done".equalsIgnoreCase(cmd.action) && !cognitiveCore.getPlanner().hasActivePlan()) {
                     if (completionVerifier.verifyCompletion(cognitiveCore.getPlanner().getMainGoal(), ctx)) {
                         checkpointManager.clearCheckpoint(); // Hapus checkpoint karena sukses
-                        if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
+                        // Suara AI ditangani oleh Streaming Network Client (Fase 4)
                         stopTask();
                     }
                 } else {
@@ -1211,6 +1320,7 @@ package com.novaagent.app.core.audio;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -1220,6 +1330,8 @@ import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
+import android.widget.Toast;
+
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import java.util.ArrayList;
@@ -1238,6 +1350,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
+    private boolean isStreamFirstChunk = true;
 
     public NovaAudioDirector(Context context) {
         this.context = context;
@@ -1259,7 +1372,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
-            // FIX BISU: Fallback ke Default Locale jika id-ID belum lengkap diinstal di OS
             int result = mouth.setLanguage(new Locale("id", "ID"));
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 mouth.setLanguage(Locale.getDefault()); 
@@ -1272,13 +1384,11 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
-                    Log.i(TAG, "Mouth: Mulai bicara. Mematikan telinga.");
                 }
                 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    Log.i(TAG, "Mouth: Selesai bicara. Menghidupkan telinga.");
-                    mainHandler.postDelayed(() -> resumeListening(), 500);
+                    mainHandler.postDelayed(() -> resumeListening(), 200); // Dipercepat untuk sensasi Duplex
                 }
                 
                 @Override public void onError(String utteranceId) {
@@ -1287,23 +1397,50 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 }
             });
         } else {
-            Log.e(TAG, "TTS Initialization Failed!");
+            mainHandler.post(() -> Toast.makeText(context, "⚠️ Mesin TTS Android gagal dimuat!", Toast.LENGTH_SHORT).show());
         }
     }
 
     private void initEar() {
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            return;
+        }
+
+        try {
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+        } catch (Exception e) {}
+
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
+        
+        // ⚡ PHASE 3: STREAMING STT TIMEOUTS
+        // Dipercepat agar terasa seperti percakapan natural (tidak menunggu lama setelah selesai bicara)
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); // 1.5s hening = proses
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); }
-            @Override public void onBeginningOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); }
-            @Override public void onRmsChanged(float rmsdB) {}
+            @Override public void onReadyForSpeech(Bundle params) { 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); 
+            }
+            @Override public void onBeginningOfSpeech() { 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); 
+            }
+            
+            // 🎙️ PHASE 3: DYNAMIC AUDIO VISUALIZER (Kirim sinyal volume ke UI)
+            @Override public void onRmsChanged(float rmsdB) {
+                if (isListeningAbadi && !isCurrentlySpeaking) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsdB));
+                }
+            }
+            
             @Override public void onBufferReceived(byte[] buffer) {}
-            @Override public void onEndOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); }
+            @Override public void onEndOfSpeech() { 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); isStreamFirstChunk = true; 
+            }
             
             @Override public void onError(int error) {
                 if (isListeningAbadi && !isCurrentlySpeaking) {
@@ -1311,8 +1448,28 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                         if (isListeningAbadi && !isCurrentlySpeaking) {
                             try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 500);
+                    }, 400); // Restart cepat jika sunyi
                 }
+            }
+
+            // ✍️ PHASE 3: LIVE TRANSCRIPTION (Menangkap kata-kata sementara diucapkan)
+        @Override public void onPartialResults(Bundle partialResults) {
+            ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            if (matches != null && !matches.isEmpty()) {
+                String partialText = matches.get(0);
+                
+                // 🛑 FASE 6: FULL-DUPLEX INTERRUPTION (Penyelaan)
+                // Jika user bicara > 3 karakter saat Nova ngomong, langsung potong!
+                if (isCurrentlySpeaking && partialText.length() > 3) {
+                    mouth.stop();
+                    isCurrentlySpeaking = false;
+                    isStreamFirstChunk = true; // Reset status stream
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+                }
+
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PARTIAL:" + partialText));
+            }
+        }
             }
 
             @Override public void onResults(Bundle results) {
@@ -1325,12 +1482,11 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                         com.novaagent.app.core.di.ServiceLocator.getInstance()
                             .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
                             .startTask(command);
-                    } catch (Exception e) { Log.e(TAG, "Otak belum siap."); }
+                    } catch (Exception e) {}
                 } else {
                     resumeListening();
                 }
             }
-            @Override public void onPartialResults(Bundle partialResults) {}
             @Override public void onEvent(int eventType, Bundle params) {}
         });
         
@@ -1352,7 +1508,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
         if (!isActive) {
-            mainHandler.post(() -> { if (ear != null) ear.cancel(); });
+            mainHandler.post(() -> {   });
         } else {
             resumeListening();
         }
@@ -1360,15 +1516,23 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     @Override
     public void onEvent(AgentEvent event) {
-        if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
-            String textToSpeak = String.valueOf(event.payload);
-            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
-                mainHandler.post(() -> {
-                    // MUTLAK: Matikan telinga sebelum mulut terbuka!
-                    if (ear != null) ear.cancel(); 
+    } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
+        String textChunk = String.valueOf(event.payload);
+        if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
+            mainHandler.post(() -> {
+                if (isStreamFirstChunk) {
+                    // MUTLAK: Matikan telinga dan bersihkan antrean lama untuk potongan PERTAMA
+                      
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
-                });
+                    mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "nova_chunk_" + System.currentTimeMillis());
+                    isStreamFirstChunk = false;
+                } else {
+                    // Potongan SELANJUTNYA ditambahkan ke antrean (QUEUE_ADD) agar suara mengalir tanpa jeda
+                    mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "nova_chunk_" + System.currentTimeMillis());
+                }
+            });
+        }
+    }
             }
         }
     }
@@ -1377,6 +1541,10 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         setListeningMode(false);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
+        try {
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_NORMAL);
+        } catch (Exception e) {}
         mainHandler.post(() -> {
             if (ear != null) { ear.destroy(); ear = null; }
             if (mouth != null) { mouth.stop(); mouth.shutdown(); mouth = null; }
@@ -1441,7 +1609,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 /**
- * FASE 5: LONG-TERM MEMORY CORE
+ * FASE 7: LONG-TERM MEMORY CORE
  * Database SQLite lokal yang kini dilengkapi fitur pencarian semantik (RAG Lokal).
  */
 public class LongTermMemoryEngine extends SQLiteOpenHelper {
@@ -1476,7 +1644,7 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     /**
-     * FASE 5: FUNGSI RAG (Retrieval) LOKAL
+     * FASE 7: FUNGSI RAG (Retrieval) LOKAL
      * Mencari fakta yang mengandung salah satu kata kunci.
      */
     public String searchRelevantFacts(String keywords) {
@@ -1531,7 +1699,7 @@ public class CognitiveCore {
     private final UniversalNetworkClient networkClient;
     private final ContextManager contextManager;
     private final TaskPlanner taskPlanner;
-    private final MemoryCoordinator memoryCoordinator; // FASE 5: Penambahan Coordinator
+    private final MemoryCoordinator memoryCoordinator; // FASE 7: RAG Coordinator
 
     public interface CoreCallback {
         void onDecisionMade(ActionCommandDto command);
@@ -1551,6 +1719,10 @@ public class CognitiveCore {
         memoryCoordinator.wipeShortTermMemory(); 
         taskPlanner.abortPlan(); 
     }
+    
+    public void cancelProcessing() {
+        if (networkClient != null) networkClient.cancelActiveCall();
+    }
 
     public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
         try {
@@ -1561,8 +1733,8 @@ public class CognitiveCore {
             String compressedUI = contextManager.compressContext(rawContext);
             JSONArray finalMessages = new JSONArray();
 
-            // FASE 5: LOCAL RAG INJECTION
-            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini, bukan semua database!
+            // ⚡ FASE 7: LOCAL RAG INJECTION
+            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini!
             String relevantFacts = memoryCoordinator.retrieveRelevantFacts(userCommand);
             if (!relevantFacts.isEmpty()) {
                 Log.i(TAG, "RAG Aktif. Fakta ditemukan: \n" + relevantFacts);
@@ -1620,7 +1792,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * FASE 5: MEMORY INTELLIGENCE (COORDINATOR)
+ * FASE 7: CONTEXT & MEMORY ENGINE (COORDINATOR)
  * Mengatur Working Memory (Jangka Pendek) dan Semantic Memory (Jangka Panjang).
  * Menggunakan teknik Local RAG (Retrieval-Augmented Generation) berbasis Keyword.
  */
@@ -1629,7 +1801,7 @@ public class MemoryCoordinator {
     
     // Stopwords bahasa Indonesia (kata yang diabaikan saat mencari memori)
     private static final List<String> STOP_WORDS = Arrays.asList(
-        "tolong", "buka", "coba", "yang", "di", "ke", "dari", "ini", "itu", "dan", "atau", "buat", "untuk"
+        "tolong", "buka", "coba", "yang", "di", "ke", "dari", "ini", "itu", "dan", "atau", "buat", "untuk", "saya", "aku", "nova"
     );
 
     public MemoryCoordinator() {
@@ -1694,12 +1866,11 @@ import org.json.JSONObject;
 import java.util.LinkedList;
 
 /**
- * 10x KOMPLEKSITAS: MANAJER INGATAN KHUSUS.
- * Menjaga konteks percakapan agar AI tidak amnesia, 
- * dengan batas aman (Sliding Window) agar token API tidak jebol.
+ * FASE 7: MANAJER INGATAN JANGKA PENDEK (WORKING MEMORY).
+ * Diet Token Ekstrem: Cukup ingat 2 pasang percakapan terakhir saja.
  */
 public class ConversationMemory {
-    private static final int MAX_MEMORY_PAIRS = 5; // Mengingat 5 pasang tanya-jawab terakhir
+    private static final int MAX_MEMORY_PAIRS = 2; 
     private final LinkedList<JSONObject> memory = new LinkedList<>();
 
     public synchronized void addUserMessage(String message) {
@@ -1717,10 +1888,9 @@ public class ConversationMemory {
             msg.put("content", content);
             memory.add(msg);
 
-            // Pruning: Buang ingatan tertua jika melebihi batas (1 pasang = 2 pesan)
             if (memory.size() > MAX_MEMORY_PAIRS * 2) {
-                memory.removeFirst(); // Buang User lama
-                memory.removeFirst(); // Buang Jawaban lama
+                memory.removeFirst(); 
+                memory.removeFirst(); 
             }
         } catch (Exception ignored) {}
     }
@@ -2147,33 +2317,31 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import com.novaagent.app.R;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import com.novaagent.app.core.audio.NovaAudioDirector;
 
-/**
- * UI MURNI (DUMB COMPONENT)
- * Sekarang 100% bersih dari SpeechRecognizer. Hanya mengatur Animasi dan Drag!
- */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
     private View bubbleView;
     private ImageView jellyBg;
     private ImageView jellyFace;
+    private LinearLayout panelExpand;
+    private TextView tvStatus;
     
     private View closeTargetView;
     private WindowManager.LayoutParams closeParams;
@@ -2209,6 +2377,8 @@ public class FloatingBubbleView implements EventBus.EventListener {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
+        tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
         startJellyPulseAnimation();
 
@@ -2216,18 +2386,14 @@ public class FloatingBubbleView implements EventBus.EventListener {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                bubbleView.setAlpha(1.0f);
+                jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
-                
-                // Minta Sutradara Audio Pusat untuk buka telinga
-                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(true); } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                setStatus("MENDENGARKAN...");
             } else {
-                bubbleView.setAlpha(0.4f);
+                jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
                 if (pulseAnimator != null) pulseAnimator.pause();
-                
-                // Minta Sutradara Audio Pusat untuk tutup telinga
-                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch(Exception e){}
+                setStatus("NOVA TIDUR");
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
@@ -2309,6 +2475,21 @@ public class FloatingBubbleView implements EventBus.EventListener {
         pulseAnimator.start();
     }
 
+    private void setStatus(String text) {
+        if (tvStatus != null && panelExpand != null) {
+            tvStatus.post(() -> {
+                if (panelExpand.getVisibility() == View.GONE) panelExpand.setVisibility(View.VISIBLE);
+                tvStatus.setText(text);
+                // Sembunyikan otomatis setelah beberapa detik jika ini bukan transkripsi langsung
+                if (!text.startsWith("🗣️")) {
+                    tvStatus.postDelayed(() -> {
+                        if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
+                    }, 4000);
+                }
+            });
+        }
+    }
+
     public void show() {
         if (isAdded) return;
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
@@ -2327,8 +2508,38 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
-            if ("NOVA_SPEAKING_START".equals(state)) {
+            
+            // 🎙️ PHASE 3: ANIMASI VISUALISATOR REAL-TIME BERDASARKAN SUARA
+            if (state.startsWith("RMS:")) {
+                if (!isListeningMode) return;
+                try {
+                    float rms = Float.parseFloat(state.substring(4));
+                    // Mengkalibrasi RMS dB (biasanya dari -2.0 hingga 10.0) menjadi skala ukuran 1.0f - 1.6f
+                    float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                    if (targetScale > 1.6f) targetScale = 1.6f;
+                    
+                    bubbleView.post(() -> {
+                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).start();
+                    });
+                } catch (Exception e){}
+            } 
+            // ✍️ PHASE 3: LIVE TRANSCRIPTION DI LAYAR
+            else if (state.startsWith("PARTIAL:")) {
+                String partial = state.substring(8);
+                setStatus("🗣️ " + partial + "...");
+            }
+        if ("INTERRUPT_TRIGGERED".equals(state)) {
+            setStatus("🛑 DIPOTONG...");
+            jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
+        } else 
+            else if ("NOVA_SPEAKING_START".equals(state)) {
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
+            }
+            else if ("LISTENING_READY".equals(state)) {
+                if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
             }
         }
     }
@@ -2733,13 +2944,8 @@ import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
 import java.util.List;
 
-/**
- * FASE 4: UNIVERSAL ACTION SYSTEM
- * Sistem aksi modular yang dibagi berdasarkan departemen kapabilitas.
- * Memiliki validasi keamanan koordinat dan laporan kegagalan instan.
- */
 public class SystemActionInjector {
-    private static final String TAG = "UniversalActionSys";
+    private static final String TAG = "SystemActionInjector";
     private final int screenWidth;
     private final int screenHeight;
     private final Handler delayHandler;
@@ -2758,238 +2964,146 @@ public class SystemActionInjector {
         NovaAccessibilityService service;
         try {
             service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
-        } catch (Exception e) { 
-            Log.e(TAG, "Layanan Aksesibilitas tidak tersedia!");
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ERROR, "Layanan aksesibilitas mati."));
-            return; 
-        }
+        } catch (Exception e) { return; }
 
         if (cmd.speech != null && !cmd.speech.trim().isEmpty()) {
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, cmd.speech));
         }
 
         boolean success = false;
-        try {
-            // ROUTING MODULAR BERDASARKAN DEPARTEMEN AKSI
-            if (isNavigationAction(cmd.action)) {
-                success = executeNavigation(service, cmd.action);
-            } else if (isAppControlAction(cmd.action)) {
-                success = executeAppControl(service, cmd.action, cmd.textToType);
-            } else if (isHardwareAction(cmd.action)) {
-                success = executeHardware(cmd.action, cmd.textToType);
-            } else if (isScreenControlAction(cmd.action)) {
-                success = executeScreenControl(service, cmd);
-                if (success && "type".equals(cmd.action)) return; // Type memiliki siklus asinkron khusus
-            } else if ("done".equals(cmd.action)) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
-                return;
-            } else {
-                Log.w(TAG, "Aksi tidak dikenali: " + cmd.action);
-            }
-
-            if (success) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
-            } else {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_FAILED, cmd.action));
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Gagal mengeksekusi aksi: " + cmd.action, e);
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_FAILED, cmd.action));
-        }
-    }
-
-    // --- DEPARTEMEN 1: OS NAVIGATION CONTROL ---
-    private boolean isNavigationAction(String action) {
-        return action.matches("home|back|quick_settings|notifications|recent_apps");
-    }
-
-    private boolean executeNavigation(NovaAccessibilityService service, String action) {
-        switch (action) {
-            case "quick_settings": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS);
-            case "notifications": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS);
-            case "recent_apps": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS);
-            case "home": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME);
-            case "back": return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
-            default: return false;
-        }
-    }
-
-    // --- DEPARTEMEN 2: APP CONTROL ---
-    private boolean isAppControlAction(String action) {
-        return "open_app".equals(action);
-    }
-
-    private boolean executeAppControl(NovaAccessibilityService service, String action, String appName) {
-        if (appName == null || appName.isEmpty()) return false;
-        PackageManager pm = context.getPackageManager();
-        List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-        for (ApplicationInfo packageInfo : packages) {
-            String label = pm.getApplicationLabel(packageInfo).toString().toLowerCase();
-            if (label.contains(appName.toLowerCase()) || appName.toLowerCase().contains(label)) {
-                Intent intent = pm.getLaunchIntentForPackage(packageInfo.packageName);
-                if (intent != null) { 
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); 
-                    context.startActivity(intent); 
-                    return true; 
-                }
-            }
-        }
-        // Jika aplikasi tidak ditemukan, lapor error secara luring agar AI tidak menunggu
-        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf, aplikasi " + appName + " tidak ditemukan di HP ini."));
-        return false;
-    }
-
-    // --- DEPARTEMEN 3: HARDWARE & DEVICE CONTROL ---
-    private boolean isHardwareAction(String action) {
-        return action.matches("toggle_flashlight|set_volume|local_hardware|set_alarm|dial_number|set_brightness|set_dnd|schedule_time|schedule_battery|save_memory");
-    }
-
-    private boolean executeHardware(String action, String payload) {
-        try {
-            switch (action) {
-                case "toggle_flashlight":
-                case "set_volume":
-                case "local_hardware":
-                    handleLocalHardware(payload != null && !payload.isEmpty() ? payload : action);
-                    break;
-                case "set_alarm":
-                    launchIntent(android.provider.AlarmClock.ACTION_SHOW_ALARMS, null);
-                    break;
-                case "dial_number":
-                    if (payload != null && payload.matches(".*\\d+.*")) {
-                        launchIntent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + payload.replaceAll("[^0-9]", "")));
-                    } else {
-                        launchIntent(Intent.ACTION_DIAL, null);
-                    }
-                    break;
-                case "set_brightness":
-                    launchIntent(Settings.ACTION_DISPLAY_SETTINGS, null);
-                    break;
-                case "set_dnd":
-                    try { launchIntent(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS, null); } 
-                    catch (Exception e) { launchIntent(Settings.ACTION_SOUND_SETTINGS, null); }
-                    break;
-                case "schedule_time":
-                case "schedule_battery":
-                case "save_memory":
-                    // Aksi khusus yang di-bypass di Engine
-                    break;
-            }
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Hardware Error", e);
-            return false;
-        }
-    }
-
-    private void launchIntent(String action, android.net.Uri data) {
-        Intent intent = new Intent(action);
-        if (data != null) intent.setData(data);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(intent);
-    }
-
-    private void handleLocalHardware(String cmd) {
-        String lowerCmd = cmd.toLowerCase();
-        if (lowerCmd.contains("senter") || lowerCmd.contains("lampu") || lowerCmd.contains("flashlight")) {
-            CameraManager camManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-            if (camManager != null) {
-                try {
-                    String cameraId = camManager.getCameraIdList()[0];
-                    isFlashlightOn = !isFlashlightOn;
-                    camManager.setTorchMode(cameraId, isFlashlightOn);
-                } catch(Exception e){}
-            }
-        } else if (lowerCmd.contains("volume") || lowerCmd.contains("suara")) {
-            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) {
-                int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
-                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
-            }
-        } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet") || lowerCmd.contains("data")) {
-            launchIntent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY, null);
-        } else if (lowerCmd.contains("bluetooth")) {
-            launchIntent(Settings.ACTION_BLUETOOTH_SETTINGS, null);
-        } else if (lowerCmd.contains("hotspot")) {
-            launchIntent(Settings.ACTION_WIRELESS_SETTINGS, null);
-        } else if (lowerCmd.contains("kamera") || lowerCmd.contains("camera")) {
-            if (!executeAppControl(null, "open_app", "kamera")) executeAppControl(null, "open_app", "camera");
-        } else if (lowerCmd.contains("galeri") || lowerCmd.contains("gallery")) {
-            if (!executeAppControl(null, "open_app", "galeri")) executeAppControl(null, "open_app", "gallery");
-        } else if (lowerCmd.contains("musik") || lowerCmd.contains("lagu") || lowerCmd.contains("putar") || lowerCmd.contains("berhenti")) {
-            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) {
-                int keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
-                if (lowerCmd.contains("lanjut") || lowerCmd.contains("next")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_NEXT;
-                else if (lowerCmd.contains("kembali") || lowerCmd.contains("sebelumnya")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS;
-                else if (lowerCmd.contains("stop") || lowerCmd.contains("berhenti")) keyCode = android.view.KeyEvent.KEYCODE_MEDIA_STOP;
-                audioManager.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode));
-                audioManager.dispatchMediaKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode));
-            }
-        }
-    }
-
-    // --- DEPARTEMEN 4: SCREEN & UI CONTROL ---
-    private boolean isScreenControlAction(String action) {
-        return action.matches("tap|click|swipe|scroll|type");
-    }
-
-    private boolean executeScreenControl(NovaAccessibilityService service, ActionCommandDto cmd) {
         switch (cmd.action) {
+            case "open_app": 
+                success = openAppInstantly(context, cmd.textToType); 
+                if (!success) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, aplikasi " + cmd.textToType + " tidak ditemukan di sistem."));
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+            case "quick_settings": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS); break;
+            case "notifications": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS); break;
+            case "recent_apps": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS); break;
+            case "home": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); break;
+            case "back": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK); break;
             case "tap":
-            case "click": 
-                return executeTap(service, cmd.x, cmd.y);
+            case "click": success = executeTap(service, cmd.x, cmd.y); break;
             case "swipe":
-            case "scroll": 
-                return executeSwipe(service, cmd.direction);
+            case "scroll": success = executeSwipe(service, cmd.direction); break;
             case "type":
-                if (!executeTap(service, cmd.x, cmd.y)) return false;
+                executeTap(service, cmd.x, cmd.y);
                 delayHandler.postDelayed(() -> {
                     service.typeTextAtCoordinate(cmd.x, cmd.y, cmd.textToType);
                     delayHandler.postDelayed(() -> {
-                        // Enter otomatis di pojok kanan bawah (Safety margin 90%)
                         executeTap(service, (int)(screenWidth * 0.90), (int)(screenHeight * 0.90));
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
-                    }, 400); // Waktu eksekusi dipercepat (Turbo)
-                }, 400);
-                return true;
-            default: return false;
+                    }, 200);
+                }, 250);
+                return;
+            case "toggle_flashlight":
+            case "set_volume":
+            case "local_hardware":
+                handleLocalHardware(context, cmd.textToType != null && !cmd.textToType.isEmpty() ? cmd.textToType : cmd.action);
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                return;
+        case "set_proactive":
+            try {
+                com.novaagent.app.core.proactive.ProactiveConversationEngine proEng = ServiceLocator.getInstance().resolve(com.novaagent.app.core.proactive.ProactiveConversationEngine.class);
+                if (proEng != null) proEng.setProactiveMode("true".equals(cmd.textToType));
+            } catch(Exception e){}
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return;
+            case "done":
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
+                return;
         }
+        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
+    }
+
+    // 🚀 ALGORITMA BRUTAL: TELEPORTASI APLIKASI
+    private boolean openAppInstantly(Context ctx, String targetApp) {
+        if (targetApp == null || targetApp.trim().isEmpty()) return false;
+        
+        // Bersihkan nama target (hapus spasi, huruf kecil semua, buang karakter aneh)
+        String normalizedTarget = targetApp.toLowerCase().replaceAll("[^a-z0-9]", "");
+        
+        PackageManager pm = ctx.getPackageManager();
+        List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
+        
+        Intent bestIntent = null;
+        
+        for (ApplicationInfo info : packages) {
+            Intent launchIntent = pm.getLaunchIntentForPackage(info.packageName);
+            if (launchIntent == null) continue; // Lewati aplikasi sistem yang tidak bisa dibuka
+            
+            String label = pm.getApplicationLabel(info).toString().toLowerCase().replaceAll("[^a-z0-9]", "");
+            String pkgName = info.packageName.toLowerCase();
+            
+            // Prioritas 1: Kecocokan Persis Nama Label
+            if (label.equals(normalizedTarget)) {
+                bestIntent = launchIntent; 
+                break; // Langsung hajar!
+            }
+            // Prioritas 2: Kecocokan Source Code Package (misal: "whatsapp" cocok dengan "com.whatsapp.app")
+            if (pkgName.contains(normalizedTarget)) {
+                bestIntent = launchIntent; 
+                // Tetap lanjut mencari, siapa tahu ada label yang lebih akurat
+            }
+            // Prioritas 3: Kecocokan Sebagian Nama (misal: "Mobile Legends" cocok dengan "mobilelegendsbangbang")
+            if (bestIntent == null && (label.contains(normalizedTarget) || normalizedTarget.contains(label))) {
+                bestIntent = launchIntent;
+            }
+        }
+        
+        if (bestIntent != null) {
+            bestIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(bestIntent);
+            return true;
+        }
+        return false;
     }
 
     private boolean executeTap(NovaAccessibilityService service, int x, int y) {
-        // Validasi Anti-Out-Of-Bounds
-        if (x <= 0 || y <= 0 || x > screenWidth || y > screenHeight) {
-            Log.w(TAG, "Koordinat TAP tidak valid: (" + x + "," + y + ")");
-            return false;
-        }
-        
-        try {
-            com.novaagent.app.ui.bubble.HologramAuraManager aura = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.ui.bubble.HologramAuraManager.class);
-            if (aura != null) aura.showAura(x, y);
-        } catch (Exception e) {}
-        
-        Path clickPath = new Path(); 
-        clickPath.moveTo(x, y);
+        if (x <= 0 || y <= 0) return false;
+        Path clickPath = new Path(); clickPath.moveTo(x, y);
         GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 80)); // Super Cepat
+        builder.addStroke(new GestureDescription.StrokeDescription(clickPath, 0, 100));
         return service.dispatchGesture(builder.build(), null, null);
     }
 
     private boolean executeSwipe(NovaAccessibilityService service, String direction) {
         Path swipePath = new Path();
-        int centerX = screenWidth / 2; 
-        int topY = (int) (screenHeight * 0.2); 
-        int bottomY = (int) (screenHeight * 0.8);
-        
+        int centerX = screenWidth / 2; int topY = (int) (screenHeight * 0.2); int bottomY = (int) (screenHeight * 0.8);
         if ("up".equalsIgnoreCase(direction)) { swipePath.moveTo(centerX, bottomY); swipePath.lineTo(centerX, topY); }
         else if ("down".equalsIgnoreCase(direction)) { swipePath.moveTo(centerX, topY); swipePath.lineTo(centerX, bottomY); }
         else { return false; }
-        
         GestureDescription.Builder builder = new GestureDescription.Builder();
-        builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 300));
+        builder.addStroke(new GestureDescription.StrokeDescription(swipePath, 0, 400));
         return service.dispatchGesture(builder.build(), null, null);
+    }
+
+    private void handleLocalHardware(Context context, String cmd) {
+        try {
+            String lowerCmd = cmd.toLowerCase();
+            if (lowerCmd.contains("senter") || lowerCmd.contains("lampu") || lowerCmd.contains("flashlight")) {
+                CameraManager camManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+                if (camManager != null) {
+                    String cameraId = camManager.getCameraIdList()[0];
+                    isFlashlightOn = !isFlashlightOn;
+                    camManager.setTorchMode(cameraId, isFlashlightOn);
+                }
+            } else if (lowerCmd.contains("volume") || lowerCmd.contains("suara")) {
+                AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (audioManager != null) {
+                    int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
+                }
+            } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet")) {
+                Intent panelIntent = new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY);
+                panelIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(panelIntent);
+            } else if (lowerCmd.contains("bluetooth")) {
+                Intent btIntent = new Intent(Settings.ACTION_BLUETOOTH_SETTINGS);
+                btIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(btIntent);
+            }
+        } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
     }
 }
 
@@ -3523,12 +3637,14 @@ import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.data.cache.ScreenCache;
 import com.novaagent.app.core.brain.CognitiveCore;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ProactiveConversationEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.vision.SemanticVisionEngine;
 import com.novaagent.app.core.engine.TaskCheckpointManager;
 import com.novaagent.app.core.engine.TaskCompletionVerifier;
 import com.novaagent.app.core.vision.PerceptionCoordinator;
 import com.novaagent.app.core.proactive.ProactiveTriggerEngine;
+import com.novaagent.app.core.proactive.ProactiveConversationEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
 import com.novaagent.app.core.brain.LongTermMemoryEngine;
 import com.novaagent.app.infrastructure.injector.SystemActionInjector;
@@ -3566,8 +3682,10 @@ public class NovaForegroundService extends Service {
         locator.register(TaskCompletionVerifier.class, new TaskCompletionVerifier());
         locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
+        locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine());
         locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
         locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
@@ -3972,10 +4090,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
@@ -3986,72 +4105,60 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
+    private Call activeCall; // FASE 6: Menyimpan panggilan aktif agar bisa dibatalkan
+    private static final int MAX_RETRIES = 2;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
         void onError(String errorReason);
     }
 
-    private static class ProviderConfig {
-        String providerName;
-        String modelId;
-        String baseUrl;
-        ProviderConfig(String providerName, String modelId, String baseUrl) {
-            this.providerName = providerName; this.modelId = modelId; this.baseUrl = baseUrl;
-        }
-    }
-
     public UniversalNetworkClient(Context context) {
         this.context = context;
         this.retryHandler = new Handler(Looper.getMainLooper());
-        this.client = new OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(35, TimeUnit.SECONDS).build();
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS) // Waktu baca diperpanjang untuk streaming
+                .build();
     }
 
-    private ProviderConfig getProviderConfig(String apiKey) {
-        if (apiKey.startsWith("AIza")) return new ProviderConfig("Google AI Studio", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
-        if (apiKey.startsWith("gsk_")) return new ProviderConfig("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1/chat/completions");
-        if (apiKey.startsWith("sk-proj")) return new ProviderConfig("OpenAI", "gpt-6-luna", "https://api.openai.com/v1/chat/completions");
-        if (apiKey.startsWith("sk-ant")) return new ProviderConfig("Anthropic", "claude-haiku-5-5", "https://api.anthropic.com/v1/messages");
-        if (apiKey.startsWith("sk-or-v1")) return new ProviderConfig("OpenRouter", "openrouter/auto", "https://openrouter.ai/api/v1/chat/completions");
-        if (apiKey.startsWith("sk-") && !apiKey.startsWith("sk-proj") && !apiKey.startsWith("sk-ant") && !apiKey.startsWith("sk-or")) return new ProviderConfig("DeepSeek", "deepseek-flash", "https://api.deepseek.com/chat/completions");
-        if (apiKey.startsWith("mistral-")) return new ProviderConfig("Mistral AI", "ministral-3b-latest", "https://api.mistral.ai/v1/chat/completions");
-        if (apiKey.startsWith("cerebras-")) return new ProviderConfig("Cerebras", "qwen-3.8-27b", "https://api.cerebras.ai/v1/chat/completions");
-        if (apiKey.startsWith("together-")) return new ProviderConfig("Together AI", "meta-llama/Llama-3-8b-chat-hf", "https://api.together.xyz/v1/chat/completions");
-        
-        return new ProviderConfig("Unknown Proxy", "gemini-3.8-flash", "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=" + apiKey);
+    public void cancelActiveCall() {
+        if (activeCall != null && !activeCall.isCanceled()) {
+            activeCall.cancel();
+            Log.w(TAG, "Panggilan jaringan dibatalkan (User Interupsi)!");
+        }
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        String allKeys = prefs.getString("api_key", "").trim();
-        
-        if (allKeys.isEmpty()) { callback.onError("API Key Kosong. Silakan isi di aplikasi."); return; }
+        String provider = prefs.getString("ai_provider", "Groq");
+        String apiKey = prefs.getString("api_key", "").trim();
+        String modelName = prefs.getString("ai_model", "").trim();
 
-        String[] keyArray = allKeys.split(",");
-        if (retryCount >= keyArray.length) {
-            callback.onError("Maaf Bos, seluruh API Key cadangan sudah kehabisan kuota untuk hari ini.");
-            return;
-        }
-
-        String currentKey = keyArray[retryCount].trim();
-        ProviderConfig config = getProviderConfig(currentKey);
-        Log.i(TAG, "Mencoba Tembakan AI ke-" + (retryCount + 1) + " menggunakan: " + config.providerName + " (" + config.modelId + ")");
+        if (modelName.isEmpty()) modelName = "llama-3.1-8b-instant";
+        if (apiKey.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
         try {
             Request request = null;
-            if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
+
+            if (provider.equals("Gemini (Google Studio)")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
+                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
+                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
@@ -4066,12 +4173,18 @@ public class UniversalNetworkClient {
                 }
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
+
+                // ⚡ FASE 4: Menggunakan Endpoint Streaming (SSE) untuk Gemini
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + apiKey;
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(config.baseUrl).addHeader("Content-Type", "application/json").post(body).build();
-            } else {
+                request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
+            } 
+            else {
                 JSONObject payload = new JSONObject();
-                payload.put("model", config.modelId);
+                payload.put("model", modelName);
                 payload.put("temperature", 0.3);
+                // ⚡ FASE 4: Mengaktifkan Streaming untuk Groq/OpenAI/DeepSeek
+                payload.put("stream", true); 
                 
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
@@ -4089,57 +4202,127 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                if (config.providerName.equals("Anthropic")) { payload.put("max_tokens", 1024); }
+                String url = provider.equals("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+                if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                Request.Builder rb = new Request.Builder().url(config.baseUrl)
-                        .addHeader("Content-Type", "application/json");
-                        
-                if (config.providerName.equals("Anthropic")) {
-                    rb.addHeader("x-api-key", currentKey).addHeader("anthropic-version", "2023-06-01");
-                } else {
-                    rb.addHeader("Authorization", "Bearer " + currentKey);
-                }
-                request = rb.post(body).build();
+                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
             }
 
-            client.newCall(request).enqueue(new Callback() {
+            activeCall = client.newCall(request);
+            activeCall.enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
+                    handleRetry(messages, callback, retryCount, "Koneksi RTO");
                 }
+
                 @Override public void onResponse(Call call, Response response) throws IOException {
-                    try {
-                        if (!response.isSuccessful()) {
-                            int code = response.code();
-                            Log.w(TAG, "API " + config.providerName + " Gagal HTTP " + code + ". Beralih ke Kunci Cadangan.");
-                            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
-                            return;
+                    if (!response.isSuccessful()) {
+                        handleRetry(messages, callback, retryCount, "HTTP " + response.code());
+                        return;
+                    }
+                    
+                    // ⚡ FASE 4: STREAMING READER & PARTIAL JSON EXTRACTOR
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
+                        String line;
+                        StringBuilder fullResponse = new StringBuilder();
+                        int lastSpokenIndex = 0;
+                        
+                        while ((line = reader.readLine()) != null) {
+                            if (line.startsWith("data: ")) {
+                                String data = line.substring(6).trim();
+                                if (data.equals("[DONE]")) break;
+                                
+                                try {
+                                    JSONObject json = new JSONObject(data);
+                                    String chunk = "";
+                                    
+                                    if (provider.equals("Gemini (Google Studio)")) {
+                                        JSONArray candidates = json.optJSONArray("candidates");
+                                        if (candidates != null && candidates.length() > 0) {
+                                            JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
+                                            if (parts != null && parts.length() > 0) chunk = parts.getJSONObject(0).optString("text", "");
+                                        }
+                                    } else {
+                                        JSONArray choices = json.optJSONArray("choices");
+                                        if (choices != null && choices.length() > 0) {
+                                            JSONObject delta = choices.getJSONObject(0).optJSONObject("delta");
+                                            if (delta != null) chunk = delta.optString("content", "");
+                                        }
+                                    }
+                                    
+                                    fullResponse.append(chunk);
+                                    String textSoFar = fullResponse.toString();
+                                    
+                                    // EKSTRAKTOR SUARA REAL-TIME DARI DALAM JSON
+                                    int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                                    if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                                    
+                                    if (speechKeyIdx != -1) {
+                                        int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                                        if (valStart != -1) {
+                                            int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                            String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                            currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+
+                                            if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                                String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
+                                                
+                                                int boundary = -1;
+                                                int[] stops = {unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf("\n")};
+                                                for (int stop : stops) {
+                                                    if (stop != -1 && (boundary == -1 || stop < boundary)) boundary = stop;
+                                                }
+                                                
+                                                // Jika menemukan tanda baca akhir kalimat, langsung bicara!
+                                                if (boundary != -1) {
+                                                    String sentence = unqueued.substring(0, boundary + 1).trim();
+                                                    if (!sentence.isEmpty()) {
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                    }
+                                                    lastSpokenIndex += (boundary + 1);
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) { }
+                            }
                         }
                         
-                        String respBody = response.body().string();
-                        String content = "";
-                        
-                        if (config.providerName.contains("Google") || config.providerName.contains("Proxy")) {
-                            JSONObject jsonResponse = new JSONObject(respBody);
-                            content = jsonResponse.getJSONArray("candidates").getJSONObject(0).getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                        } else if (config.providerName.equals("Anthropic")) {
-                            JSONObject jsonResponse = new JSONObject(respBody);
-                            content = jsonResponse.getJSONArray("content").getJSONObject(0).getString("text");
-                        } else {
-                            content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
+                        // Bersihkan sisa kalimat terakhir yang belum diucapkan (jika tidak ada tanda baca)
+                        String textSoFar = fullResponse.toString();
+                        int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                        if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                        if (speechKeyIdx != -1) {
+                            int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                            if (valStart != -1) {
+                                int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+                                if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                    String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                }
+                            }
                         }
                         
-                        final String finalContent = content;
-                        retryHandler.post(() -> callback.onSuccess(finalContent));
+                        callback.onSuccess(fullResponse.toString());
                     } catch (Exception e) {
-                        retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
-                    } finally {
-                        response.close();
+                        callback.onError("Gagal membaca aliran stream.");
                     }
                 }
             });
         } catch (Exception e) {
-            retryHandler.post(() -> executeCall(messages, callback, retryCount + 1));
+            callback.onError("Gagal merakit request streaming.");
+        }
+    }
+
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
+        if (currentRetry < MAX_RETRIES) {
+            int nextRetry = currentRetry + 1;
+            long delay = 1500 * (long) Math.pow(2, currentRetry);
+            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
+        } else {
+            callback.onError(reason);
         }
     }
 }

@@ -14,7 +14,7 @@ public class CognitiveCore {
     private final UniversalNetworkClient networkClient;
     private final ContextManager contextManager;
     private final TaskPlanner taskPlanner;
-    private final MemoryCoordinator memoryCoordinator; // FASE 5: Penambahan Coordinator
+    private final MemoryCoordinator memoryCoordinator; // FASE 7: RAG Coordinator
 
     public interface CoreCallback {
         void onDecisionMade(ActionCommandDto command);
@@ -34,6 +34,10 @@ public class CognitiveCore {
         memoryCoordinator.wipeShortTermMemory(); 
         taskPlanner.abortPlan(); 
     }
+    
+    public void cancelProcessing() {
+        if (networkClient != null) networkClient.cancelActiveCall();
+    }
 
     public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
         try {
@@ -44,8 +48,8 @@ public class CognitiveCore {
             String compressedUI = contextManager.compressContext(rawContext);
             JSONArray finalMessages = new JSONArray();
 
-            // FASE 5: LOCAL RAG INJECTION
-            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini, bukan semua database!
+            // ⚡ FASE 7: LOCAL RAG INJECTION
+            // Hanya mengambil memori yang RELEVAN dengan tugas saat ini!
             String relevantFacts = memoryCoordinator.retrieveRelevantFacts(userCommand);
             if (!relevantFacts.isEmpty()) {
                 Log.i(TAG, "RAG Aktif. Fakta ditemukan: \n" + relevantFacts);

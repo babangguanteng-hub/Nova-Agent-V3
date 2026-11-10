@@ -12,6 +12,8 @@ public class AgentEvent {
         ACTION_VERIFIED, 
         OCR_COMPLETED, 
         VOICE_RECEIVED,
+        USER_INTERACTION,
+        VOICE_STREAM_CHUNK, // FASE 4: Potongan suara real-time
         RECOVERY_TRIGGERED, 
         ERROR
     }

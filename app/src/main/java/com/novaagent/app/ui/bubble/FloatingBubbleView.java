@@ -11,33 +11,31 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import com.novaagent.app.R;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-import com.novaagent.app.core.audio.NovaAudioDirector;
 
-/**
- * UI MURNI (DUMB COMPONENT)
- * Sekarang 100% bersih dari SpeechRecognizer. Hanya mengatur Animasi dan Drag!
- */
 public class FloatingBubbleView implements EventBus.EventListener {
     private final Context context;
     private final WindowManager windowManager;
     private View bubbleView;
     private ImageView jellyBg;
     private ImageView jellyFace;
+    private LinearLayout panelExpand;
+    private TextView tvStatus;
     
     private View closeTargetView;
     private WindowManager.LayoutParams closeParams;
@@ -73,6 +71,8 @@ public class FloatingBubbleView implements EventBus.EventListener {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
+        tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
         startJellyPulseAnimation();
 
@@ -80,18 +80,14 @@ public class FloatingBubbleView implements EventBus.EventListener {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
-                bubbleView.setAlpha(1.0f);
+                jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
-                
-                // Minta Sutradara Audio Pusat untuk buka telinga
-                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(true); } catch(Exception e){}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                setStatus("MENDENGARKAN...");
             } else {
-                bubbleView.setAlpha(0.4f);
+                jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
                 if (pulseAnimator != null) pulseAnimator.pause();
-                
-                // Minta Sutradara Audio Pusat untuk tutup telinga
-                try { ServiceLocator.getInstance().resolve(NovaAudioDirector.class).setListeningMode(false); } catch(Exception e){}
+                setStatus("NOVA TIDUR");
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
@@ -173,6 +169,21 @@ public class FloatingBubbleView implements EventBus.EventListener {
         pulseAnimator.start();
     }
 
+    private void setStatus(String text) {
+        if (tvStatus != null && panelExpand != null) {
+            tvStatus.post(() -> {
+                if (panelExpand.getVisibility() == View.GONE) panelExpand.setVisibility(View.VISIBLE);
+                tvStatus.setText(text);
+                // Sembunyikan otomatis setelah beberapa detik jika ini bukan transkripsi langsung
+                if (!text.startsWith("🗣️")) {
+                    tvStatus.postDelayed(() -> {
+                        if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
+                    }, 4000);
+                }
+            });
+        }
+    }
+
     public void show() {
         if (isAdded) return;
         int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
@@ -191,8 +202,38 @@ public class FloatingBubbleView implements EventBus.EventListener {
     public void onEvent(AgentEvent event) {
         if (event.type == AgentEvent.EventType.STATE_CHANGED) {
             String state = String.valueOf(event.payload);
-            if ("NOVA_SPEAKING_START".equals(state)) {
+            
+            // 🎙️ PHASE 3: ANIMASI VISUALISATOR REAL-TIME BERDASARKAN SUARA
+            if (state.startsWith("RMS:")) {
+                if (!isListeningMode) return;
+                try {
+                    float rms = Float.parseFloat(state.substring(4));
+                    // Mengkalibrasi RMS dB (biasanya dari -2.0 hingga 10.0) menjadi skala ukuran 1.0f - 1.6f
+                    float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                    if (targetScale > 1.6f) targetScale = 1.6f;
+                    
+                    bubbleView.post(() -> {
+                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).start();
+                    });
+                } catch (Exception e){}
+            } 
+            // ✍️ PHASE 3: LIVE TRANSCRIPTION DI LAYAR
+            else if (state.startsWith("PARTIAL:")) {
+                String partial = state.substring(8);
+                setStatus("🗣️ " + partial + "...");
+            }
+        if ("INTERRUPT_TRIGGERED".equals(state)) {
+            setStatus("🛑 DIPOTONG...");
+            jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
+        } else 
+            else if ("NOVA_SPEAKING_START".equals(state)) {
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
+            }
+            else if ("LISTENING_READY".equals(state)) {
+                if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
             }
         }
     }

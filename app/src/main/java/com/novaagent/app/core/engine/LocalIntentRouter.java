@@ -97,6 +97,10 @@ public class LocalIntentRouter {
             if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, safeCmd("set_brightness", null, null, -1), "Membuka pengaturan layar.");
             if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, safeCmd("set_dnd", null, null, -1), "Membuka mode jangan ganggu.");
 
+        // --- FASE 8: KONTROL MODE PROAKTIF ---
+        if (c.matches(".*(aktifkan|nyalakan).*proaktif.*")) return new RoutingResult(true, safeCmd("set_proactive", "true", null, -1), "Mode proaktif aktif. Saya akan menyapa jika Anda diam terlalu lama.");
+        if (c.matches(".*(matikan|nonaktifkan).*proaktif.*") || c.matches(".*mode pasif.*")) return new RoutingResult(true, safeCmd("set_proactive", "false", null, -1), "Mode pasif aktif. Saya hanya akan bicara jika dipanggil.");
+
             if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
             if (c.matches(".*(jam berapa|waktu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sekarang jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date()) + " bos.");
             if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sama-sama bos! Ada lagi?");

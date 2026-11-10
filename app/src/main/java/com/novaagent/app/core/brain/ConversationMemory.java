@@ -5,12 +5,11 @@ import org.json.JSONObject;
 import java.util.LinkedList;
 
 /**
- * 10x KOMPLEKSITAS: MANAJER INGATAN KHUSUS.
- * Menjaga konteks percakapan agar AI tidak amnesia, 
- * dengan batas aman (Sliding Window) agar token API tidak jebol.
+ * FASE 7: MANAJER INGATAN JANGKA PENDEK (WORKING MEMORY).
+ * Diet Token Ekstrem: Cukup ingat 2 pasang percakapan terakhir saja.
  */
 public class ConversationMemory {
-    private static final int MAX_MEMORY_PAIRS = 5; // Mengingat 5 pasang tanya-jawab terakhir
+    private static final int MAX_MEMORY_PAIRS = 2; 
     private final LinkedList<JSONObject> memory = new LinkedList<>();
 
     public synchronized void addUserMessage(String message) {
@@ -28,10 +27,9 @@ public class ConversationMemory {
             msg.put("content", content);
             memory.add(msg);
 
-            // Pruning: Buang ingatan tertua jika melebihi batas (1 pasang = 2 pesan)
             if (memory.size() > MAX_MEMORY_PAIRS * 2) {
-                memory.removeFirst(); // Buang User lama
-                memory.removeFirst(); // Buang Jawaban lama
+                memory.removeFirst(); 
+                memory.removeFirst(); 
             }
         } catch (Exception ignored) {}
     }

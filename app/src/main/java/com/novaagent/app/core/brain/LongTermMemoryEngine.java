@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 /**
- * FASE 5: LONG-TERM MEMORY CORE
+ * FASE 7: LONG-TERM MEMORY CORE
  * Database SQLite lokal yang kini dilengkapi fitur pencarian semantik (RAG Lokal).
  */
 public class LongTermMemoryEngine extends SQLiteOpenHelper {
@@ -43,7 +43,7 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     }
 
     /**
-     * FASE 5: FUNGSI RAG (Retrieval) LOKAL
+     * FASE 7: FUNGSI RAG (Retrieval) LOKAL
      * Mencari fakta yang mengandung salah satu kata kunci.
      */
     public String searchRelevantFacts(String keywords) {

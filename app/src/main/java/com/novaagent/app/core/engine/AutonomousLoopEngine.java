@@ -150,6 +150,19 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
         try {
             switch (event.type) {
+            case STATE_CHANGED:
+                String state = String.valueOf(event.payload);
+                if ("INTERRUPT_TRIGGERED".equals(state)) {
+                    Log.w(TAG, "🔥 INTERUPSI USER! Membatalkan misi dan generasi AI.");
+                    if (cognitiveCore != null) cognitiveCore.cancelProcessing();
+                    this.isRunning = false;
+                    this.currentTask = "";
+                    try {
+                        com.novaagent.app.services.foreground.MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(com.novaagent.app.services.foreground.MediaProjectionWrapper.class);
+                        if (vision != null) vision.pauseVision();
+                    } catch (Exception e) {}
+                }
+                break;
                 case SCREEN_UPDATED:
                     if (!isRunning) return;
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
@@ -233,7 +246,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 if ("done".equalsIgnoreCase(cmd.action) && !cognitiveCore.getPlanner().hasActivePlan()) {
                     if (completionVerifier.verifyCompletion(cognitiveCore.getPlanner().getMainGoal(), ctx)) {
                         checkpointManager.clearCheckpoint(); // Hapus checkpoint karena sukses
-                        if (cmd.speech != null && !cmd.speech.isEmpty()) speak(cmd.speech);
+                        // Suara AI ditangani oleh Streaming Network Client (Fase 4)
                         stopTask();
                     }
                 } else {

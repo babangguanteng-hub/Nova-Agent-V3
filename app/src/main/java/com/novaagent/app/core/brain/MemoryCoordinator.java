@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * FASE 5: MEMORY INTELLIGENCE (COORDINATOR)
+ * FASE 7: CONTEXT & MEMORY ENGINE (COORDINATOR)
  * Mengatur Working Memory (Jangka Pendek) dan Semantic Memory (Jangka Panjang).
  * Menggunakan teknik Local RAG (Retrieval-Augmented Generation) berbasis Keyword.
  */
@@ -16,7 +16,7 @@ public class MemoryCoordinator {
     
     // Stopwords bahasa Indonesia (kata yang diabaikan saat mencari memori)
     private static final List<String> STOP_WORDS = Arrays.asList(
-        "tolong", "buka", "coba", "yang", "di", "ke", "dari", "ini", "itu", "dan", "atau", "buat", "untuk"
+        "tolong", "buka", "coba", "yang", "di", "ke", "dari", "ini", "itu", "dan", "atau", "buat", "untuk", "saya", "aku", "nova"
     );
 
     public MemoryCoordinator() {
