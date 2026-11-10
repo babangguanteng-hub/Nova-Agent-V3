@@ -16,7 +16,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp">
-
             <LinearLayout
                 android:id="@+id/btnSettings"
                 android:layout_width="wrap_content"
@@ -29,7 +28,6 @@
                 <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
             </LinearLayout>
-
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -55,7 +53,6 @@
             android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="4dp"/>
-            
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -73,12 +70,9 @@
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_marginBottom="16dp">
 
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            
             <Spinner
                 android:id="@+id/spinnerProvider"
                 android:layout_width="match_parent"
@@ -87,18 +81,18 @@
                 android:popupBackground="#0D1117"
                 android:layout_marginBottom="12dp"/>
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY OMNI-ROTATOR" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
             <EditText
                 android:id="@+id/apiKeyInput"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:hint="Masukkan API Key..."
+                android:hint="Bisa lebih dari 1, pisahkan dengan koma (,)"
                 android:textColorHint="#40FFFFFF"
                 android:textColor="#FFFFFF"
                 android:background="@drawable/bg_edit_text"
                 android:paddingHorizontal="12dp"
-                android:inputType="textPassword"
-                android:textSize="14sp"
+                android:inputType="textVisiblePassword"
+                android:textSize="12sp"
                 android:layout_marginBottom="12dp"/>
 
             <Button
@@ -111,33 +105,32 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- CARD 2: MODEL AI -->
+        <!-- CARD 2: AUTO-MODEL -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true">
-
+            android:layout_marginBottom="16dp">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📦 PILIH MODEL AI"
+                android:text="📦 MODEL AI OTOMATIS (TERINGAN)"
                 android:textColor="#00E5FF"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
-
-            <RadioGroup
-                android:id="@+id/rgModel"
+            <TextView
+                android:id="@+id/tvAutoModel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-                <!-- RadioButton akan di-inject via Java sesuai Provider -->
-            </RadioGroup>
+                android:text="Model akan dipilih secara otomatis..."
+                android:textColor="#00FF73"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="12dp"
+                android:background="@drawable/bg_edit_text" />
         </LinearLayout>
 
         <!-- CARD 3: PERMISSIONS -->
@@ -147,21 +140,16 @@
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="24dp"
-            android:clickable="true"
-            android:focusable="true">
-
+            android:layout_marginBottom="24dp">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-
             <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
                 <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
                 <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
             </RelativeLayout>
-
             <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
                 <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG (OVERLAY)" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
                 <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
             </RelativeLayout>
         </LinearLayout>
@@ -178,7 +166,6 @@
             android:textStyle="bold"
             android:layout_marginBottom="20dp"/>
 
-        <!-- 🌈 DEVELOPER CREDIT RGB -->
         <TextView
             android:id="@+id/tvDeveloperCredit"
             android:layout_width="match_parent"
@@ -189,6 +176,5 @@
             android:textAlignment="center"
             android:letterSpacing="0.1"
             android:layout_marginBottom="20dp"/>
-
     </LinearLayout>
 </ScrollView>

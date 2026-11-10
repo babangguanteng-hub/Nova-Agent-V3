@@ -17,9 +17,10 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
@@ -35,6 +36,16 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
+    
+    private final String[] providers = {
+        "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
+        "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
+    };
+
+    private final String[] models = {
+        "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
+        "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+        TextView tvAutoModel = findViewById(R.id.tvAutoModel);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
         if (tvDev != null) {
@@ -60,7 +73,27 @@ public class MainActivity extends AppCompatActivity {
         }
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
-        apiKeyInput.setHint("Masukkan API Key (pisahkan dengan koma jika lebih dari 1)...");
+
+        // Setup Spinner
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
+        spinnerProvider.setAdapter(adapter);
+        
+        String savedProvider = prefs.getString("ai_provider", "Groq");
+        for (int i = 0; i < providers.length; i++) {
+            if (providers[i].equals(savedProvider)) {
+                spinnerProvider.setSelection(i);
+                break;
+            }
+        }
+
+        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                tvAutoModel.setText(models[position]);
+                prefs.edit().putString("ai_provider", providers[position]).apply();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
             playClickSound();
@@ -101,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
 
-        // Load Preferences
         String voice = prefs.getString("custom_voice", "nova");
         if (voice.equals("jarvis")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
         else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
@@ -125,8 +157,6 @@ public class MainActivity extends AppCompatActivity {
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
-            
-            // Save Voice
             String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
             int vId = rgVoice.getCheckedRadioButtonId();
             if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
@@ -134,14 +164,12 @@ public class MainActivity extends AppCompatActivity {
             else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
             else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
             
-            // Save Color
             String newColor = "cyan";
             int cId = rgColor.getCheckedRadioButtonId();
             if (cId == R.id.rbColorRed) newColor = "red";
             else if (cId == R.id.rbColorGreen) newColor = "green";
             else if (cId == R.id.rbColorPurple) newColor = "purple";
 
-            // Save Anim
             String newAnim = "breathe";
             int aId = rgAnim.getCheckedRadioButtonId();
             if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
@@ -157,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
                 .putBoolean("enable_hologram", cbHologram.isChecked())
                 .apply();
                 
-            android.widget.Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", android.widget.Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova)", Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();
@@ -177,9 +205,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        String key = apiKeyInput.getText().toString().trim();
-        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
         if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
         if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }

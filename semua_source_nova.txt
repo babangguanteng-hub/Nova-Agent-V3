@@ -2065,9 +2065,10 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
@@ -2083,6 +2084,16 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
+    
+    private final String[] providers = {
+        "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
+        "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
+    };
+
+    private final String[] models = {
+        "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
+        "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -2095,6 +2106,8 @@ public class MainActivity extends AppCompatActivity {
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+        TextView tvAutoModel = findViewById(R.id.tvAutoModel);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
         if (tvDev != null) {
@@ -2108,7 +2121,27 @@ public class MainActivity extends AppCompatActivity {
         }
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
-        apiKeyInput.setHint("Masukkan API Key (pisahkan dengan koma jika lebih dari 1)...");
+
+        // Setup Spinner
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
+        spinnerProvider.setAdapter(adapter);
+        
+        String savedProvider = prefs.getString("ai_provider", "Groq");
+        for (int i = 0; i < providers.length; i++) {
+            if (providers[i].equals(savedProvider)) {
+                spinnerProvider.setSelection(i);
+                break;
+            }
+        }
+
+        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                tvAutoModel.setText(models[position]);
+                prefs.edit().putString("ai_provider", providers[position]).apply();
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
 
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
             playClickSound();
@@ -2149,7 +2182,6 @@ public class MainActivity extends AppCompatActivity {
 
         SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
 
-        // Load Preferences
         String voice = prefs.getString("custom_voice", "nova");
         if (voice.equals("jarvis")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
         else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
@@ -2173,8 +2205,6 @@ public class MainActivity extends AppCompatActivity {
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
-            
-            // Save Voice
             String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
             int vId = rgVoice.getCheckedRadioButtonId();
             if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
@@ -2182,14 +2212,12 @@ public class MainActivity extends AppCompatActivity {
             else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
             else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
             
-            // Save Color
             String newColor = "cyan";
             int cId = rgColor.getCheckedRadioButtonId();
             if (cId == R.id.rbColorRed) newColor = "red";
             else if (cId == R.id.rbColorGreen) newColor = "green";
             else if (cId == R.id.rbColorPurple) newColor = "purple";
 
-            // Save Anim
             String newAnim = "breathe";
             int aId = rgAnim.getCheckedRadioButtonId();
             if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
@@ -2205,7 +2233,7 @@ public class MainActivity extends AppCompatActivity {
                 .putBoolean("enable_hologram", cbHologram.isChecked())
                 .apply();
                 
-            android.widget.Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova untuk efek maksimal)", android.widget.Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova)", Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();
@@ -2225,9 +2253,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
-        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        String key = apiKeyInput.getText().toString().trim();
-        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
         if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
         if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
@@ -4165,23 +4190,61 @@ public class UniversalNetworkClient {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = prefs.getString("api_key", "").trim();
-        String modelName = prefs.getString("ai_model", "").trim();
 
         if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
-        // 🔄 OMNI-ROTATOR: Pisahkan API Key dengan koma, bersihkan spasi, dan pilih 1 secara acak
+        // OMNI-ROTATOR: Pembagi Kunci Acak
         String[] keyArray = rawKeys.split(",");
         String apiKey = keyArray[new Random().nextInt(keyArray.length)].trim();
 
-        // 🛡️ ANTI-404: Penyelaras Model & Provider Otomatis
-        if (modelName.isEmpty() || (provider.contains("Gemini") && !modelName.contains("gemini")) || (provider.contains("Groq") && modelName.contains("gemini"))) {
-            modelName = provider.contains("Gemini") ? "gemini-1.5-flash" : "llama-3.1-8b-instant";
+        String modelName = "";
+        String apiUrl = "";
+        boolean isGeminiCore = false;
+
+        // AUTO-MODEL MAPPER (8 PROVIDER)
+        switch (provider) {
+            case "Groq":
+                modelName = "openai/gpt-oss-20b";
+                apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                break;
+            case "Google AI Studio":
+                modelName = "gemini-3.5-flash";
+                isGeminiCore = true;
+                break;
+            case "Cerebral":
+                modelName = "GPT-OSS / Qwen 3.8 27B";
+                apiUrl = "https://api.cerebras.ai/v1/chat/completions";
+                break;
+            case "Mistral AI":
+                modelName = "ministral-3b-latest";
+                apiUrl = "https://api.mistral.ai/v1/chat/completions";
+                break;
+            case "Cohere":
+                modelName = "north-mini-code-1.0";
+                apiUrl = "https://api.cohere.com/v1/chat/completions";
+                break;
+            case "Cloudflare Workers AI":
+                modelName = "@cf/google/gemma-4-26b-a4b-it";
+                apiUrl = "https://api.cloudflare.com/client/v4/accounts/default/ai/v1/chat/completions";
+                break;
+            case "NVIDIA NIM":
+                modelName = "nemotron-3.5-bolt-e4b";
+                apiUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
+                break;
+            case "Open Router":
+                modelName = "nvidia/nemotron-3.5-lightning-30b-a3b:free";
+                apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+                break;
+            default:
+                modelName = "llama-3.1-8b-instant";
+                apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                break;
         }
 
         try {
             Request request = null;
 
-            if (provider.contains("Gemini")) {
+            if (isGeminiCore) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
                 
@@ -4232,11 +4295,8 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url = provider.contains("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
-                if (provider.contains("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
+                request = new Request.Builder().url(apiUrl).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
             }
 
             activeCall = client.newCall(request);
@@ -4265,7 +4325,7 @@ public class UniversalNetworkClient {
                                     JSONObject json = new JSONObject(data);
                                     String chunk = "";
                                     
-                                    if (provider.contains("Gemini")) {
+                                    if (isGeminiCore) {
                                         JSONArray candidates = json.optJSONArray("candidates");
                                         if (candidates != null && candidates.length() > 0) {
                                             JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
@@ -4349,127 +4409,6 @@ public class UniversalNetworkClient {
             retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
         } else {
             callback.onError(reason);
-        }
-    }
-}
-
-
-
-==================================================
-FILE: ./app/src/main/java/com/novaagent/app/data/network/GroqNetworkClient.java
-==================================================
-
-package com.novaagent.app.data.network;
-
-import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-
-public class GroqNetworkClient {
-    private static final String TAG = "GroqNetworkClient";
-    private static final String API_URL = "https://api.groq.com/openai/v1/chat/completions";
-    
-    private final OkHttpClient client;
-    private final Context context;
-    private final Handler retryHandler;
-    private static final int MAX_RETRIES = 3;
-
-    public interface NetworkCallback {
-        void onSuccess(String rawJsonContent);
-        void onError(String errorReason);
-    }
-
-    public GroqNetworkClient(Context context) {
-        this.context = context;
-        this.retryHandler = new Handler(Looper.getMainLooper());
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
-    }
-
-    public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        String apiKey = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_api_key", "").trim();
-        String modelName = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getString("groq_model", "llama-3.1-8b-instant").trim();
-
-        if (apiKey.isEmpty()) {
-            callback.onError("API Key Kosong. Silakan isi di aplikasi.");
-            return;
-        }
-
-        try {
-            JSONObject payload = new JSONObject();
-            payload.put("model", modelName);
-            payload.put("temperature", 0.3);
-            payload.put("messages", messages);
-
-            RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-            
-            Request request = new Request.Builder()
-                    .url(API_URL)
-                    .addHeader("Authorization", "Bearer " + apiKey)
-                    .addHeader("Content-Type", "application/json")
-                    .post(body)
-                    .build();
-
-            client.newCall(request).enqueue(new Callback() {
-                @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, "Koneksi Terputus/RTO");
-                }
-
-                @Override public void onResponse(Call call, Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        int code = response.code();
-                        String errorBody = response.body() != null ? response.body().string() : "";
-                        String exactError = "HTTP " + code;
-                        try {
-                            JSONObject errObj = new JSONObject(errorBody);
-                            exactError = "HTTP " + code + ": " + errObj.getJSONObject("error").getString("message");
-                        } catch (Exception ignored) {
-                            exactError = "HTTP " + code + " (Raw: " + errorBody + ")";
-                        }
-                        
-                        if (code == 429 || code >= 500) {
-                            handleRetry(messages, callback, retryCount, "Server Error (" + code + ")");
-                        } else {
-                            callback.onError(exactError);
-                        }
-                        return;
-                    }
-                    try {
-                        String respBody = response.body().string();
-                        String content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
-                        callback.onSuccess(content);
-                    } catch (Exception e) {
-                        callback.onError("Gagal mengekstrak JSON dari Groq.");
-                    }
-                }
-            });
-        } catch (Exception e) {
-            callback.onError("Sistem Lokal Error saat merakit JSON.");
-        }
-    }
-
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, String reason) {
-        if (currentRetry < MAX_RETRIES) {
-            int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCall(messages, callback, nextRetry), delay);
-        } else {
-            callback.onError(reason + " (Batal: 3x gagal)");
         }
     }
 }
@@ -4644,7 +4583,6 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp">
-
             <LinearLayout
                 android:id="@+id/btnSettings"
                 android:layout_width="wrap_content"
@@ -4657,7 +4595,6 @@ FILE: ./app/src/main/res/layout/activity_main.xml
                 <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
             </LinearLayout>
-
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -4683,7 +4620,6 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="4dp"/>
-            
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -4701,12 +4637,9 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_marginBottom="16dp">
 
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            
             <Spinner
                 android:id="@+id/spinnerProvider"
                 android:layout_width="match_parent"
@@ -4715,18 +4648,18 @@ FILE: ./app/src/main/res/layout/activity_main.xml
                 android:popupBackground="#0D1117"
                 android:layout_marginBottom="12dp"/>
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY OMNI-ROTATOR" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
             <EditText
                 android:id="@+id/apiKeyInput"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:hint="Masukkan API Key..."
+                android:hint="Bisa lebih dari 1, pisahkan dengan koma (,)"
                 android:textColorHint="#40FFFFFF"
                 android:textColor="#FFFFFF"
                 android:background="@drawable/bg_edit_text"
                 android:paddingHorizontal="12dp"
-                android:inputType="textPassword"
-                android:textSize="14sp"
+                android:inputType="textVisiblePassword"
+                android:textSize="12sp"
                 android:layout_marginBottom="12dp"/>
 
             <Button
@@ -4739,33 +4672,32 @@ FILE: ./app/src/main/res/layout/activity_main.xml
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- CARD 2: MODEL AI -->
+        <!-- CARD 2: AUTO-MODEL -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true">
-
+            android:layout_marginBottom="16dp">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📦 PILIH MODEL AI"
+                android:text="📦 MODEL AI OTOMATIS (TERINGAN)"
                 android:textColor="#00E5FF"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
-
-            <RadioGroup
-                android:id="@+id/rgModel"
+            <TextView
+                android:id="@+id/tvAutoModel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-                <!-- RadioButton akan di-inject via Java sesuai Provider -->
-            </RadioGroup>
+                android:text="Model akan dipilih secara otomatis..."
+                android:textColor="#00FF73"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:padding="12dp"
+                android:background="@drawable/bg_edit_text" />
         </LinearLayout>
 
         <!-- CARD 3: PERMISSIONS -->
@@ -4775,21 +4707,16 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
             android:padding="16dp"
-            android:layout_marginBottom="24dp"
-            android:clickable="true"
-            android:focusable="true">
-
+            android:layout_marginBottom="24dp">
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-
             <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
                 <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
                 <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
             </RelativeLayout>
-
             <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
                 <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG (OVERLAY)" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
                 <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
             </RelativeLayout>
         </LinearLayout>
@@ -4806,7 +4733,6 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:textStyle="bold"
             android:layout_marginBottom="20dp"/>
 
-        <!-- 🌈 DEVELOPER CREDIT RGB -->
         <TextView
             android:id="@+id/tvDeveloperCredit"
             android:layout_width="match_parent"
@@ -4817,7 +4743,6 @@ FILE: ./app/src/main/res/layout/activity_main.xml
             android:textAlignment="center"
             android:letterSpacing="0.1"
             android:layout_marginBottom="20dp"/>
-
     </LinearLayout>
 </ScrollView>
 

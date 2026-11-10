@@ -57,23 +57,61 @@ public class UniversalNetworkClient {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = prefs.getString("api_key", "").trim();
-        String modelName = prefs.getString("ai_model", "").trim();
 
         if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
-        // 🔄 OMNI-ROTATOR: Pisahkan API Key dengan koma, bersihkan spasi, dan pilih 1 secara acak
+        // OMNI-ROTATOR: Pembagi Kunci Acak
         String[] keyArray = rawKeys.split(",");
         String apiKey = keyArray[new Random().nextInt(keyArray.length)].trim();
 
-        // 🛡️ ANTI-404: Penyelaras Model & Provider Otomatis
-        if (modelName.isEmpty() || (provider.contains("Gemini") && !modelName.contains("gemini")) || (provider.contains("Groq") && modelName.contains("gemini"))) {
-            modelName = provider.contains("Gemini") ? "gemini-1.5-flash" : "llama-3.1-8b-instant";
+        String modelName = "";
+        String apiUrl = "";
+        boolean isGeminiCore = false;
+
+        // AUTO-MODEL MAPPER (8 PROVIDER)
+        switch (provider) {
+            case "Groq":
+                modelName = "openai/gpt-oss-20b";
+                apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                break;
+            case "Google AI Studio":
+                modelName = "gemini-3.5-flash";
+                isGeminiCore = true;
+                break;
+            case "Cerebral":
+                modelName = "GPT-OSS / Qwen 3.8 27B";
+                apiUrl = "https://api.cerebras.ai/v1/chat/completions";
+                break;
+            case "Mistral AI":
+                modelName = "ministral-3b-latest";
+                apiUrl = "https://api.mistral.ai/v1/chat/completions";
+                break;
+            case "Cohere":
+                modelName = "north-mini-code-1.0";
+                apiUrl = "https://api.cohere.com/v1/chat/completions";
+                break;
+            case "Cloudflare Workers AI":
+                modelName = "@cf/google/gemma-4-26b-a4b-it";
+                apiUrl = "https://api.cloudflare.com/client/v4/accounts/default/ai/v1/chat/completions";
+                break;
+            case "NVIDIA NIM":
+                modelName = "nemotron-3.5-bolt-e4b";
+                apiUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
+                break;
+            case "Open Router":
+                modelName = "nvidia/nemotron-3.5-lightning-30b-a3b:free";
+                apiUrl = "https://openrouter.ai/api/v1/chat/completions";
+                break;
+            default:
+                modelName = "llama-3.1-8b-instant";
+                apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                break;
         }
 
         try {
             Request request = null;
 
-            if (provider.contains("Gemini")) {
+            if (isGeminiCore) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
                 
@@ -124,11 +162,8 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url = provider.contains("Groq") ? "https://api.groq.com/openai/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
-                if (provider.contains("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
+                request = new Request.Builder().url(apiUrl).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
             }
 
             activeCall = client.newCall(request);
@@ -157,7 +192,7 @@ public class UniversalNetworkClient {
                                     JSONObject json = new JSONObject(data);
                                     String chunk = "";
                                     
-                                    if (provider.contains("Gemini")) {
+                                    if (isGeminiCore) {
                                         JSONArray candidates = json.optJSONArray("candidates");
                                         if (candidates != null && candidates.length() > 0) {
                                             JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
