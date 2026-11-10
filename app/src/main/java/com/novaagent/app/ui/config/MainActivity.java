@@ -1,4 +1,6 @@
 package com.novaagent.app.ui.config;
+import java.util.List;
+import java.util.ArrayList;
 
 import android.Manifest;
 import android.app.AlertDialog;
