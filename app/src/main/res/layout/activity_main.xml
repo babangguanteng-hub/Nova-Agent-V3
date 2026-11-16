@@ -1,180 +1,220 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main_dark"
-    android:fillViewport="true">
+    android:background="@drawable/bg_premium_main">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="match_parent"
+        android:layout_above="@+id/bottomNav"
+        android:fillViewport="true">
 
-        <!-- Bar Atas Futuristik -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp">
-            <LinearLayout
-                android:id="@+id/btnSettings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_card_cyber"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="8dp"
-                android:clickable="true"
-                android:focusable="true">
-                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:layout_centerVertical="true">
-                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_marginEnd="10dp"/>
-                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@android:drawable/ic_menu_mylocation" android:tint="#FF00E5"/>
-            </LinearLayout>
-        </RelativeLayout>
-
-        <!-- TITLE AGENT -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="NOVA AGENT v6.0"
-            android:textSize="34sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:textAlignment="center"
-            android:shadowColor="#00E5FF"
-            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="4dp"/>
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="S M A R T  •  F A S T  •  P O W E R F U L"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:textColor="#00E5FF"
-            android:textAlignment="center"
-            android:layout_marginBottom="24dp"/>
-
-        <!-- CARD 1: PROVIDER & API KEY -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
+            android:padding="20dp">
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            <Spinner
-                android:id="@+id/spinnerProvider"
+            <!-- HEADER -->
+            <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="45dp"
-                android:background="@drawable/bg_edit_text"
-                android:popupBackground="#0D1117"
-                android:layout_marginBottom="12dp"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="30dp">
+                
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_alignParentStart="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nova Agent"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v6.0"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        android:textColor="#00E5FF"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Smart  •  Fast  •  Powerful"
+                        android:textSize="12sp"
+                        android:textColor="#88FFFFFF"
+                        android:layout_marginTop="4dp"/>
+                </LinearLayout>
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY OMNI-ROTATOR" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            <EditText
-                android:id="@+id/apiKeyInput"
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="horizontal">
+                    <!-- Icon Tema & Settings Sementara pakai bawaan OS -->
+                    <ImageView android:id="@+id/btnSettings" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_menu_manage" android:tint="#FFFFFF" android:background="@drawable/bg_premium_input" android:padding="8dp" android:layout_marginStart="10dp" android:clickable="true" android:focusable="true"/>
+                </LinearLayout>
+            </RelativeLayout>
+
+            <!-- CARD 1: PROVIDER AI -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:hint="Bisa lebih dari 1, pisahkan dengan koma (,)"
-                android:textColorHint="#40FFFFFF"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/bg_edit_text"
-                android:paddingHorizontal="12dp"
-                android:inputType="textVisiblePassword"
-                android:textSize="12sp"
-                android:layout_marginBottom="12dp"/>
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_premium_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
 
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+                    <TextView android:id="@+id/tvProvTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Provider AI" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih penyedia layanan AI" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvProvTitle"/>
+                </RelativeLayout>
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <Spinner
+                        android:id="@+id/spinnerProvider"
+                        android:layout_width="match_parent"
+                        android:layout_height="50dp"
+                        android:background="@drawable/bg_premium_input"
+                        android:popupBackground="#0B132B"
+                        android:paddingStart="12dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="✔ Aktif" android:background="@drawable/bg_premium_badge" android:textColor="#00FF73" android:textSize="12sp" android:textStyle="bold" android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="40dp" android:elevation="2dp"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- CARD 2: API KEY -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_premium_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API Key Omni-Rotator" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Masukkan kunci API Anda" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
+                
+                <EditText
+                    android:id="@+id/apiKeyInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:hint="gsk_..."
+                    android:textColorHint="#40FFFFFF"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_premium_input"
+                    android:paddingHorizontal="16dp"
+                    android:inputType="textVisiblePassword"
+                    android:textSize="14sp"
+                    android:layout_marginBottom="12dp"/>
+
+                <Button
+                    android:id="@+id/btnSaveKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="55dp"
+                    android:text="Simpan Konfigurasi"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@null"
+                    android:background="@drawable/bg_premium_button"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:textSize="16sp"/>
+            </LinearLayout>
+
+            <!-- CARD 3: MODEL AI -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_premium_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+                    <TextView android:id="@+id/tvModelTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model AI Otomatis" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode terbaik akan dipilih secara otomatis" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvModelTitle"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚡ Teringan" android:background="@drawable/bg_premium_badge" android:textColor="#00FF73" android:textSize="12sp" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <TextView
+                    android:id="@+id/tvAutoModel"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:text="openai/gpt-oss-20b"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:padding="12dp"
+                    android:background="@drawable/bg_premium_input"
+                    android:gravity="center_vertical"/>
+            </LinearLayout>
+
+            <!-- CARD 4: PERMISSIONS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_premium_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp">
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+                    <TextView android:id="@+id/tvPermTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status Perizinan Wajib" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aplikasi siap digunakan" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvPermTitle"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="✔ Terverifikasi" android:background="@drawable/bg_premium_badge" android:textColor="#00FF73" android:textSize="12sp" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <Button android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="40dp" android:text="Cek Aksesibilitas" android:backgroundTint="#1Affffff" android:textColor="#00E5FF" android:layout_marginBottom="8dp"/>
+                <Button android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="40dp" android:text="Cek Izin Mengambang" android:backgroundTint="#1Affffff" android:textColor="#00E5FF"/>
+            </LinearLayout>
+
+            <!-- TOMBOL UTAMA -->
             <Button
-                android:id="@+id/btnSaveKey"
+                android:id="@+id/btnStart"
                 android:layout_width="match_parent"
-                android:layout_height="45dp"
-                android:text="💾 Simpan Konfigurasi"
-                android:backgroundTint="#00E5FF"
-                android:textColor="#000000"
-                android:textStyle="bold"/>
-        </LinearLayout>
-
-        <!-- CARD 2: AUTO-MODEL -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📦 MODEL AI OTOMATIS (TERINGAN)"
-                android:textColor="#00E5FF"
-                android:textSize="12sp"
+                android:layout_height="65dp"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_premium_button"
+                android:text="▶ Mulai Nova"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-            <TextView
-                android:id="@+id/tvAutoModel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Model akan dipilih secara otomatis..."
-                android:textColor="#00FF73"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:padding="12dp"
-                android:background="@drawable/bg_edit_text" />
+                android:layout_marginBottom="30dp"
+                android:elevation="8dp"/>
+
         </LinearLayout>
+    </ScrollView>
 
-        <!-- CARD 3: PERMISSIONS -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="24dp">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-            <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
-                <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
-                <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
-            </RelativeLayout>
-            <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
-                <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
-                <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
-            </RelativeLayout>
+    <!-- FAKE BOTTOM NAV (Visual Saja Sesuai Desain) -->
+    <LinearLayout
+        android:id="@+id/bottomNav"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_alignParentBottom="true"
+        android:background="#060A14"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:paddingTop="8dp">
+        
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_today" android:tint="#00E5FF"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beranda" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold"/>
+            <View android:layout_width="30dp" android:layout_height="3dp" android:background="#00E5FF" android:layout_marginTop="4dp"/>
         </LinearLayout>
-
-        <!-- TOMBOL UTAMA -->
-        <Button
-            android:id="@+id/btnStart"
-            android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:background="@drawable/bg_start_glow"
-            android:text="▶ MULAI NOVA"
-            android:textColor="#000D1A"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="20dp"/>
-
-        <TextView
-            android:id="@+id/tvDeveloperCredit"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEVELOPER BY\nMOCH KHOIRUL AZMAN"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="20dp"/>
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_sort_by_size" android:tint="#88FFFFFF"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status" android:textColor="#88FFFFFF" android:textSize="12sp"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#88FFFFFF"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tentang" android:textColor="#88FFFFFF" android:textSize="12sp"/>
+        </LinearLayout>
     </LinearLayout>
-</ScrollView>
+
+</RelativeLayout>
