@@ -29,10 +29,10 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
-> Task :app:mergeDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
@@ -49,41 +49,134 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:mergeExtDexDebug
 
 > Task :app:compileDebugJavaWithJavac
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:199: error: cannot find symbol
-        List<String> permissionsNeeded = new ArrayList<>();
-        ^
-  symbol:   class List
-  location: class MainActivity
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:199: error: cannot find symbol
-        List<String> permissionsNeeded = new ArrayList<>();
-                                             ^
-  symbol:   class ArrayList
-  location: class MainActivity
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: cannot find symbol
-                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:65: error: cannot find symbol
+        TextView tvDev = findViewById(R.id.tvDeveloperCredit);
+                                          ^
+  symbol:   variable tvDeveloperCredit
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:122: error: cannot find symbol
+        TextView tvA11y = findViewById(R.id.tvStatusA11y);
+                                           ^
+  symbol:   variable tvStatusA11y
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:123: error: cannot find symbol
+        TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
+                                              ^
+  symbol:   variable tvStatusOverlay
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:134: error: cannot find symbol
+        android.widget.RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
+                                                                  ^
+  symbol:   variable rgVoice
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:135: error: cannot find symbol
+        android.widget.RadioGroup rgColor = view.findViewById(R.id.rgColor);
+                                                                  ^
+  symbol:   variable rgColor
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:136: error: cannot find symbol
+        android.widget.RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
+                                                                 ^
+  symbol:   variable rgAnim
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:137: error: cannot find symbol
+        android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
+                                                                   ^
+  symbol:   variable cbHologram
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:143: error: cannot find symbol
+        else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
+                                                                                          ^
+  symbol:   variable rbVoiceMale
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:145: error: cannot find symbol
+        else if (voice.equals("robot")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
                                                                                            ^
-  symbol: class AgentEvent
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: package AgentEvent does not exist
-                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
-                                                                                                                ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:221: error: cannot find symbol
-                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
-                                                        ^
-  symbol: variable EventBus
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: cannot find symbol
-                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                                                                                                 ^
-  symbol: class AgentEvent
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: package AgentEvent does not exist
-                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                                                                                                                      ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java:243: error: cannot find symbol
-                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                                                              ^
-  symbol: variable EventBus
+  symbol:   variable rbVoiceRobot
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:149: error: cannot find symbol
+        if (color.equals("red")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
+                                                                                    ^
+  symbol:   variable rbColorRed
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:150: error: cannot find symbol
+        else if (color.equals("green")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
+                                                                                           ^
+  symbol:   variable rbColorGreen
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:151: error: cannot find symbol
+        else if (color.equals("purple")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
+                                                                                            ^
+  symbol:   variable rbColorPurple
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:152: error: cannot find symbol
+        else ((android.widget.RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
+                                                                ^
+  symbol:   variable rbColorCyan
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:155: error: cannot find symbol
+        if (anim.equals("heartbeat")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
+                                                                                         ^
+  symbol:   variable rbAnimHeartbeat
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:156: error: cannot find symbol
+        else if (anim.equals("glitch")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
+                                                                                           ^
+  symbol:   variable rbAnimGlitch
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:157: error: cannot find symbol
+        else if (anim.equals("static")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
+                                                                                           ^
+  symbol:   variable rbAnimStatic
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:158: error: cannot find symbol
+        else ((android.widget.RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
+                                                                ^
+  symbol:   variable rbAnimBreathe
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:167: error: cannot find symbol
+            else if (vId == R.id.rbVoiceMale) { newVoice = "male"; pitch = 0.8f; speed = 1.0f; }
+                                ^
+  symbol:   variable rbVoiceMale
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:169: error: cannot find symbol
+            else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
+                                ^
+  symbol:   variable rbVoiceRobot
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:173: error: cannot find symbol
+            if (cId == R.id.rbColorRed) newColor = "red";
+                           ^
+  symbol:   variable rbColorRed
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:174: error: cannot find symbol
+            else if (cId == R.id.rbColorGreen) newColor = "green";
+                                ^
+  symbol:   variable rbColorGreen
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:175: error: cannot find symbol
+            else if (cId == R.id.rbColorPurple) newColor = "purple";
+                                ^
+  symbol:   variable rbColorPurple
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:179: error: cannot find symbol
+            if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
+                           ^
+  symbol:   variable rbAnimHeartbeat
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:180: error: cannot find symbol
+            else if (aId == R.id.rbAnimGlitch) newAnim = "glitch";
+                                ^
+  symbol:   variable rbAnimGlitch
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:181: error: cannot find symbol
+            else if (aId == R.id.rbAnimStatic) newAnim = "static";
+                                ^
+  symbol:   variable rbAnimStatic
+  location: class id
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
-8 errors
+25 errors
 
 > Task :app:compileDebugJavaWithJavac FAILED
 
@@ -288,5 +381,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 1m 27s
+BUILD FAILED in 1m 23s
 21 actionable tasks: 21 executed
