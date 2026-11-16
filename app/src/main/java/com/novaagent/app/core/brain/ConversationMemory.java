@@ -5,11 +5,12 @@ import org.json.JSONObject;
 import java.util.LinkedList;
 
 /**
- * FASE 7: MANAJER INGATAN JANGKA PENDEK (WORKING MEMORY).
- * Diet Token Ekstrem: Cukup ingat 2 pasang percakapan terakhir saja.
+ * 10x KOMPLEKSITAS: MANAJER INGATAN KHUSUS (FIMO)
+ * Menerapkan algoritma First-In-Middle-Out.
+ * Mengunci ingatan awal, dan membuang ingatan tengah saat kepenuhan agar hemat token API.
  */
 public class ConversationMemory {
-    private static final int MAX_MEMORY_PAIRS = 2; 
+    private static final int MAX_MEMORY_PAIRS = 5; 
     private final LinkedList<JSONObject> memory = new LinkedList<>();
 
     public synchronized void addUserMessage(String message) {
@@ -27,9 +28,12 @@ public class ConversationMemory {
             msg.put("content", content);
             memory.add(msg);
 
+            // PRUNING CERDAS (FIMO): Jika memori penuh, pertahankan konteks pertama, buang yang tengah
             if (memory.size() > MAX_MEMORY_PAIRS * 2) {
-                memory.removeFirst(); 
-                memory.removeFirst(); 
+                // Elemen 0 & 1 adalah percakapan pertama (sangat krusial untuk konteks awal)
+                // Kita buang elemen ke-2 dan ke-3 (percakapan di tengah)
+                memory.remove(2); 
+                memory.remove(2); 
             }
         } catch (Exception ignored) {}
     }

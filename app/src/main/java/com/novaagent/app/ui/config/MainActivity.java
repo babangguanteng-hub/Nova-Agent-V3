@@ -1,6 +1,4 @@
 package com.novaagent.app.ui.config;
-import java.util.List;
-import java.util.ArrayList;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -17,11 +15,17 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -30,6 +34,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
@@ -49,6 +56,9 @@ public class MainActivity extends AppCompatActivity {
         "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
     };
 
+    private Spinner spinnerProvider;
+    private RadioGroup rgModel; // Dibiarkan ada untuk logic backend, tp invisible di UI
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,9 +70,10 @@ public class MainActivity extends AppCompatActivity {
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+        spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvAutoModel = findViewById(R.id.tvAutoModel);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
+        rgModel = findViewById(R.id.rgModel);
         
         if (tvDev != null) {
             tvDev.post(() -> {
@@ -122,8 +133,8 @@ public class MainActivity extends AppCompatActivity {
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive); }
-        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_badge_active); }
+        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_premium_badge : R.drawable.bg_badge_inactive); }
+        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_premium_badge); }
     }
 
     private void showSettingsDialog() {
@@ -131,40 +142,37 @@ public class MainActivity extends AppCompatActivity {
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this).setView(view).create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         
-        android.widget.RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
-        android.widget.RadioGroup rgColor = view.findViewById(R.id.rgColor);
-        android.widget.RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
-        android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
-
-        SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+        RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
+        RadioGroup rgColor = view.findViewById(R.id.rgColor);
+        RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
+        CheckBox cbHologram = view.findViewById(R.id.cbHologram);
 
         String voice = prefs.getString("custom_voice", "nova");
-        if (voice.equals("jarvis")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
-        else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
-        else if (voice.equals("friday")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
-        else if (voice.equals("robot")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
+        if (voice.equals("jarvis")) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
+        else if (voice.equals("friday")) ((RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
+        else if (voice.equals("robot")) ((RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
 
         String color = prefs.getString("custom_color", "cyan");
-        if (color.equals("red")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
-        else if (color.equals("green")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
-        else if (color.equals("purple")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
+        if (color.equals("red")) ((RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
+        else if (color.equals("green")) ((RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
+        else if (color.equals("purple")) ((RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
 
         String anim = prefs.getString("custom_anim", "breathe");
-        if (anim.equals("heartbeat")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
-        else if (anim.equals("glitch")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
-        else if (anim.equals("static")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
+        if (anim.equals("heartbeat")) ((RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
+        else if (anim.equals("glitch")) ((RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
+        else if (anim.equals("static")) ((RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
+        else ((RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
 
         cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
+            
             String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
             int vId = rgVoice.getCheckedRadioButtonId();
             if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
-            else if (vId == R.id.rbVoiceMale) { newVoice = "male"; pitch = 0.8f; speed = 1.0f; }
             else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
             else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
             
@@ -209,6 +217,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkPermissionsAndStart() {
+        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+        String key = apiKeyInput.getText().toString().trim();
+        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+        
         if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
         if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }

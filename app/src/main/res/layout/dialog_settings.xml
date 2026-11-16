@@ -13,53 +13,47 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pengaturan Suara &amp; Visual"
+            android:text="Kustomisasi Nova"
             android:textColor="#00E5FF"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:layout_marginBottom="24dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Model Suara"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp"/>
-            
-        <RadioGroup
-            android:id="@+id/rgVoicePitch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="@drawable/bg_premium_input"
-            android:padding="12dp"
-            android:layout_marginBottom="24dp">
-            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Pria Besar (Wibawa)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Normal (Standar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Imut (Ekspresif)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+        <!-- 1. VOICE -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model Suara" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
+            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Natural (Pria Besar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Default (Standar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Expressive (Imut)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Premium (Robot)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
         </RadioGroup>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pengaturan Lainnya"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp"/>
+        <!-- 2. COLOR -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Booble Jelly" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
+            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cyan Glow" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Neon Purple" android:textColor="#FFF" android:buttonTint="#B000FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbColorRed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Crimson Red" android:textColor="#FFF" android:buttonTint="#FF003C" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbColorGreen" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Matrix Green" android:textColor="#FFF" android:buttonTint="#00FF73" android:padding="8dp"/>
+        </RadioGroup>
 
-        <!-- Dummy visual settings to match design vibe -->
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:background="@drawable/bg_premium_input" android:padding="16dp" android:layout_marginBottom="8dp">
-            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Animasi Booble Jelly" android:textColor="#FFF"/>
-            <Switch android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true"/>
-        </LinearLayout>
-        
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:background="@drawable/bg_premium_input" android:padding="16dp" android:layout_marginBottom="24dp">
-            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Mode Hemat Daya" android:textColor="#FFF"/>
-            <Switch android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false"/>
-        </LinearLayout>
+        <!-- 3. ANIMATION -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gaya Animasi" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
+        <RadioGroup android:id="@+id/rgAnim" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
+            <RadioButton android:id="@+id/rbAnimBreathe" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Modern Glow (Halus)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbAnimHeartbeat" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Pulse (Cepat)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbAnimGlitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cyber Glitch" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+            <RadioButton android:id="@+id/rbAnimStatic" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hemat Daya (Statis)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+        </RadioGroup>
+
+        <android.widget.CheckBox
+            android:id="@+id/cbHologram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notifikasi Pintar / Hologram Aura"
+            android:textColor="#FFFFFF"
+            android:buttonTint="#00E5FF"
+            android:layout_marginBottom="24dp"/>
 
         <Button
             android:id="@+id/btnSaveSettings"
