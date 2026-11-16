@@ -71,7 +71,7 @@
                         android:id="@+id/btnThemeToggle"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
-                        android:src="@android:drawable/ic_menu_daynight"
+                        android:src="@android:drawable/ic_menu_view"
                         android:tint="#00E5FF"
                         android:background="@drawable/bg_edit_text"
                         android:padding="8dp"
