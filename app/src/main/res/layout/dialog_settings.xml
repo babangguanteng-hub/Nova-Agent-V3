@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_premium_card"
+    android:background="@drawable/bg_card_cyber"
     android:padding="20dp">
 
     <LinearLayout
@@ -13,59 +13,49 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Kustomisasi Nova"
+            android:text="Pengaturan Nova"
             android:textColor="#00E5FF"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="16dp"/>
 
-        <!-- 1. VOICE -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model Suara" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
-            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Natural (Pria Besar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Default (Standar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Expressive (Imut)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Premium (Robot)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+        <!-- 1. MODEL SUARA -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model Suara" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_edit_text" android:padding="10dp" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Natural (Pria Besar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="6dp"/>
+            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Default (Standar)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="6dp"/>
+            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Expressive (Imut)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="6dp"/>
+            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Premium (Robot)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="6dp"/>
         </RadioGroup>
 
-        <!-- 2. COLOR -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Booble Jelly" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
-            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cyan Glow" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Neon Purple" android:textColor="#FFF" android:buttonTint="#B000FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbColorRed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Crimson Red" android:textColor="#FFF" android:buttonTint="#FF003C" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbColorGreen" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Matrix Green" android:textColor="#FFF" android:buttonTint="#00FF73" android:padding="8dp"/>
-        </RadioGroup>
-
-        <!-- 3. ANIMATION -->
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gaya Animasi" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-        <RadioGroup android:id="@+id/rgAnim" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_premium_input" android:padding="12dp" android:layout_marginBottom="20dp">
-            <RadioButton android:id="@+id/rbAnimBreathe" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Modern Glow (Halus)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbAnimHeartbeat" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Pulse (Cepat)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbAnimGlitch" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cyber Glitch" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
-            <RadioButton android:id="@+id/rbAnimStatic" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hemat Daya (Statis)" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="8dp"/>
+        <!-- 2. WARNA BUBBLE JELLY -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Bubble Jelly" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_edit_text" android:padding="10dp" android:layout_marginBottom="16dp">
+            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cyan Glow" android:textColor="#FFF" android:buttonTint="#00E5FF" android:padding="6dp"/>
+            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Neon Purple" android:textColor="#FFF" android:buttonTint="#B000FF" android:padding="6dp"/>
+            <RadioButton android:id="@+id/rbColorRed" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Crimson Red" android:textColor="#FFF" android:buttonTint="#FF003C" android:padding="6dp"/>
         </RadioGroup>
 
         <android.widget.CheckBox
             android:id="@+id/cbHologram"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Notifikasi Pintar / Hologram Aura"
+            android:text="Notifikasi Pintar &amp; Aura Hologram"
             android:textColor="#FFFFFF"
             android:buttonTint="#00E5FF"
-            android:layout_marginBottom="24dp"/>
+            android:layout_marginBottom="20dp"/>
 
         <Button
             android:id="@+id/btnSaveSettings"
             android:layout_width="match_parent"
-            android:layout_height="55dp"
+            android:layout_height="50dp"
             android:text="Simpan Pengaturan"
             android:textAllCaps="false"
             android:backgroundTint="@null"
-            android:background="@drawable/bg_premium_button"
+            android:background="@drawable/bg_start_glow"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
-            android:textSize="16sp"/>
+            android:textSize="15sp"/>
             
     </LinearLayout>
 </ScrollView>
