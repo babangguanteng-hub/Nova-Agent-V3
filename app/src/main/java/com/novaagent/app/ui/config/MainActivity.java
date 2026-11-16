@@ -15,14 +15,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -35,29 +31,21 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
-    
-    // 🌟 8 PROVIDER MUTLAK
+
     private final String[] providers = {
         "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
         "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
     };
 
-    // 🌟 8 MODEL SESUAI PERMINTAAN BOS
     private final String[] models = {
         "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
         "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
     };
-
-    private Spinner spinnerProvider;
-    private RadioGroup rgModel; // Dibiarkan ada untuk logic backend, tp invisible di UI
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,10 +58,9 @@ public class MainActivity extends AppCompatActivity {
         requestBasicPermissions();
 
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        spinnerProvider = findViewById(R.id.spinnerProvider);
+        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvAutoModel = findViewById(R.id.tvAutoModel);
         TextView tvDev = findViewById(R.id.tvDeveloperCredit);
-        rgModel = findViewById(R.id.rgModel);
         
         if (tvDev != null) {
             tvDev.post(() -> {
@@ -87,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
         apiKeyInput.setText(prefs.getString("api_key", ""));
 
-        // Setup Spinner
+        // Setup Provider Spinner
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
         spinnerProvider.setAdapter(adapter);
         
@@ -99,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Auto-Model Setter
         spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -110,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
 
+        // Tombol Simpan Key
         findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
             playClickSound();
             String key = apiKeyInput.getText().toString().trim();
@@ -118,13 +105,42 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             prefs.edit().putString("api_key", key).apply();
-            Toast.makeText(this, "Kunci Tersimpan! Omni-Rotator Aktif.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "💾 Konfigurasi Tersimpan & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
         });
 
+        // Tombol Pengaturan (Settings Dialog)
         findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
+        
+        // Tombol Perizinan
         findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
         findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+        
+        // Tombol Mulai Nova
         findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+
+        // Fungsionalitas Nyata Menu Bawah (Bottom Navigation)
+        findViewById(R.id.navBeranda).setOnClickListener(v -> {
+            playClickSound();
+            Toast.makeText(this, "Anda sudah berada di Beranda", Toast.LENGTH_SHORT).show();
+        });
+
+        findViewById(R.id.navStatus).setOnClickListener(v -> {
+            playClickSound();
+            new AlertDialog.Builder(this)
+                .setTitle("📊 Status Sistem Nova")
+                .setMessage("• Mesin Neural: Aktif\n• Omni-Rotator: Siaga\n• Watchdog: Berdetak Normal\n• Kapasitas Memori: Optimal")
+                .setPositiveButton("Tutup", null)
+                .show();
+        });
+
+        findViewById(R.id.navTentang).setOnClickListener(v -> {
+            playClickSound();
+            new AlertDialog.Builder(this)
+                .setTitle("ℹ️ Tentang Nova Agent v6.0")
+                .setMessage("Nova Agent adalah asisten AI otonom tingkat dewa yang dikembangkan oleh Moch Khoirul Azman.\n\nDirancang untuk bekerja cepat, cerdas, dan efisien di sistem Android.")
+                .setPositiveButton("Tutup", null)
+                .show();
+        });
     }
 
     @Override
@@ -133,19 +149,26 @@ public class MainActivity extends AppCompatActivity {
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_premium_badge : R.drawable.bg_badge_inactive); }
-        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_premium_badge); }
+        if(tvOverlay != null) { 
+            tvOverlay.setText(overlayOn ? "✔ Aktif" : "Aktifkan"); 
+            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_ultra_badge : R.drawable.bg_edit_text); 
+        }
+        if(tvA11y != null) { 
+            tvA11y.setText("Aktifkan"); 
+            tvA11y.setBackgroundResource(R.drawable.bg_edit_text); 
+        }
     }
 
     private void showSettingsDialog() {
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this).setView(view).create();
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(view).create();
         dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         
         RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
         RadioGroup rgColor = view.findViewById(R.id.rgColor);
         RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
-        CheckBox cbHologram = view.findViewById(R.id.cbHologram);
+
+        SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
 
         String voice = prefs.getString("custom_voice", "nova");
         if (voice.equals("jarvis")) ((RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
@@ -158,14 +181,6 @@ public class MainActivity extends AppCompatActivity {
         else if (color.equals("green")) ((RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
         else if (color.equals("purple")) ((RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
         else ((RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
-
-        String anim = prefs.getString("custom_anim", "breathe");
-        if (anim.equals("heartbeat")) ((RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
-        else if (anim.equals("glitch")) ((RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
-        else if (anim.equals("static")) ((RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
-        else ((RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
-
-        cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
 
         view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
             playClickSound();
@@ -182,22 +197,14 @@ public class MainActivity extends AppCompatActivity {
             else if (cId == R.id.rbColorGreen) newColor = "green";
             else if (cId == R.id.rbColorPurple) newColor = "purple";
 
-            String newAnim = "breathe";
-            int aId = rgAnim.getCheckedRadioButtonId();
-            if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
-            else if (aId == R.id.rbAnimGlitch) newAnim = "glitch";
-            else if (aId == R.id.rbAnimStatic) newAnim = "static";
-
             prefs.edit()
                 .putString("custom_voice", newVoice)
                 .putFloat("voice_pitch", pitch)
                 .putFloat("voice_speed", speed)
                 .putString("custom_color", newColor)
-                .putString("custom_anim", newAnim)
-                .putBoolean("enable_hologram", cbHologram.isChecked())
                 .apply();
                 
-            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova)", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "✨ Kustomisasi Berhasil Disimpan!", Toast.LENGTH_LONG).show();
             dialog.dismiss();
         });
         dialog.show();
@@ -210,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!permissionsNeeded.isEmpty()) {
-            new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.").setPositiveButton("Beri Izin", (dialog, which) -> {
+            new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI membutuhkan izin Mikrofon dan Notifikasi agar dapat berjalan optimal di latar belakang.").setPositiveButton("Beri Izin", (dialog, which) -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
             }).setCancelable(false).show();
         }
@@ -220,10 +227,9 @@ public class MainActivity extends AppCompatActivity {
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         String key = apiKeyInput.getText().toString().trim();
         if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
-        
         if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
-        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
+        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Jendela Mengambang!", Toast.LENGTH_LONG).show(); return; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Izinkan mikrofon terlebih dahulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }

@@ -2,44 +2,54 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_premium_main">
+    android:background="@drawable/bg_ultra_main">
 
+    <!-- KONTEN UTAMA DENGAN SCROLL -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_above="@+id/bottomNavContainer"
         android:fillViewport="true"
-        android:padding="20dp">
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="20dp">
 
-            <!-- HEADER -->
+            <!-- HEADER UTAMA -->
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="25dp">
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="24dp">
                 
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
-                    <TextView
+                    <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Nova Agent"
-                        android:textSize="32sp"
-                        android:textStyle="bold"
-                        android:textColor="#FFFFFF"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="v6.0"
-                        android:textSize="22sp"
-                        android:textStyle="bold"
-                        android:textColor="#00E5FF"/>
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Nova Agent"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text=" v6.0"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#00E5FF"
+                            android:layout_marginStart="6dp"/>
+                    </LinearLayout>
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -49,139 +59,381 @@
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
-                <ImageView android:id="@+id/btnSettings" android:layout_width="45dp" android:layout_height="45dp" android:src="@android:drawable/ic_menu_manage" android:tint="#FFFFFF" android:background="@drawable/bg_premium_input" android:padding="10dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:clickable="true" android:focusable="true"/>
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="horizontal">
+                    
+                    <ImageView
+                        android:id="@+id/btnThemeToggle"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:src="@android:drawable/ic_menu_view"
+                        android:tint="#FFFFFF"
+                        android:background="@drawable/bg_ultra_input"
+                        android:padding="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:clickable="true"
+                        android:focusable="true"/>
+
+                    <ImageView
+                        android:id="@+id/btnSettings"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:src="@android:drawable/ic_menu_manage"
+                        android:tint="#FFFFFF"
+                        android:background="@drawable/bg_ultra_input"
+                        android:padding="10dp"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </LinearLayout>
             </RelativeLayout>
 
-            <!-- CARD 1: PROVIDER AI -->
+            <!-- KARTU 1: PROVIDER AI -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_premium_card"
+                android:background="@drawable/bg_ultra_card"
                 android:orientation="vertical"
-                android:padding="20dp"
+                android:padding="18dp"
                 android:layout_marginBottom="16dp">
 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Provider AI" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih penyedia layanan AI" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+                    <TextView android:id="@+id/tvProvHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Provider AI" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih penyedia layanan AI" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvProvHeader"/>
+                </RelativeLayout>
                 
-                <Spinner
-                    android:id="@+id/spinnerProvider"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:background="@drawable/bg_premium_input"
-                    android:popupBackground="#0B132B"/>
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <Spinner
+                        android:id="@+id/spinnerProvider"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:background="@drawable/bg_ultra_input"
+                        android:popupBackground="#0B132B"
+                        android:paddingStart="12dp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✔ Aktif"
+                        android:background="@drawable/bg_ultra_badge"
+                        android:textColor="#00FF73"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="6dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginEnd="12dp"/>
+                </RelativeLayout>
             </LinearLayout>
 
-            <!-- CARD 2: API KEY -->
+            <!-- KARTU 2: API KEY OMNI-ROTATOR -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_premium_card"
+                android:background="@drawable/bg_ultra_card"
                 android:orientation="vertical"
-                android:padding="20dp"
+                android:padding="18dp"
                 android:layout_marginBottom="16dp">
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API Key Omni-Rotator" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bisa >1, pisahkan koma (,)" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Masukkan kunci API Anda" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
                 
-                <EditText
-                    android:id="@+id/apiKeyInput"
+                <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:hint="gsk_..."
-                    android:textColorHint="#40FFFFFF"
-                    android:textColor="#FFFFFF"
-                    android:background="@drawable/bg_premium_input"
-                    android:paddingHorizontal="16dp"
-                    android:inputType="textVisiblePassword"
-                    android:textSize="14sp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:gravity="center_vertical">
+                    
+                    <EditText
+                        android:id="@+id/apiKeyInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:hint="gsk_... (Pisahkan koma jika >1)"
+                        android:textColorHint="#40FFFFFF"
+                        android:textColor="#FFFFFF"
+                        android:background="@null"
+                        android:inputType="textVisiblePassword"
+                        android:textSize="13sp"
+                        android:layout_toLeftOf="@id/btnPasteKey"/>
+
+                    <ImageView
+                        android:id="@+id/btnPasteKey"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_save"
+                        android:tint="#00E5FF"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </RelativeLayout>
 
                 <Button
                     android:id="@+id/btnSaveKey"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:text="Simpan Konfigurasi"
+                    android:layout_height="52dp"
+                    android:text="💾 Simpan Konfigurasi"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_premium_button"
+                    android:background="@drawable/bg_ultra_button"
                     android:textColor="#FFFFFF"
-                    android:textStyle="bold"/>
+                    android:textStyle="bold"
+                    android:textSize="15sp"/>
             </LinearLayout>
 
-            <!-- CARD 3: MODEL AI -->
+            <!-- KARTU 3: MODEL AI OTOMATIS -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_premium_card"
+                android:background="@drawable/bg_ultra_card"
                 android:orientation="vertical"
-                android:padding="20dp"
+                android:padding="18dp"
                 android:layout_marginBottom="16dp">
                 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model AI Otomatis" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Dipilih otomatis berdasarkan Provider" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
-                <RadioGroup android:id="@+id/rgModel" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone"/>
-                <TextView
-                    android:id="@+id/tvAutoModel"
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp">
+                    <TextView android:id="@+id/tvModelHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model AI Otomatis" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode terbaik akan dipilih secara otomatis" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvModelHeader"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⚡ Teringan"
+                        android:background="@drawable/bg_ultra_badge"
+                        android:textColor="#00FF73"
+                        android:textSize="12sp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:text="openai/gpt-oss-20b"
-                    android:textColor="#00E5FF"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:padding="12dp"
-                    android:background="@drawable/bg_premium_input"
-                    android:gravity="center_vertical"/>
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical">
+                    
+                    <TextView
+                        android:id="@+id/tvAutoModel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="openai/gpt-oss-20b"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_toLeftOf="@id/ivArrowModel"/>
+
+                    <ImageView
+                        android:id="@+id/ivArrowModel"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:tint="#88FFFFFF"
+                        android:rotation="90"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"/>
+                </RelativeLayout>
+                
+                <!-- RadioGroup tersembunyi untuk backend compatibility -->
+                <RadioGroup android:id="@+id/rgModel" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
             </LinearLayout>
 
-            <!-- CARD 4: PERMISSIONS -->
+            <!-- KARTU 4: STATUS PERIZINAN WAJIB -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_premium_card"
+                android:background="@drawable/bg_ultra_card"
                 android:orientation="vertical"
-                android:padding="20dp"
-                android:layout_marginBottom="30dp">
+                android:padding="18dp"
+                android:layout_marginBottom="24dp">
                 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status Perizinan Wajib" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sistem Otonom" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="12dp"/>
-                
-                <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_premium_input" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. Aksesibilitas" android:textColor="#FFF" android:textSize="14sp" android:layout_centerVertical="true" android:layout_marginStart="16dp"/>
-                    <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_premium_badge" android:textColor="#00FF73" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp">
+                    <TextView android:id="@+id/tvPermHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status Perizinan Wajib" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aplikasi siap digunakan" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvPermHeader"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="✔ Terverifikasi"
+                        android:background="@drawable/bg_ultra_badge"
+                        android:textColor="#00FF73"
+                        android:textSize="12sp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_premium_input" android:clickable="true" android:focusable="true">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. Tampil di Atas" android:textColor="#FFF" android:textSize="14sp" android:layout_centerVertical="true" android:layout_marginStart="16dp"/>
-                    <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_premium_badge" android:textColor="#00FF73" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
+                <!-- Tombol Aksesibilitas -->
+                <RelativeLayout
+                    android:id="@+id/btnAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:layout_marginBottom="10dp"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aksesibilitas Otonom" android:textColor="#FFF" android:textSize="13sp"/>
+                    <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aktifkan" android:background="@drawable/bg_ultra_badge" android:textColor="#00FF73" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <!-- Tombol Overlay -->
+                <RelativeLayout
+                    android:id="@+id/btnOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Izin Jendela Mengambang" android:textColor="#FFF" android:textSize="13sp"/>
+                    <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aktifkan" android:background="@drawable/bg_ultra_badge" android:textColor="#00FF73" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
             </LinearLayout>
 
+            <!-- TOMBOL UTAMA MULAI NOVA -->
             <Button
                 android:id="@+id/btnStart"
                 android:layout_width="match_parent"
                 android:layout_height="65dp"
                 android:backgroundTint="@null"
-                android:background="@drawable/bg_premium_button"
-                android:text="▶ Mulai Nova"
+                android:background="@drawable/bg_ultra_button"
+                android:text="▶  Mulai Nova"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="15dp"
-                android:elevation="8dp"/>
+                android:layout_marginBottom="20dp"
+                android:elevation="10dp"/>
 
-            <TextView
-                android:id="@+id/tvDeveloperCredit"
+            <!-- DEVELOPER CREDIT -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Developed by\nMOCH KHOIRUL AZMAN"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textAlignment="center"
-                android:letterSpacing="0.1"
-                android:layout_marginBottom="30dp"/>
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginBottom="20dp">
+                
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/star_on"
+                    android:tint="#FFD700"
+                    android:layout_marginBottom="4dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Developed by"
+                    android:textSize="10sp"
+                    android:textColor="#88FFFFFF"/>
+                <TextView
+                    android:id="@+id/tvDeveloperCredit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MOCH KHOIRUL AZMAN"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#00E5FF"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- BOTTOM NAVIGATION (ASLI BERFUNGSI SEPERTI DI GAMBAR) -->
+    <LinearLayout
+        android:id="@+id/bottomNavContainer"
+        android:layout_width="match_parent"
+        android:layout_height="68dp"
+        android:layout_alignParentBottom="true"
+        android:background="#050914"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:elevation="20dp">
+        
+        <!-- Menu 1: Beranda -->
+        <LinearLayout
+            android:id="@+id/navBeranda"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_today"
+                android:tint="#00E5FF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Beranda"
+                android:textColor="#00E5FF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp"/>
+            <View
+                android:layout_width="24dp"
+                android:layout_height="3dp"
+                android:background="#00E5FF"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <!-- Menu 2: Status -->
+        <LinearLayout
+            android:id="@+id/navStatus"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_sort_by_size"
+                android:tint="#88FFFFFF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status"
+                android:textColor="#88FFFFFF"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+
+        <!-- Menu 3: Tentang -->
+        <LinearLayout
+            android:id="@+id/navTentang"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_info_details"
+                android:tint="#88FFFFFF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tentang"
+                android:textColor="#88FFFFFF"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
 </RelativeLayout>
