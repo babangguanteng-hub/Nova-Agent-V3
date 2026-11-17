@@ -1,137 +1,323 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/bg_ultra_main">
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <!-- HEADER PENGATURAN -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="24dp">
-                <ImageView
-                    android:id="@+id/btnBackSettings"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@android:drawable/ic_menu_revert"
-                    android:tint="#8B95A5"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="12dp"
-                    android:layout_centerVertical="true"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_toEndOf="@id/btnBackSettings"
-                    android:layout_marginStart="16dp"
-                    android:layout_centerVertical="true">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pengaturan"
-                        android:textColor="#FFFFFF"
-                        android:textSize="22sp"
-                        android:textStyle="bold"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sesuaikan Nova Agent sesuai keinginanmu"
-                        android:textColor="#88FFFFFF"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@android:drawable/btn_star_big_on"
-                    android:tint="#FFD700"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="10dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"/>
-            </RelativeLayout>
-
-            <!-- BANNER KARTU -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_ultra_card"
-                android:padding="18dp"
-                android:layout_marginBottom="16dp">
-
-                <ImageView
-                    android:id="@+id/ivNLogo"
-                    android:layout_width="54dp"
-                    android:layout_height="54dp"
-                    android:src="@android:drawable/ic_menu_gallery"
-                    android:tint="#00E5FF"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="12dp"
-                    android:layout_centerVertical="true"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_toEndOf="@id/ivNLogo"
-                    android:layout_marginStart="16dp"
-                    android:layout_centerVertical="true">
-                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#B000FF" android:textSize="18sp" android:textStyle="bold"/>
-                    </LinearLayout>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart â€¢ Fast â€¢ Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="âœ” Aktif"
-                    android:background="@drawable/bg_badge_green"
-                    android:textColor="#00E676"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="6dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"/>
-            </RelativeLayout>
-
-            <!-- (Isi Pengaturan Model Suara, Booble, dsb bisa ditambahkan di sini, untuk sekarang menggunakan struktur yang ringkas agar muat dan rapi) -->
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Fitur Pengaturan sedang dioptimasi di V7..." android:textColor="#88FFFFFF" android:textSize="14sp" android:layout_gravity="center" android:layout_marginVertical="40dp"/>
-
-            <Button
-                android:id="@+id/btnSaveSettings"
-                android:layout_width="match_parent"
-                android:layout_height="65dp"
-                android:backgroundTint="@null"
-                android:background="@drawable/bg_btn_gradient"
-                android:text="ðŸ’¾  Simpan Pengaturan"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="40dp"
-                android:elevation="6dp"/>
-
-        </LinearLayout>
-    </ScrollView>
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:background="@drawable/bg_ultra_main">
+​<ScrollView
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:layout_above="@+id/bottomSettingsBar"
+android:fillViewport="true"
+android:scrollbars="none">
+​<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:padding="20dp">
+​<!-- HEADER PENGATURAN -->
+<RelativeLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_marginTop="8dp"
+android:layout_marginBottom="20dp">
+​<ImageView
+android:id="@+id/btnBackSettings"
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@android:drawable/ic_menu_revert"
+android:tint="#8B95A5"
+android:background="@drawable/bg_circle_btn"
+android:padding="12dp"
+android:layout_centerVertical="true"
+android:clickable="true"
+android:focusable="true"/>
+​<ImageView
+android:id="@+id/ivHeaderLogo"
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@drawable/ic_nova_n_logo"
+android:layout_toEndOf="@id/btnBackSettings"
+android:layout_marginStart="12dp"
+android:layout_centerVertical="true"/>
+​<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:layout_toEndOf="@id/ivHeaderLogo"
+android:layout_marginStart="12dp"
+android:layout_centerVertical="true">
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Pengaturan"
+android:textColor="#FFFFFF"
+android:textSize="22sp"
+android:textStyle="bold"/>
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Sesuaikan Nova Agent sesuai keinginanmu"
+android:textColor="#88FFFFFF"
+android:textSize="11sp"
+android:layout_marginTop="2dp"/>
+</LinearLayout>
+​<ImageView
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@android:drawable/btn_star_big_on"
+android:tint="#FFD700"
+android:background="@drawable/bg_circle_btn"
+android:padding="10dp"
+android:layout_alignParentEnd="true"
+android:layout_centerVertical="true"/>
 </RelativeLayout>
+​<!-- KARTU BANNER: NOVA AGENT V6.0 -->
+<RelativeLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_banner_glow"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+​<ImageView
+android:id="@+id/ivBannerLogo"
+android:layout_width="54dp"
+android:layout_height="54dp"
+android:src="@drawable/ic_nova_n_logo"
+android:background="@drawable/bg_box_unselected"
+android:padding="8dp"
+android:layout_centerVertical="true"/>
+​<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:layout_toEndOf="@id/ivBannerLogo"
+android:layout_marginStart="14dp"
+android:layout_centerVertical="true">
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#A78BFA" android:textSize="18sp" android:textStyle="bold"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart • Fast • Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+​<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="✔ Aktif"
+android:background="@drawable/bg_badge_green"
+android:textColor="#00E676"
+android:textSize="12sp"
+android:textStyle="bold"
+android:paddingHorizontal="14dp"
+android:paddingVertical="6dp"
+android:layout_alignParentEnd="true"
+android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- KARTU: MODEL SUARA -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+​<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+<ImageView android:id="@+id/icSpeaker" android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_lock_silent_mode_off" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSpeaker" android:layout_marginStart="12dp">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model Suara" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih suara yang akan digunakan" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#88FFFFFF" android:textSize="24sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:weightSum="4">
+<LinearLayout android:id="@+id/boxVoiceDefault" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_selected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#00E5FF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Default" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoiceNatural" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#B5179E"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Natural" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoicePremium" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#00F5D4"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Premium" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoiceExpressive" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#FFAA00"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Expressive" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+</LinearLayout>
+</LinearLayout>
+​<!-- KARTU: ANIMASI & BOOBLE JELLY -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+​<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+<ImageView android:id="@+id/icSparkle" android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/btn_star_big_on" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSparkle" android:layout_marginStart="12dp">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi &amp; Booble Jelly" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tampilan animasi dan booble jelly" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/switchBubbleMaster" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:thumbTint="#FFFFFF" android:trackTint="#00E5FF" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Animasi Dropdown -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icPlayAnim" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_media_play" android:tint="#4895EF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPlayAnim" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih gaya animasi booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<Spinner android:id="@+id/spinnerAnimStyle" android:layout_width="145dp" android:layout_height="36dp" android:background="@drawable/bg_dropdown_pill" android:popupBackground="#0C1428" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Bentuk Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icShape" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_shape_square" android:tint="#9D4EDD" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icShape" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bentuk Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bentuk booble jelly" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
+<ImageView android:id="@+id/btnShapeCircle" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_selected" android:src="@drawable/ic_shape_circle" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeStar" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_star" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeHeart" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_heart" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeSquare" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_square" android:padding="8dp" android:clickable="true" android:focusable="true"/>
+</LinearLayout>
+</RelativeLayout>
+​<!-- Warna Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icPalette" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#4EA8DE" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPalette" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih warna utama booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
+<View android:id="@+id/btnColorCyan" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/bg_color_cyan" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorPurple" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_purple" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorPink" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_pink" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorOrange" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_orange" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorGreen" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_green" android:clickable="true" android:focusable="true"/>
+</LinearLayout>
+</RelativeLayout>
+​<!-- Ukuran Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icSize" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_crop" android:tint="#4895EF" android:layout_centerVertical="true"/>
+<LinearLayout android:id="@+id/llSizeLabel" android:layout_width="110dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSize" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ukuran Booble" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur ukuran booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<TextView android:id="@+id/tvBubbleSizePct" android:layout_width="38dp" android:layout_height="wrap_content" android:text="75%" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:gravity="end" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+<SeekBar android:id="@+id/seekBubbleSize" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="75" android:progressTint="#0096FF" android:thumbTint="#FFFFFF" android:layout_toEndOf="@id/llSizeLabel" android:layout_toStartOf="@id/tvBubbleSizePct" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Transparansi -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp">
+<ImageView android:id="@+id/icAlpha" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:id="@+id/llAlphaLabel" android:layout_width="110dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icAlpha" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Transparansi" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tingkat transparansi" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<TextView android:id="@+id/tvBubbleAlphaPct" android:layout_width="38dp" android:layout_height="wrap_content" android:text="85%" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:gravity="end" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+<SeekBar android:id="@+id/seekBubbleAlpha" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="85" android:progressTint="#0096FF" android:thumbTint="#FFFFFF" android:layout_toEndOf="@id/llAlphaLabel" android:layout_toStartOf="@id/tvBubbleAlphaPct" android:layout_centerVertical="true"/>
+</RelativeLayout>
+</LinearLayout>
+​<!-- KARTU: PENGATURAN LAINNYA -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="24dp">
+​<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+<ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@android:drawable/ic_menu_preferences" android:tint="#8E9AAF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pengaturan Lainnya" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginStart="10dp"/>
+</LinearLayout>
+​<!-- Mode Hemat Daya -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icLeaf" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_lock_idle_charging" android:tint="#00E676" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icLeaf" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode Hemat Daya" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mengurangi penggunaan baterai" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/switchPowerSave" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:thumbTint="#FFFFFF" android:trackTint="#00E676" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Notifikasi Pintar -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icBell" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_popup_reminder" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icBell" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Notifikasi Pintar" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Terima notifikasi penting" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/cbHologram" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:thumbTint="#FFFFFF" android:trackTint="#00E5FF" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Tema Aplikasi -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icTheme" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_slideshow" android:tint="#F72585" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icTheme" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tema Aplikasi" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ubah tema tampilan aplikasi" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Neo Dark  ▾" android:background="@drawable/bg_dropdown_pill" android:textColor="#FFFFFF" android:textSize="12sp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Bahasa -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icLang" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_mapmode" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icLang" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bahasa" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bahasa aplikasi" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🇮🇩 Indonesia  ▾" android:background="@drawable/bg_dropdown_pill" android:textColor="#FFFFFF" android:textSize="12sp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+​<!-- Reset Pengaturan -->
+<RelativeLayout android:id="@+id/rowResetSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:clickable="true" android:focusable="true">
+<ImageView android:id="@+id/icReset" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_rotate" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icReset" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reset Pengaturan" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kembalikan ke pengaturan awal" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#88FFFFFF" android:textSize="24sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+</LinearLayout>
+​<!-- TOMBOL SIMPAN PENGATURAN -->
+<Button
+android:id="@+id/btnSaveSettings"
+android:layout_width="match_parent"
+android:layout_height="65dp"
+android:backgroundTint="@null"
+android:background="@drawable/bg_btn_gradient"
+android:text="💾   Simpan Pengaturan"
+android:textAllCaps="false"
+android:textColor="#FFFFFF"
+android:textSize="18sp"
+android:textStyle="bold"
+android:layout_marginBottom="24dp"
+android:elevation="6dp"/>
+​</LinearLayout>
+</ScrollView>
+​<!-- BOTTOM NAVIGATION (PENGATURAN) -->
+<LinearLayout
+android:id="@+id/bottomSettingsBar"
+android:layout_width="match_parent"
+android:layout_height="68dp"
+android:layout_alignParentBottom="true"
+android:background="#050810"
+android:orientation="horizontal"
+android:weightSum="3"
+android:elevation="24dp">
+​<LinearLayout android:id="@+id/navSettingsBeranda" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_today" android:tint="#8B95A5"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beranda" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+​<LinearLayout android:id="@+id/navSettingsStatus" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_sort_by_size" android:tint="#8B95A5"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+​<LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+<View android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:layout_marginBottom="6dp"/>
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_preferences" android:tint="#00E5FF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pengaturan" android:textColor="#00E5FF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="2dp"/>
+</LinearLayout>
+</LinearLayout>
+​</RelativeLayout>
