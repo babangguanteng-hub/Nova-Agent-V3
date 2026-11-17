@@ -19,7 +19,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.BounceInterpolator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -36,6 +35,8 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private View bubbleView;
     private ImageView jellyBg;
     private ImageView jellyFace;
+    
+    // DEKLARASI MUTLAK: Tepat satu kali agar tidak ada error
     private LinearLayout panelExpand;
     private TextView tvStatus;
 
@@ -81,7 +82,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
         
-        // Error handling if panelExpand or tvStatus are not in the layout
+        // Mendaftarkan ID komponen dengan aman
         panelExpand = bubbleView.findViewById(R.id.panelExpand);
         tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
@@ -234,10 +235,11 @@ public class FloatingBubbleView implements EventBus.EventListener {
                     float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
                     if (targetScale > 1.6f) targetScale = 1.6f;
                     
+                    final float finalScale = targetScale;
                     bubbleView.post(() -> {
-                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
+                        jellyBg.animate().scaleX(finalScale).scaleY(finalScale)
                                .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
+                        jellyFace.animate().scaleX(finalScale).scaleY(finalScale)
                                .setDuration(100).start();
                     });
                 } catch (Exception e){}
@@ -251,6 +253,10 @@ public class FloatingBubbleView implements EventBus.EventListener {
             }
             else if ("LISTENING_READY".equals(state)) {
                 if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
+            }
+            else if ("INTERRUPT_TRIGGERED".equals(state)) {
+                setStatus("🛑 DIPOTONG...");
+                jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
             }
         }
     }
