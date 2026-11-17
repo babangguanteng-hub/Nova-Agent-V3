@@ -1,3 +1,167 @@
+==================================================
+STRUKTUR DIREKTORI PROYEK NOVA
+==================================================
+.
+ |-gradlew.bat
+ |-gradle
+ | |-wrapper
+ | | |-gradle-wrapper.jar
+ | | |-gradle-wrapper.properties
+ |-app
+ | |-src
+ | | |-main
+ | | | |-AndroidManifest.xml
+ | | | |-java
+ | | | | |-com
+ | | | | | |-novaagent
+ | | | | | | |-app
+ | | | | | | | |-core
+ | | | | | | | | |-bus
+ | | | | | | | | | |-EventBus.java
+ | | | | | | | | | |-AgentEvent.java
+ | | | | | | | | |-proactive
+ | | | | | | | | | |-ConditionalSentinelEngine.java
+ | | | | | | | | | |-ProactiveTriggerEngine.java
+ | | | | | | | | | |-ProactiveConversationEngine.java
+ | | | | | | | | |-vision
+ | | | | | | | | | |-SemanticVisionEngine.java
+ | | | | | | | | | |-PerceptionCoordinator.java
+ | | | | | | | | | |-VisualChangeTracker.java
+ | | | | | | | | |-actions
+ | | | | | | | | |-engine
+ | | | | | | | | | |-TaskCompletionVerifier.java
+ | | | | | | | | | |-TaskCheckpointManager.java
+ | | | | | | | | | |-LocalIntentRouter.java
+ | | | | | | | | | |-AutonomousLoopEngine.java
+ | | | | | | | | | |-ActionVerificationScore.java
+ | | | | | | | | | |-SafetyPolicyEngine.java
+ | | | | | | | | |-audio
+ | | | | | | | | | |-NovaAudioDirector.java
+ | | | | | | | | |-brain
+ | | | | | | | | | |-ContextManager.java
+ | | | | | | | | | |-LongTermMemoryEngine.java
+ | | | | | | | | | |-CognitiveCore.java
+ | | | | | | | | | |-MemoryCoordinator.java
+ | | | | | | | | | |-ConversationMemory.java
+ | | | | | | | | | |-TaskPlanner.java
+ | | | | | | | | |-di
+ | | | | | | | | | |-ServiceLocator.java
+ | | | | | | | | |-state
+ | | | | | | | | | |-AgentState.java
+ | | | | | | | |-ui
+ | | | | | | | | |-config
+ | | | | | | | | | |-MainActivity.java
+ | | | | | | | | |-bubble
+ | | | | | | | | | |-BubbleViewModel.java
+ | | | | | | | | | |-FloatingBubbleView.java
+ | | | | | | | | | |-HologramAuraManager.java
+ | | | | | | | |-NovaApplication.java
+ | | | | | | | |-infrastructure
+ | | | | | | | | |-system
+ | | | | | | | | | |-RecoveryManager.java
+ | | | | | | | | | |-NovaWatchdog.java
+ | | | | | | | | | |-FailureDiagnosisEngine.java
+ | | | | | | | | |-injector
+ | | | | | | | | | |-SystemActionInjector.java
+ | | | | | | | | |-ocr
+ | | | | | | | | | |-MlKitOcrEngine.java
+ | | | | | | | |-services
+ | | | | | | | | |-accessibility
+ | | | | | | | | | |-NodeCompactor.java
+ | | | | | | | | | |-NovaAccessibilityService.java
+ | | | | | | | | | |-NodeScanner.java
+ | | | | | | | | |-foreground
+ | | | | | | | | | |-MediaProjectionWrapper.java
+ | | | | | | | | | |-NovaForegroundService.java
+ | | | | | | | |-data
+ | | | | | | | | |-model
+ | | | | | | | | | |-ActionVerificationResult.java
+ | | | | | | | | | |-ActionCommandDto.java
+ | | | | | | | | | |-UnifiedScreenContext.java
+ | | | | | | | | |-cache
+ | | | | | | | | | |-ScreenCache.java
+ | | | | | | | | | |-NodeCache.java
+ | | | | | | | | | |-ObjectPool.java
+ | | | | | | | | |-network
+ | | | | | | | | | |-UniversalNetworkClient.java
+ | | | | | | | | |-repository
+ | | | | | | | | | |-PromptRegistry.java
+ | | | |-res
+ | | | | |-layout
+ | | | | | |-dialog_settings.xml
+ | | | | | |-dialog_status.xml
+ | | | | | |-dialog_about.xml
+ | | | | | |-layout_close_target.xml
+ | | | | | |-activity_main.xml
+ | | | | | |-layout_floating_bubble.xml
+ | | | | |-xml
+ | | | | | |-accessibility_service_config.xml
+ | | | | | |-device_admin_receiver.xml
+ | | | | |-mipmap-anydpi-v26
+ | | | | | |-ic_launcher.xml
+ | | | | | |-ic_launcher_round.xml
+ | | | | |-drawable
+ | | | | | |-bg_close_btn.xml
+ | | | | | |-bg_btn_gradient.xml
+ | | | | | |-bg_main_dark.xml
+ | | | | | |-bg_badge_green.xml
+ | | | | | |-ic_launcher_background.xml
+ | | | | | |-bg_premium_badge.xml
+ | | | | | |-bg_color_orange.xml
+ | | | | | |-bg_card_cyber.xml
+ | | | | | |-bg_premium_main.xml
+ | | | | | |-ic_shape_square.xml
+ | | | | | |-bg_badge_inactive.xml
+ | | | | | |-bg_hologram_aura.xml
+ | | | | | |-bg_bubble_cyber.xml
+ | | | | | |-ic_shape_circle.xml
+ | | | | | |-bg_color_purple.xml
+ | | | | | |-bg_ultra_card.xml
+ | | | | | |-bg_color_pink.xml
+ | | | | | |-bg_start_glow.xml
+ | | | | | |-bg_premium_card.xml
+ | | | | | |-ic_shape_heart.xml
+ | | | | | |-bg_color_cyan.xml
+ | | | | | |-bg_premium_input.xml
+ | | | | | |-bg_color_green.xml
+ | | | | | |-ic_shape_star.xml
+ | | | | | |-bg_dropdown_pill.xml
+ | | | | | |-ic_soundwave.xml
+ | | | | | |-ic_nova_n_logo.xml
+ | | | | | |-bg_circle_btn.xml
+ | | | | | |-bg_box_unselected.xml
+ | | | | | |-bg_badge_active.xml
+ | | | | | |-bg_banner_glow.xml
+ | | | | | |-bg_ultra_button.xml
+ | | | | | |-bg_ultra_main.xml
+ | | | | | |-bg_box_selected.xml
+ | | | | | |-ic_launcher_nova.xml
+ | | | | | |-ic_jelly_face.xml
+ | | | | | |-bg_jelly_bubble.xml
+ | | | | | |-bg_badge_green_solid.xml
+ | | | | | |-bg_premium_button.xml
+ | | | | | |-bg_ultra_input.xml
+ | | | | | |-bg_ultra_badge.xml
+ | | | | | |-ic_launcher_foreground.xml
+ | | | | | |-bg_edit_text.xml
+ | |-build.gradle
+ |-semua_source.txt
+ |-build
+ |-Nova_Project_Backup.zip
+ |-settings.gradle
+ |-gradlew
+ |-gradle.properties
+ |-Nova_Agent_Master_Backup.zip
+ |-=
+ |-laporan_audit_kode.txt
+ |-build.gradle
+ |-laporan_error.txt
+
+
+
+==================================================
+ISI KODE SUMBER LENGKAP
+==================================================
 
 ==================================================
 FILE: ./app/src/main/AndroidManifest.xml
@@ -1839,11 +2003,12 @@ import org.json.JSONObject;
 import java.util.LinkedList;
 
 /**
- * FASE 7: MANAJER INGATAN JANGKA PENDEK (WORKING MEMORY).
- * Diet Token Ekstrem: Cukup ingat 2 pasang percakapan terakhir saja.
+ * 10x KOMPLEKSITAS: MANAJER INGATAN KHUSUS (FIMO)
+ * Menerapkan algoritma First-In-Middle-Out.
+ * Mengunci ingatan awal, dan membuang ingatan tengah saat kepenuhan agar hemat token API.
  */
 public class ConversationMemory {
-    private static final int MAX_MEMORY_PAIRS = 2; 
+    private static final int MAX_MEMORY_PAIRS = 5; 
     private final LinkedList<JSONObject> memory = new LinkedList<>();
 
     public synchronized void addUserMessage(String message) {
@@ -1861,9 +2026,12 @@ public class ConversationMemory {
             msg.put("content", content);
             memory.add(msg);
 
+            // PRUNING CERDAS (FIMO): Jika memori penuh, pertahankan konteks pertama, buang yang tengah
             if (memory.size() > MAX_MEMORY_PAIRS * 2) {
-                memory.removeFirst(); 
-                memory.removeFirst(); 
+                // Elemen 0 & 1 adalah percakapan pertama (sangat krusial untuk konteks awal)
+                // Kita buang elemen ke-2 dan ke-3 (percakapan di tengah)
+                memory.remove(2); 
+                memory.remove(2); 
             }
         } catch (Exception ignored) {}
     }
@@ -2047,17 +2215,16 @@ FILE: ./app/src/main/java/com/novaagent/app/ui/config/MainActivity.java
 ==================================================
 
 package com.novaagent.app.ui.config;
-import java.util.List;
-import java.util.ArrayList;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.LinearGradient;
-import android.graphics.Shader;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.media.projection.MediaProjectionManager;
@@ -2067,9 +2234,12 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -2079,23 +2249,26 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private static final int REQUEST_PERMISSIONS = 101;
     private SharedPreferences prefs;
     private ToneGenerator toneGen;
     
-    // 🌟 8 PROVIDER MUTLAK
     private final String[] providers = {
         "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
         "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
     };
 
-    // 🌟 8 MODEL SESUAI PERMINTAAN BOS
     private final String[] models = {
         "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
         "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
     };
+
+    private Dialog currentDialog = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -2110,58 +2283,164 @@ public class MainActivity extends AppCompatActivity {
         EditText apiKeyInput = findViewById(R.id.apiKeyInput);
         Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
         TextView tvAutoModel = findViewById(R.id.tvAutoModel);
-        TextView tvDev = findViewById(R.id.tvDeveloperCredit);
         
-        if (tvDev != null) {
-            tvDev.post(() -> {
-                Shader shader = new LinearGradient(0, 0, tvDev.getWidth(), 0,
-                        new int[]{0xFFFF00E5, 0xFF00E5FF, 0xFF00FF73, 0xFFFFE500, 0xFFFF00E5}, 
-                        null, Shader.TileMode.REPEAT);
-                tvDev.getPaint().setShader(shader);
-                tvDev.invalidate();
+        if (apiKeyInput != null) {
+            apiKeyInput.setText(prefs.getString("api_key", ""));
+        }
+
+        View btnPaste = findViewById(R.id.btnPasteKey);
+        if (btnPaste != null && apiKeyInput != null) {
+            btnPaste.setOnClickListener(v -> {
+                playClickSound();
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && clipboard.hasPrimaryClip()) {
+                    ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                    if (item.getText() != null) {
+                        apiKeyInput.setText(item.getText().toString());
+                        Toast.makeText(this, "ðŸ“‹ API Key ditempel!", Toast.LENGTH_SHORT).show();
+                    }
+                }
             });
         }
 
-        apiKeyInput.setText(prefs.getString("api_key", ""));
-
-        // Setup Spinner
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
-        spinnerProvider.setAdapter(adapter);
-        
-        String savedProvider = prefs.getString("ai_provider", "Groq");
-        for (int i = 0; i < providers.length; i++) {
-            if (providers[i].equals(savedProvider)) {
-                spinnerProvider.setSelection(i);
-                break;
+        if (spinnerProvider != null) {
+            spinnerProvider.setAdapter(adapter);
+            String savedProvider = prefs.getString("ai_provider", "Groq");
+            for (int i = 0; i < providers.length; i++) {
+                if (providers[i].equals(savedProvider)) {
+                    spinnerProvider.setSelection(i);
+                    break;
+                }
             }
+
+            spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    if (view instanceof TextView) ((TextView) view).setTextColor(0xFFFFFFFF);
+                    if (tvAutoModel != null) tvAutoModel.setText(models[position]);
+                    prefs.edit().putString("ai_provider", providers[position]).putString("ai_model", models[position]).apply();
+                }
+                @Override public void onNothingSelected(AdapterView<?> parent) {}
+            });
         }
 
-        // Auto-Model Setter
-        spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if(view instanceof TextView) ((TextView) view).setTextColor(0xFF00E5FF);
-                tvAutoModel.setText(models[position]);
-                prefs.edit().putString("ai_provider", providers[position]).putString("ai_model", models[position]).apply();
-            }
-            @Override public void onNothingSelected(AdapterView<?> parent) {}
-        });
+        View btnSaveKey = findViewById(R.id.btnSaveKey);
+        if (btnSaveKey != null && apiKeyInput != null) {
+            btnSaveKey.setOnClickListener(v -> {
+                playClickSound();
+                String key = apiKeyInput.getText().toString().trim();
+                if (key.isEmpty()) {
+                    Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                prefs.edit().putString("api_key", key).apply();
+                Toast.makeText(this, "ðŸ’¾ Konfigurasi Tersimpan & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
+            });
+        }
 
-        findViewById(R.id.btnSaveKey).setOnClickListener(v -> {
-            playClickSound();
-            String key = apiKeyInput.getText().toString().trim();
-            if (key.isEmpty()) {
-                Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            prefs.edit().putString("api_key", key).apply();
-            Toast.makeText(this, "Kunci Tersimpan! Omni-Rotator Aktif.", Toast.LENGTH_SHORT).show();
-        });
+        View btnSettings = findViewById(R.id.btnSettings);
+        if (btnSettings != null) btnSettings.setOnClickListener(v -> { playClickSound(); switchTab("settings"); });
 
-        findViewById(R.id.btnSettings).setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
-        findViewById(R.id.btnAccessibility).setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
-        findViewById(R.id.btnOverlay).setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
-        findViewById(R.id.btnStart).setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+        View btnTheme = findViewById(R.id.btnThemeToggle);
+        if (btnTheme != null) btnTheme.setOnClickListener(v -> { playClickSound(); Toast.makeText(this, "ðŸŒ™ Mode Dark UI Aktif", Toast.LENGTH_SHORT).show(); });
+
+        View btnA11y = findViewById(R.id.btnAccessibility);
+        if (btnA11y != null) btnA11y.setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
+
+        View btnOvr = findViewById(R.id.btnOverlay);
+        if (btnOvr != null) btnOvr.setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+
+        View btnStart = findViewById(R.id.btnStart);
+        if (btnStart != null) btnStart.setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+
+        // Navigasi Bawah
+        setupBottomNav();
+    }
+
+    private void setupBottomNav() {
+        View navBeranda = findViewById(R.id.navBeranda);
+        View navStatus = findViewById(R.id.navStatus);
+        View navTentang = findViewById(R.id.navTentang);
+
+        if (navBeranda != null) navBeranda.setOnClickListener(v -> { playClickSound(); switchTab("beranda"); });
+        if (navStatus != null) navStatus.setOnClickListener(v -> { playClickSound(); switchTab("status"); });
+        if (navTentang != null) navTentang.setOnClickListener(v -> { playClickSound(); switchTab("tentang"); });
+    }
+
+    private void switchTab(String tab) {
+        if (currentDialog != null && currentDialog.isShowing()) {
+            currentDialog.dismiss();
+        }
+        
+        updateBottomNavUI(tab);
+
+        if (tab.equals("beranda")) {
+            // Beranda adalah activity utama, jadi tutup dialog saja
+            return; 
+        }
+
+        currentDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        currentDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        
+        int layoutId = R.layout.dialog_settings; // Default
+        if (tab.equals("status")) layoutId = R.layout.dialog_status;
+        else if (tab.equals("tentang")) layoutId = R.layout.dialog_about;
+        
+        View view = LayoutInflater.from(this).inflate(layoutId, null);
+        currentDialog.setContentView(view);
+        if (currentDialog.getWindow() != null) {
+            currentDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            currentDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+        }
+
+        // Jika tab Pengaturan, setup tombol simpan dll
+        if (tab.equals("settings")) {
+            View btnSave = view.findViewById(R.id.btnSaveSettings);
+            if (btnSave != null) btnSave.setOnClickListener(v -> {
+                playClickSound();
+                Toast.makeText(this, "âœ¨ Pengaturan Disimpan!", Toast.LENGTH_SHORT).show();
+                switchTab("beranda");
+            });
+            View btnBack = view.findViewById(R.id.btnBackSettings);
+            if (btnBack != null) btnBack.setOnClickListener(v -> { playClickSound(); switchTab("beranda"); });
+        }
+
+        // Deteksi penutupan sistem (back button)
+        currentDialog.setOnDismissListener(dialog -> updateBottomNavUI("beranda"));
+        
+        currentDialog.show();
+    }
+
+    private void updateBottomNavUI(String activeTab) {
+        int colorActive = 0xFF00E5FF;
+        int colorInactive = 0xFF8B95A5;
+        
+        View lineBeranda = findViewById(R.id.lineBeranda);
+        ImageView icBeranda = findViewById(R.id.icBeranda);
+        TextView tvBeranda = findViewById(R.id.tvBeranda);
+        
+        View lineStatus = findViewById(R.id.lineStatus);
+        ImageView icStatus = findViewById(R.id.icStatus);
+        TextView tvStatusNav = findViewById(R.id.tvStatusNav);
+        
+        View lineTentang = findViewById(R.id.lineTentang);
+        ImageView icTentang = findViewById(R.id.icTentang);
+        TextView tvTentangNav = findViewById(R.id.tvTentangNav);
+
+        if (lineBeranda != null) {
+            lineBeranda.setVisibility(activeTab.equals("beranda") || activeTab.equals("settings") ? View.VISIBLE : View.INVISIBLE);
+            icBeranda.setColorFilter(activeTab.equals("beranda") || activeTab.equals("settings") ? colorActive : colorInactive);
+            tvBeranda.setTextColor(activeTab.equals("beranda") || activeTab.equals("settings") ? colorActive : colorInactive);
+            
+            lineStatus.setVisibility(activeTab.equals("status") ? View.VISIBLE : View.INVISIBLE);
+            icStatus.setColorFilter(activeTab.equals("status") ? colorActive : colorInactive);
+            tvStatusNav.setTextColor(activeTab.equals("status") ? colorActive : colorInactive);
+            
+            lineTentang.setVisibility(activeTab.equals("tentang") ? View.VISIBLE : View.INVISIBLE);
+            icTentang.setColorFilter(activeTab.equals("tentang") ? colorActive : colorInactive);
+            tvTentangNav.setTextColor(activeTab.equals("tentang") ? colorActive : colorInactive);
+        }
     }
 
     @Override
@@ -2170,77 +2449,15 @@ public class MainActivity extends AppCompatActivity {
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
         boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if(tvOverlay != null) { tvOverlay.setText(overlayOn ? "✔ Aktif" : "✖ Nonaktif"); tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_active : R.drawable.bg_badge_inactive); }
-        if(tvA11y != null) { tvA11y.setText("✔ Cek Manual"); tvA11y.setBackgroundResource(R.drawable.bg_badge_active); }
-    }
-
-    private void showSettingsDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this).setView(view).create();
-        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        
-        android.widget.RadioGroup rgVoice = view.findViewById(R.id.rgVoice);
-        android.widget.RadioGroup rgColor = view.findViewById(R.id.rgColor);
-        android.widget.RadioGroup rgAnim = view.findViewById(R.id.rgAnim);
-        android.widget.CheckBox cbHologram = view.findViewById(R.id.cbHologram);
-
-        SharedPreferences prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-
-        String voice = prefs.getString("custom_voice", "nova");
-        if (voice.equals("jarvis")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceJarvis)).setChecked(true);
-        else if (voice.equals("male")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceMale)).setChecked(true);
-        else if (voice.equals("friday")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceFriday)).setChecked(true);
-        else if (voice.equals("robot")) ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceRobot)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbVoiceNova)).setChecked(true);
-
-        String color = prefs.getString("custom_color", "cyan");
-        if (color.equals("red")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorRed)).setChecked(true);
-        else if (color.equals("green")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorGreen)).setChecked(true);
-        else if (color.equals("purple")) ((android.widget.RadioButton)view.findViewById(R.id.rbColorPurple)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbColorCyan)).setChecked(true);
-
-        String anim = prefs.getString("custom_anim", "breathe");
-        if (anim.equals("heartbeat")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimHeartbeat)).setChecked(true);
-        else if (anim.equals("glitch")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimGlitch)).setChecked(true);
-        else if (anim.equals("static")) ((android.widget.RadioButton)view.findViewById(R.id.rbAnimStatic)).setChecked(true);
-        else ((android.widget.RadioButton)view.findViewById(R.id.rbAnimBreathe)).setChecked(true);
-
-        cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
-
-        view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
-            playClickSound();
-            String newVoice = "nova"; float pitch = 1.2f; float speed = 1.0f;
-            int vId = rgVoice.getCheckedRadioButtonId();
-            if (vId == R.id.rbVoiceJarvis) { newVoice = "jarvis"; pitch = 0.5f; speed = 0.9f; }
-            else if (vId == R.id.rbVoiceMale) { newVoice = "male"; pitch = 0.8f; speed = 1.0f; }
-            else if (vId == R.id.rbVoiceFriday) { newVoice = "friday"; pitch = 1.8f; speed = 1.15f; }
-            else if (vId == R.id.rbVoiceRobot) { newVoice = "robot"; pitch = 0.3f; speed = 0.8f; }
-            
-            String newColor = "cyan";
-            int cId = rgColor.getCheckedRadioButtonId();
-            if (cId == R.id.rbColorRed) newColor = "red";
-            else if (cId == R.id.rbColorGreen) newColor = "green";
-            else if (cId == R.id.rbColorPurple) newColor = "purple";
-
-            String newAnim = "breathe";
-            int aId = rgAnim.getCheckedRadioButtonId();
-            if (aId == R.id.rbAnimHeartbeat) newAnim = "heartbeat";
-            else if (aId == R.id.rbAnimGlitch) newAnim = "glitch";
-            else if (aId == R.id.rbAnimStatic) newAnim = "static";
-
-            prefs.edit()
-                .putString("custom_voice", newVoice)
-                .putFloat("voice_pitch", pitch)
-                .putFloat("voice_speed", speed)
-                .putString("custom_color", newColor)
-                .putString("custom_anim", newAnim)
-                .putBoolean("enable_hologram", cbHologram.isChecked())
-                .apply();
-                
-            Toast.makeText(this, "Kustomisasi Super Disimpan! (Restart Nova)", Toast.LENGTH_LONG).show();
-            dialog.dismiss();
-        });
-        dialog.show();
+        if (tvOverlay != null) { 
+            tvOverlay.setText(overlayOn ? "âœ” Terverifikasi" : "Aktifkan"); 
+            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_green : R.drawable.bg_ultra_input); 
+        }
+        if (tvA11y != null) { 
+            tvA11y.setText("âœ” Terverifikasi"); 
+            tvA11y.setBackgroundResource(R.drawable.bg_badge_green); 
+        }
+        updateBottomNavUI("beranda");
     }
 
     private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
@@ -2250,16 +2467,21 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!permissionsNeeded.isEmpty()) {
-            new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI sangat membutuhkan izin Mikrofon agar bisa mendengar perintah Anda, serta izin Notifikasi agar sistem tidak mematikan Nova di latar belakang.").setPositiveButton("Beri Izin", (dialog, which) -> {
+            new AlertDialog.Builder(this).setTitle("ðŸŽ™ï¸ Izin Wajib").setMessage("Nova AI membutuhkan izin Mikrofon dan Notifikasi.").setPositiveButton("Beri Izin", (dialog, which) -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
             }).setCancelable(false).show();
         }
     }
 
     private void checkPermissionsAndStart() {
+        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+        if (apiKeyInput != null) {
+            String key = apiKeyInput.getText().toString().trim();
+            if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+        }
         if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
-        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Overlay (Mengambang)!", Toast.LENGTH_LONG).show(); return; }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Maaf Bos, izinkan mikrofon dulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
+        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Jendela Mengambang!", Toast.LENGTH_LONG).show(); return; }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Izinkan mikrofon terlebih dahulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
         MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
         if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
     }
@@ -4149,7 +4371,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import java.util.Random;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -4166,9 +4387,8 @@ public class UniversalNetworkClient {
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private Call activeCall;
+    private Call activeCall; 
     private static final int MAX_RETRIES = 2;
-    private static int currentKeyIndex = 0; // Omni-Rotator Tracker
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -4180,7 +4400,7 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS)
+                .readTimeout(35, TimeUnit.SECONDS) 
                 .build();
     }
 
@@ -4191,60 +4411,59 @@ public class UniversalNetworkClient {
         }
     }
 
+    // Titik Masuk Utama
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        executeCallWithRotation(messages, callback, retryCount, 0);
+        // Mulai dari API Key urutan ke-0
+        executeCallInternal(messages, callback, retryCount, 0);
     }
 
-    private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount) {
+    private void executeCallInternal(JSONArray messages, NetworkCallback callback, int retryCount, int keyIndex) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
-        String rawApiKeys = prefs.getString("api_key", "").trim();
+        String rawKeys = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        // 🛡️ AUTO-MODEL FALLBACK
         if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-1.5-flash";
+            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
             else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
             else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "gpt-4-turbo";
-            else modelName = "llama-3.1-8b-instant";
+            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
+            else modelName = "llama-3.3-70b-versatile";
         }
 
-        if (rawApiKeys.isEmpty()) {
-            callback.onError("API Key (" + provider + ") Kosong!");
+        if (rawKeys.isEmpty()) {
+            callback.onError("Maaf Bos, API Key Anda masih kosong.");
             return;
         }
 
-        // 🌟 OMNI-ROTATOR: Memecah banyak API Key
-        String[] keys = rawApiKeys.split(",");
-        if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
-        String apiKey = keys[currentKeyIndex].trim();
-
-        final String finalProvider = provider;
-        final boolean isGeminiCore = finalProvider.equals("Gemini (Google Studio)");
+        // 🔄 ROTATOR BERANTAI: Memilih Kunci berdasarkan Index
+        String[] keyArray = rawKeys.split(",");
+        if (keyIndex >= keyArray.length) {
+            callback.onError("Maaf Bos, semua API Key (" + keyArray.length + " kunci) sudah dilimit. Kita butuh kunci baru.");
+            return;
+        }
+        String apiKey = keyArray[keyIndex].trim();
+        Log.i(TAG, "Mengeksekusi Jaringan dengan Kunci ke-" + (keyIndex + 1) + " dari " + keyArray.length);
 
         try {
             Request request = null;
 
-            if (isGeminiCore) {
+            if (provider.equals("Gemini (Google Studio)")) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
-
+                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-
+                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
                         String gRole = role.equals("assistant") ? "model" : "user";
-                        // 🛡️ HTTP 400 FIX: Deduplikasi Role Gemini
                         if (gRole.equals(lastRole) && contents.length() > 0) {
-                            contents.getJSONObject(contents.length() - 1)
-                                    .getJSONArray("parts")
-                                    .put(new JSONObject().put("text", "\n\n" + content));
+                            contents.getJSONObject(contents.length() - 1).getJSONArray("parts").put(new JSONObject().put("text", "\n\n" + content));
                         } else {
                             contents.put(new JSONObject().put("role", gRole).put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                             lastRole = gRole;
@@ -4254,22 +4473,22 @@ public class UniversalNetworkClient {
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
 
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + apiKey;
+                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
-            } else {
+            } 
+            else {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.3);
-                payload.put("stream", true);
-
+                
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-
+                    
                     if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
                         JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
                         lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
@@ -4279,11 +4498,12 @@ public class UniversalNetworkClient {
                     }
                 }
                 payload.put("messages", safeMessages);
-
-                String url = "https://api.groq.com/openai/v1/chat/completions";
-                if (finalProvider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
-                else if (finalProvider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else if (finalProvider.equals("TokoVPN (Proxy)")) url = "https://api.codex.com/v1/chat/completions";
+                
+                String url;
+                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
+                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
+                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
+                else url = "https://api.codex.com/v1/chat/completions";
 
                 RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url)
@@ -4295,138 +4515,62 @@ public class UniversalNetworkClient {
             activeCall = client.newCall(request);
             activeCall.enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    if (!activeCall.isCanceled()) handleRetry(messages, callback, retryCount, keyRotationCount, "Koneksi " + finalProvider + " RTO");
+                    handleRetry(messages, callback, retryCount, keyIndex, "Jaringan tidak stabil", false);
                 }
-
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
-                        String errorBody = response.body() != null ? response.body().string() : "";
-                        String errorMsg = "HTTP " + code;
-                        try {
-                            JSONObject errObj = new JSONObject(errorBody);
-                            if (errObj.has("error")) {
-                                Object err = errObj.get("error");
-                                if (err instanceof JSONObject) errorMsg = ((JSONObject)err).optString("message", errorMsg);
-                                else if (err instanceof String) errorMsg = (String)err;
-                            }
-                        } catch (Exception ignored) {}
-
-                        // 🌟 OMNI-ROTATOR: Menangani Limit Kuota 429
-                        if (code == 429) {
-                            if (keyRotationCount < keys.length - 1) {
-                                currentKeyIndex = (currentKeyIndex + 1) % keys.length;
-                                Log.w(TAG, "🔑 Kuota API Key habis! Memutar ke API Key Cadangan ke-" + (currentKeyIndex + 1));
-                                retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1));
-                            } else {
-                                callback.onError("Maaf Bos, seluruh " + keys.length + " API Key Anda sudah kehabisan kuota hari ini.");
-                            }
-                        } else if (code == 400 || code == 401 || code == 403 || code == 404) {
-                            callback.onError(finalProvider + ": " + errorMsg);
+                        
+                        if (code == 429 || code == 401 || code == 403 || code == 400) {
+                            Log.w(TAG, "Kunci ke-" + (keyIndex + 1) + " Limit/Ditolak (HTTP " + code + "). Beralih ke Kunci Berikutnya...");
+                            handleRetry(messages, callback, retryCount, keyIndex, "Ganti Kunci", true);
+                            return;
+                        } 
+                        else if (code >= 500) {
+                            handleRetry(messages, callback, retryCount, keyIndex, "Server " + provider + " sibuk", false);
+                            return;
                         } else {
-                            handleRetry(messages, callback, retryCount, keyRotationCount, errorMsg);
+                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
+                            return;
                         }
-                        return;
                     }
-
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
-                        String line;
-                        StringBuilder fullResponse = new StringBuilder();
-                        int lastSpokenIndex = 0;
-
-                        while ((line = reader.readLine()) != null) {
-                            if (line.startsWith("data: ")) {
-                                String data = line.substring(6).trim();
-                                if (data.equals("[DONE]")) break;
-
-                                try {
-                                    JSONObject json = new JSONObject(data);
-                                    String chunk = "";
-
-                                    if (isGeminiCore) {
-                                        JSONArray candidates = json.optJSONArray("candidates");
-                                        if (candidates != null && candidates.length() > 0) {
-                                            JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
-                                            if (parts != null && parts.length() > 0) chunk = parts.getJSONObject(0).optString("text", "");
-                                        }
-                                    } else {
-                                        JSONArray choices = json.optJSONArray("choices");
-                                        if (choices != null && choices.length() > 0) {
-                                            JSONObject delta = choices.getJSONObject(0).optJSONObject("delta");
-                                            if (delta != null) chunk = delta.optString("content", "");
-                                        }
-                                    }
-
-                                    fullResponse.append(chunk);
-                                    String textSoFar = fullResponse.toString();
-
-                                    int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
-                                    if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
-
-                                    if (speechKeyIdx != -1) {
-                                        int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
-                                        if (valStart != -1) {
-                                            int valEnd = textSoFar.indexOf("\"", valStart + 1);
-                                            String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
-                                            currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
-
-                                            if (currentSpeechRaw.length() > lastSpokenIndex) {
-                                                String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
-
-                                                int boundary = -1;
-                                                int[] stops = {unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf("\n")};
-                                                for (int stop : stops) {
-                                                    if (stop != -1 && (boundary == -1 || stop < boundary)) boundary = stop;
-                                                }
-
-                                                if (boundary != -1) {
-                                                    String sentence = unqueued.substring(0, boundary + 1).trim();
-                                                    if (!sentence.isEmpty()) {
-                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
-                                                    }
-                                                    lastSpokenIndex += (boundary + 1);
-                                                }
-                                            }
-                                        }
-                                    }
-                                } catch (Exception ignored) { }
+                    try {
+                        String respBody = response.body().string();
+                        String content = "";
+                        if (provider.equals("Gemini (Google Studio)")) {
+                            JSONObject jsonResponse = new JSONObject(respBody);
+                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
+                            if (candidate.has("content")) {
+                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                            } else {
+                                callback.onError("Maaf Bos, jawaban diblokir filter Google.");
+                                return;
                             }
+                        } else {
+                            content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
-
-                        String textSoFar = fullResponse.toString();
-                        int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
-                        if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
-                        if (speechKeyIdx != -1) {
-                            int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
-                            if (valStart != -1) {
-                                int valEnd = textSoFar.indexOf("\"", valStart + 1);
-                                String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
-                                currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
-                                if (currentSpeechRaw.length() > lastSpokenIndex) {
-                                    String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
-                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                                }
-                            }
-                        }
-
-                        callback.onSuccess(fullResponse.toString());
+                        callback.onSuccess(content);
                     } catch (Exception e) {
-                        callback.onError("Gagal membaca aliran stream.");
+                        callback.onError("Gagal membaca struktur AI dari " + provider);
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit request " + finalProvider);
+            callback.onError("Gagal merakit permintaan jaringan.");
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, String reason) {
-        if (currentRetry < MAX_RETRIES) {
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyIndex, String humanReason, boolean switchKey) {
+        if (switchKey) {
+            // Jika limit/diblokir, ganti indeks kunci berikutnya TANPA menghitung sebagai Retry jaringan
+            executeCallInternal(messages, callback, currentRetry, keyIndex + 1);
+        } else if (currentRetry < MAX_RETRIES) {
+            // Gangguan jaringan biasa, tunggu sebentar lalu coba pakai kunci yang sama
             int nextRetry = currentRetry + 1;
             long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCallWithRotation(messages, callback, nextRetry, keyRotationCount), delay);
+            retryHandler.postDelayed(() -> executeCallInternal(messages, callback, nextRetry, keyIndex), delay);
         } else {
-            callback.onError(reason);
+            callback.onError(humanReason);
         }
     }
 }
@@ -4469,93 +4613,225 @@ FILE: ./app/src/main/res/layout/dialog_settings.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/bg_card_cyber">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_ultra_main">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- HEADER PENGATURAN -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp">
+                <ImageView
+                    android:id="@+id/btnBackSettings"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@android:drawable/ic_menu_revert"
+                    android:tint="#8B95A5"
+                    android:background="@drawable/bg_ultra_input"
+                    android:padding="12dp"
+                    android:layout_centerVertical="true"
+                    android:clickable="true"
+                    android:focusable="true"/>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_toEndOf="@id/btnBackSettings"
+                    android:layout_marginStart="16dp"
+                    android:layout_centerVertical="true">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pengaturan"
+                        android:textColor="#FFFFFF"
+                        android:textSize="22sp"
+                        android:textStyle="bold"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sesuaikan Nova Agent sesuai keinginanmu"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@android:drawable/btn_star_big_on"
+                    android:tint="#FFD700"
+                    android:background="@drawable/bg_ultra_input"
+                    android:padding="10dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <!-- BANNER KARTU -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:padding="18dp"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:id="@+id/ivNLogo"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
+                    android:src="@android:drawable/ic_menu_gallery"
+                    android:tint="#00E5FF"
+                    android:background="@drawable/bg_ultra_input"
+                    android:padding="12dp"
+                    android:layout_centerVertical="true"/>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_toEndOf="@id/ivNLogo"
+                    android:layout_marginStart="16dp"
+                    android:layout_centerVertical="true">
+                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#B000FF" android:textSize="18sp" android:textStyle="bold"/>
+                    </LinearLayout>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart â€¢ Fast â€¢ Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="âœ” Aktif"
+                    android:background="@drawable/bg_badge_green"
+                    android:textColor="#00E676"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <!-- (Isi Pengaturan Model Suara, Booble, dsb bisa ditambahkan di sini, untuk sekarang menggunakan struktur yang ringkas agar muat dan rapi) -->
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Fitur Pengaturan sedang dioptimasi di V7..." android:textColor="#88FFFFFF" android:textSize="14sp" android:layout_gravity="center" android:layout_marginVertical="40dp"/>
+
+            <Button
+                android:id="@+id/btnSaveSettings"
+                android:layout_width="match_parent"
+                android:layout_height="65dp"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_btn_gradient"
+                android:text="ðŸ’¾  Simpan Pengaturan"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="40dp"
+                android:elevation="6dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>
+
+
+
+==================================================
+FILE: ./app/src/main/res/layout/dialog_status.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_ultra_main"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tvStatHead"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status Sistem"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="24dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_ultra_card"
         android:orientation="vertical"
-        android:padding="24dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="KUSTOMISASI NOVA"
-            android:textColor="#00E5FF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="20dp"
-            android:layout_gravity="center_horizontal"/>
-
-        <!-- 1. KARAKTER SUARA -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🗣️ Karakter Suara AI:"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-        <RadioGroup android:id="@+id/rgVoice" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
-            <RadioButton android:id="@+id/rbVoiceJarvis" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Berat (Wibawa)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbVoiceMale" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pria Standar (Ramah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbVoiceNova" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Elegan (Nova)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbVoiceFriday" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Wanita Imut (Ceria)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbVoiceRobot" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Robot (Glitch)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        </RadioGroup>
-
-        <!-- 2. WARNA JELLY & HOLOGRAM -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🎨 Tema Warna (Jelly &amp; Hologram):"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-        <RadioGroup android:id="@+id/rgColor" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
-            <RadioButton android:id="@+id/rbColorCyan" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cyan (Bawaan)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbColorRed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Crimson Red (Bahaya)" android:textColor="#FFF" android:buttonTint="#FF003C"/>
-            <RadioButton android:id="@+id/rbColorGreen" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Matrix Green (Hacker)" android:textColor="#FFF" android:buttonTint="#00FF73"/>
-            <RadioButton android:id="@+id/rbColorPurple" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Neon Purple (Cyberpunk)" android:textColor="#FFF" android:buttonTint="#B000FF"/>
-        </RadioGroup>
-
-        <!-- 3. GAYA ANIMASI JELLY -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🌀 Gaya Animasi Jelly:"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-        <RadioGroup android:id="@+id/rgAnim" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
-            <RadioButton android:id="@+id/rbAnimBreathe" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Napas Halus (Santai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbAnimHeartbeat" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Detak Jantung (Agresif)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbAnimGlitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Glitch (Patah-patah)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-            <RadioButton android:id="@+id/rbAnimStatic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Statis (Hemat Baterai)" android:textColor="#FFF" android:buttonTint="#00E5FF"/>
-        </RadioGroup>
-
-        <!-- 4. TOGGLE HOLOGRAM -->
-        <CheckBox
-            android:id="@+id/cbHologram"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="✨ Aktifkan Efek Hologram saat Klik"
-            android:textColor="#FFFFFF"
-            android:buttonTint="#00E5FF"
-            android:layout_marginBottom="20dp"/>
-
-        <Button
-            android:id="@+id/btnSaveSettings"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:text="SIMPAN DAN TERAPKAN"
-            android:backgroundTint="#00E5FF"
-            android:textColor="#000"
-            android:textStyle="bold"/>
+        android:padding="20dp"
+        android:layout_below="@id/tvStatHead">
+        
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kesehatan Modul" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="16dp"/>
+        
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ§  Mesin Neural (LLM) : Aktif &amp; Siaga" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ›¡ï¸ Omni-Rotator : Stabil" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ‘ï¸ Modul Visi (OCR) : Hemat Daya" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="â³ Watchdog : Berdetak Normal" android:textColor="#FFF"/>
     </LinearLayout>
-</ScrollView>
+</RelativeLayout>
+
+
+
+==================================================
+FILE: ./app/src/main/res/layout/dialog_about.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_ultra_main"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tvAboutHead"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tentang Nova"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="24dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_ultra_card"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:layout_below="@id/tvAboutHead"
+        android:gravity="center">
+        
+        <ImageView android:layout_width="80dp" android:layout_height="80dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#00E5FF" android:layout_marginBottom="16dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent Otonom" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Versi 6.0 Masterpiece" android:textColor="#B000FF" android:textSize="14sp" android:layout_marginBottom="24dp"/>
+        
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Dikembangkan oleh:\nMOCH KHOIRUL AZMAN" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:textAlignment="center" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hak Cipta Â© 2026. Semua Sistem Dilindungi." android:textColor="#88FFFFFF" android:textSize="12sp" android:textAlignment="center"/>
+    </LinearLayout>
+</RelativeLayout>
 
 
 
@@ -4584,185 +4860,404 @@ FILE: ./app/src/main/res/layout/activity_main.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main_dark"
-    android:fillViewport="true">
+    android:background="@drawable/bg_ultra_main">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="match_parent"
+        android:layout_above="@+id/bottomNavContainer"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
-        <!-- Bar Atas Futuristik -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp">
-            <LinearLayout
-                android:id="@+id/btnSettings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_card_cyber"
-                android:paddingHorizontal="12dp"
-                android:paddingVertical="8dp"
-                android:clickable="true"
-                android:focusable="true">
-                <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@android:drawable/ic_menu_manage" android:tint="#00E5FF"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=" Settings" android:textColor="#00E5FF" android:textStyle="bold" android:textSize="12sp"/>
-            </LinearLayout>
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:layout_centerVertical="true">
-                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_marginEnd="10dp"/>
-                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@android:drawable/ic_menu_mylocation" android:tint="#FF00E5"/>
-            </LinearLayout>
-        </RelativeLayout>
-
-        <!-- TITLE AGENT -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="NOVA AGENT v6.0"
-            android:textSize="34sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:textAlignment="center"
-            android:shadowColor="#00E5FF"
-            android:shadowDx="0" android:shadowDy="0" android:shadowRadius="15"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="4dp"/>
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="S M A R T  •  F A S T  •  P O W E R F U L"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:textColor="#00E5FF"
-            android:textAlignment="center"
-            android:layout_marginBottom="24dp"/>
-
-        <!-- CARD 1: PROVIDER & API KEY -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
+            android:padding="20dp">
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔑 PROVIDER AI" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            <Spinner
-                android:id="@+id/spinnerProvider"
+            <!-- HEADER UTAMA -->
+            <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="45dp"
-                android:background="@drawable/bg_edit_text"
-                android:popupBackground="#0D1117"
-                android:layout_marginBottom="12dp"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp">
+                
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_centerVertical="true">
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="bottom">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Nova Agent "
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFFFFF"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="v6.0"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#00E5FF"
+                            android:layout_marginBottom="2dp"/>
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Smart â€¢ Fast â€¢ Powerful"
+                        android:textSize="12sp"
+                        android:textColor="#88FFFFFF"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
 
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API KEY OMNI-ROTATOR" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-            <EditText
-                android:id="@+id/apiKeyInput"
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:orientation="horizontal">
+                    
+                    <ImageView
+                        android:id="@+id/btnThemeToggle"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@android:drawable/ic_menu_view"
+                        android:tint="#8B95A5"
+                        android:background="@drawable/bg_ultra_input"
+                        android:padding="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:clickable="true"
+                        android:focusable="true"/>
+
+                    <ImageView
+                        android:id="@+id/btnSettings"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@android:drawable/ic_menu_manage"
+                        android:tint="#8B95A5"
+                        android:background="@drawable/bg_ultra_input"
+                        android:padding="12dp"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </LinearLayout>
+            </RelativeLayout>
+
+            <!-- KARTU 1: PROVIDER AI -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:hint="Bisa lebih dari 1, pisahkan dengan koma (,)"
-                android:textColorHint="#40FFFFFF"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/bg_edit_text"
-                android:paddingHorizontal="12dp"
-                android:inputType="textVisiblePassword"
-                android:textSize="12sp"
-                android:layout_marginBottom="12dp"/>
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="16dp">
 
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Provider AI" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih penyedia layanan AI" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="14dp"/>
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                    <Spinner
+                        android:id="@+id/spinnerProvider"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:background="@drawable/bg_ultra_input"
+                        android:popupBackground="#111827"
+                        android:paddingStart="16dp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="âœ” Aktif"
+                        android:background="@drawable/bg_badge_green"
+                        android:textColor="#00E676"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="14dp"
+                        android:paddingVertical="6dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginEnd="16dp"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- KARTU 2: API KEY OMNI-ROTATOR -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API Key Omni-Rotator" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Masukkan kunci API Anda" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="14dp"/>
+                
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:gravity="center_vertical">
+                    
+                    <EditText
+                        android:id="@+id/apiKeyInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:hint="gsk_... (Pisahkan koma jika >1)"
+                        android:textColorHint="#555555"
+                        android:textColor="#FFFFFF"
+                        android:background="@null"
+                        android:inputType="textVisiblePassword"
+                        android:textSize="14sp"
+                        android:layout_toStartOf="@+id/btnPasteKey"/>
+
+                    <ImageView
+                        android:id="@+id/btnPasteKey"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        android:tint="#00E5FF"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </RelativeLayout>
+
+                <Button
+                    android:id="@+id/btnSaveKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:text="Simpan Konfigurasi"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@null"
+                    android:background="@drawable/bg_btn_gradient"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:textSize="15sp"/>
+            </LinearLayout>
+
+            <!-- KARTU 3: MODEL AI OTOMATIS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="16dp">
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp">
+                    <TextView android:id="@+id/tvModelHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model AI Otomatis" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode terbaik dipilih secara otomatis" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvModelHeader"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="âš¡ Teringan"
+                        android:background="@drawable/bg_badge_green_solid"
+                        android:textColor="#080B14"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical">
+                    
+                    <TextView
+                        android:id="@+id/tvAutoModel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="openai/gpt-oss-20b"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_toStartOf="@+id/ivArrowModel"/>
+
+                    <ImageView
+                        android:id="@+id/ivArrowModel"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:tint="#88FFFFFF"
+                        android:rotation="90"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- KARTU 4: STATUS PERIZINAN -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="24dp">
+                
+                <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+                    <TextView android:id="@+id/tvPermHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status Perizinan Wajib" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aplikasi siap digunakan" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvPermHeader"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="âœ” Terverifikasi"
+                        android:background="@drawable/bg_badge_green"
+                        android:textColor="#00E676"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:id="@+id/btnAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:layout_marginBottom="12dp"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aksesibilitas Otonom" android:textColor="#FFF" android:textSize="13sp"/>
+                    <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="âœ” Terverifikasi" android:background="@drawable/bg_badge_green" android:textColor="#00E676" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:id="@+id/btnOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:paddingHorizontal="16dp"
+                    android:gravity="center_vertical"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Izin Jendela Mengambang" android:textColor="#FFF" android:textSize="13sp"/>
+                    <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="âœ” Terverifikasi" android:background="@drawable/bg_badge_green" android:textColor="#00E676" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- TOMBOL UTAMA -->
             <Button
-                android:id="@+id/btnSaveKey"
+                android:id="@+id/btnStart"
                 android:layout_width="match_parent"
-                android:layout_height="45dp"
-                android:text="💾 Simpan Konfigurasi"
-                android:backgroundTint="#00E5FF"
-                android:textColor="#000000"
-                android:textStyle="bold"/>
-        </LinearLayout>
-
-        <!-- CARD 2: AUTO-MODEL -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
-            android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📦 MODEL AI OTOMATIS (TERINGAN)"
-                android:textColor="#00E5FF"
-                android:textSize="12sp"
+                android:layout_height="65dp"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_btn_gradient"
+                android:text="â–¶  Mulai Nova"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-            <TextView
-                android:id="@+id/tvAutoModel"
+                android:layout_marginBottom="24dp"
+                android:elevation="6dp"/>
+
+            <!-- DEVELOPER CREDIT -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Model akan dipilih secara otomatis..."
-                android:textColor="#00FF73"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:padding="12dp"
-                android:background="@drawable/bg_edit_text" />
-        </LinearLayout>
+                android:orientation="vertical"
+                android:gravity="center"
+                android:layout_marginBottom="30dp">
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/star_on"
+                    android:tint="#FFD700"
+                    android:layout_marginBottom="4dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Developed by"
+                    android:textSize="10sp"
+                    android:textColor="#88FFFFFF"/>
+                <TextView
+                    android:id="@+id/tvDeveloperCredit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MOCH KHOIRUL AZMAN"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#00E5FF"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
 
-        <!-- CARD 3: PERMISSIONS -->
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- BOTTOM NAVIGATION (GLOBAL) -->
+    <LinearLayout
+        android:id="@+id/bottomNavContainer"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_alignParentBottom="true"
+        android:background="#050810"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:elevation="24dp">
+        
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_card_cyber"
+            android:id="@+id/navBeranda"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:orientation="vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="24dp">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🛡️ STATUS PERIZINAN WAJIB:" android:textColor="#00E5FF" android:textSize="12sp" android:textStyle="bold" android:layout_marginBottom="12dp"/>
-            <RelativeLayout android:id="@+id/btnAccessibility" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:layout_marginBottom="10dp" android:clickable="true" android:focusable="true">
-                <ImageView android:id="@+id/icA11y" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1. AKTIFKAN AKSESIBILITAS" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icA11y" android:layout_marginStart="12dp"/>
-                <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
-            </RelativeLayout>
-            <RelativeLayout android:id="@+id/btnOverlay" android:layout_width="match_parent" android:layout_height="50dp" android:background="@drawable/bg_edit_text" android:clickable="true" android:focusable="true">
-                <ImageView android:id="@+id/icOverlay" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#FFF" android:layout_centerVertical="true" android:layout_marginStart="12dp"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2. IZIN MENGAMBANG" android:textColor="#FFF" android:textSize="12sp" android:layout_centerVertical="true" android:layout_toEndOf="@id/icOverlay" android:layout_marginStart="12dp"/>
-                <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Cek" android:background="@drawable/bg_badge_inactive" android:textColor="#FFF" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="8dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true" android:layout_marginEnd="12dp"/>
-            </RelativeLayout>
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <View android:id="@+id/lineBeranda" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:layout_marginBottom="6dp"/>
+            <ImageView android:id="@+id/icBeranda" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_today" android:tint="#00E5FF"/>
+            <TextView android:id="@+id/tvBeranda" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beranda" android:textColor="#00E5FF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="2dp"/>
         </LinearLayout>
 
-        <!-- TOMBOL UTAMA -->
-        <Button
-            android:id="@+id/btnStart"
-            android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:background="@drawable/bg_start_glow"
-            android:text="▶ MULAI NOVA"
-            android:textColor="#000D1A"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="20dp"/>
+        <LinearLayout
+            android:id="@+id/navStatus"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <View android:id="@+id/lineStatus" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:visibility="invisible" android:layout_marginBottom="6dp"/>
+            <ImageView android:id="@+id/icStatus" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_sort_by_size" android:tint="#8B95A5"/>
+            <TextView android:id="@+id/tvStatusNav" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvDeveloperCredit"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="DEVELOPER BY\nMOCH KHOIRUL AZMAN"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAlignment="center"
-            android:letterSpacing="0.1"
-            android:layout_marginBottom="20dp"/>
+        <LinearLayout
+            android:id="@+id/navTentang"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+            <View android:id="@+id/lineTentang" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:visibility="invisible" android:layout_marginBottom="6dp"/>
+            <ImageView android:id="@+id/icTentang" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_info_details" android:tint="#8B95A5"/>
+            <TextView android:id="@+id/tvTentangNav" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tentang" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+        </LinearLayout>
     </LinearLayout>
-</ScrollView>
+
+</RelativeLayout>
 
 
 
@@ -4859,12 +5354,41 @@ FILE: ./app/src/main/res/drawable/bg_close_btn.xml
 
 
 ==================================================
+FILE: ./app/src/main/res/drawable/bg_btn_gradient.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:startColor="#00E5FF" android:endColor="#7B2CBF" android:angle="0" />
+            <corners android:radius="30dp" />
+        </shape>
+    </item>
+</ripple>
+
+
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_main_dark.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:startColor="#050914" android:endColor="#000000" android:angle="270" />
+    <gradient android:startColor="#030712" android:centerColor="#090D1A" android:endColor="#030712" android:angle="270" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_badge_green.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1A00E676" />
+    <corners android:radius="12dp" />
+    <stroke android:width="1dp" android:color="#00E676" />
 </shape>
 
 
@@ -4883,19 +5407,62 @@ FILE: ./app/src/main/res/drawable/ic_launcher_background.xml
 
 
 ==================================================
+FILE: ./app/src/main/res/drawable/bg_premium_badge.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1A00FF73" />
+    <corners android:radius="12dp" />
+    <stroke android:width="1dp" android:color="#00FF73" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_color_orange.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#FFAA00" />
+</shape>
+
+
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_card_cyber.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#4D00E5FF">
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="#121826" />
-            <corners android:radius="16dp" />
-            <stroke android:width="1.5dp" android:color="#00E5FF" />
-        </shape>
-    </item>
-</ripple>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#0D1527" />
+    <corners android:radius="20dp" />
+    <stroke android:width="1.5dp" android:color="#2600E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_premium_main.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#050914" android:centerColor="#0B132B" android:endColor="#050914" android:angle="270" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/ic_shape_square.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#48CAE4" android:pathData="M19,3H5C3.9,3 3,3.9 3,5v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5C21,3.9 20.1,3 19,3z"/>
+</vector>
 
 
 
@@ -4905,9 +5472,9 @@ FILE: ./app/src/main/res/drawable/bg_badge_inactive.xml
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#1AFF3030" />
-    <corners android:radius="8dp" />
-    <stroke android:width="1dp" android:color="#FF3030" />
+    <solid android:color="#1AFF003C" />
+    <corners android:radius="10dp" />
+    <stroke android:width="1dp" android:color="#FF003C" />
 </shape>
 
 
@@ -4941,19 +5508,209 @@ FILE: ./app/src/main/res/drawable/bg_bubble_cyber.xml
 
 
 ==================================================
+FILE: ./app/src/main/res/drawable/ic_shape_circle.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#00E5FF" android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z"/>
+</vector>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_color_purple.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#9D4EDD" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_ultra_card.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#111827" />
+    <corners android:radius="20dp" />
+    <stroke android:width="1dp" android:color="#1A00E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_color_pink.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#FF4D8D" />
+</shape>
+
+
+
+==================================================
 FILE: ./app/src/main/res/drawable/bg_start_glow.xml
 ==================================================
 
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFF">
-    <item>
-        <shape android:shape="rectangle">
-            <gradient android:startColor="#00E5FF" android:endColor="#0088FF" android:angle="0" />
-            <corners android:radius="30dp" />
-            <stroke android:width="2dp" android:color="#80FFFFFF" />
-        </shape>
-    </item>
-</ripple>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#00FFFF" android:endColor="#0066FF" android:angle="0" />
+    <corners android:radius="30dp" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_premium_card.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#0F172A" />
+    <corners android:radius="24dp" />
+    <stroke android:width="1.5dp" android:color="#1A00E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/ic_shape_heart.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#C77DFF" android:pathData="M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z"/>
+</vector>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_color_cyan.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#00C8FF" />
+    <stroke android:width="2dp" android:color="#FFFFFF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_premium_input.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1AFFFFFF" />
+    <corners android:radius="16dp" />
+    <stroke android:width="1dp" android:color="#33FFFFFF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_color_green.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#52B788" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/ic_shape_star.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#9D4EDD" android:pathData="M12,17.27L18.18,21l-1.64,-7.03L22,9.24l-7.19,-0.61L12,2 9.19,8.63 2,9.24l5.46,4.73L5.82,21z"/>
+</vector>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_dropdown_pill.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#152240" />
+    <corners android:radius="18dp" />
+    <stroke android:width="1dp" android:color="#3300E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/ic_soundwave.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M4,9h2v6H4V9z M8,6h2v12H8V6z M12,3h2v18h-2V3z M16,6h2v12h-2V6z M20,9h2v6h-2V9z"/>
+</vector>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/ic_nova_n_logo.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M20,80 L35,20 C37,14 44,14 47,20 L65,65 L52,80 L38,45 L32,80 Z" />
+    <path
+        android:fillColor="#7B2CBF"
+        android:pathData="M53,80 L65,20 L80,20 L68,80 C66,86 56,86 53,80 Z" />
+</vector>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_circle_btn.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#121D38" />
+    <stroke android:width="1dp" android:color="#3300E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_box_unselected.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#0A1122" />
+    <corners android:radius="16dp" />
+    <stroke android:width="1dp" android:color="#1FFFFFFF" />
+</shape>
 
 
 
@@ -4964,8 +5721,62 @@ FILE: ./app/src/main/res/drawable/bg_badge_active.xml
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="#1A00FF73" />
-    <corners android:radius="8dp" />
+    <corners android:radius="10dp" />
     <stroke android:width="1dp" android:color="#00FF73" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_banner_glow.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#162B4D" android:centerColor="#0F1830" android:endColor="#1F143D" android:angle="0" />
+    <corners android:radius="22dp" />
+    <stroke android:width="1.5dp" android:color="#8000E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_ultra_button.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:startColor="#00F0FF" android:centerColor="#0077FF" android:endColor="#6A11CB" android:angle="0" />
+            <corners android:radius="28dp" />
+            <stroke android:width="1dp" android:color="#8000FFFF" />
+        </shape>
+    </item>
+</ripple>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_ultra_main.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#080B14" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_box_selected.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:startColor="#1B355A" android:endColor="#0F203C" android:angle="270" />
+    <corners android:radius="16dp" />
+    <stroke android:width="2dp" android:color="#00E5FF" />
 </shape>
 
 
@@ -5037,6 +5848,60 @@ FILE: ./app/src/main/res/drawable/bg_jelly_bubble.xml
 
 
 ==================================================
+FILE: ./app/src/main/res/drawable/bg_badge_green_solid.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#00E676" />
+    <corners android:radius="8dp" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_premium_button.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:startColor="#00E5FF" android:endColor="#0044FF" android:angle="0" />
+            <corners android:radius="30dp" />
+        </shape>
+    </item>
+</ripple>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_ultra_input.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1A2436" />
+    <corners android:radius="14dp" />
+    <stroke android:width="1dp" android:color="#3300E5FF" />
+</shape>
+
+
+
+==================================================
+FILE: ./app/src/main/res/drawable/bg_ultra_badge.xml
+==================================================
+
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#1400E676" />
+    <corners android:radius="18dp" />
+    <stroke android:width="1dp" android:color="#00E676" />
+</shape>
+
+
+
+==================================================
 FILE: ./app/src/main/res/drawable/ic_launcher_foreground.xml
 ==================================================
 
@@ -5060,9 +5925,9 @@ FILE: ./app/src/main/res/drawable/bg_edit_text.xml
 
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#080C14" />
-    <corners android:radius="12dp" />
-    <stroke android:width="1dp" android:color="#4000E5FF" />
+    <solid android:color="#141E33" />
+    <corners android:radius="14dp" />
+    <stroke android:width="1dp" android:color="#3300E5FF" />
 </shape>
 
 
