@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_ultra_main"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/tvStatHead"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status Sistem"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="24dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_ultra_card"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:layout_below="@id/tvStatHead">
+        
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kesehatan Modul" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="16dp"/>
+        
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ§  Mesin Neural (LLM) : Aktif &amp; Siaga" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ›¡ï¸ Omni-Rotator : Stabil" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ‘ï¸ Modul Visi (OCR) : Hemat Daya" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="â³ Watchdog : Berdetak Normal" android:textColor="#FFF"/>
+    </LinearLayout>
+</RelativeLayout>
