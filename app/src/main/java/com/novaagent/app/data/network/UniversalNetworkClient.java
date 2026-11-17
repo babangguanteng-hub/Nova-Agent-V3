@@ -105,7 +105,7 @@ public class UniversalNetworkClient {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.6);
-                payload.put("stream", true); 
+                payload.put("stream", true); // MENGAKTIFKAN MODE STREAMING 0-DELAY
                 
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
@@ -221,7 +221,7 @@ public class UniversalNetworkClient {
                             }
                         }
                         
-                        // Sisa kalimat terakhir
+                        // Sisa kalimat terakhir saat stream selesai
                         String textSoFar = fullResponse.toString();
                         int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
                         if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");

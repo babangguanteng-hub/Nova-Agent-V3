@@ -1,6 +1,7 @@
 package com.novaagent.app.ui.bubble;
 
 import android.animation.AnimatorSet;
+import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -11,8 +12,6 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -45,9 +44,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private AnimatorSet currentAnimator;
-    
-    // Tema & Animasi Preferences
+    private AnimatorSet pulseAnimator;
     private String customColor;
     private String customAnim;
 
@@ -58,7 +55,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         this.customColor = prefs.getString("custom_color", "cyan");
         this.customAnim = prefs.getString("custom_anim", "breathe");
-        
+
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
@@ -83,19 +80,26 @@ public class FloatingBubbleView implements EventBus.EventListener {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
+        
+        // Error handling if panelExpand or tvStatus are not in the layout
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
+        tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
         applyCustomTheme();
+        if (!"static".equals(customAnim)) startJellyPulseAnimation();
 
         bubbleView.setOnClickListener(v -> {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
                 jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
-                if (currentAnimator != null && !customAnim.equals("static")) currentAnimator.resume();
+                if (pulseAnimator != null && !"static".equals(customAnim)) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                setStatus("MENDENGARKAN...");
             } else {
                 jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
-                if (currentAnimator != null) currentAnimator.pause();
+                if (pulseAnimator != null) pulseAnimator.pause();
+                setStatus("NOVA TIDUR");
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
@@ -149,38 +153,59 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private void applyCustomTheme() {
         int baseColor = Color.parseColor("#CC00E5FF"); 
-        if (customColor.equals("red")) baseColor = Color.parseColor("#CCFF003C");
-        else if (customColor.equals("green")) baseColor = Color.parseColor("#CC00FF73");
-        else if (customColor.equals("purple")) baseColor = Color.parseColor("#CCB000FF");
+        if ("red".equals(customColor)) baseColor = Color.parseColor("#CCFF003C");
+        else if ("green".equals(customColor)) baseColor = Color.parseColor("#CC00FF73");
+        else if ("purple".equals(customColor)) baseColor = Color.parseColor("#CCB000FF");
 
         if (jellyBg.getBackground() instanceof GradientDrawable) {
             ((GradientDrawable) jellyBg.getBackground()).setColor(baseColor);
         }
+    }
 
-        if (customAnim.equals("static")) return;
-
+    private void startJellyPulseAnimation() {
         ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.05f, 1f);
         ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.05f, 1f);
 
-        long duration = 1200;
-        if (customAnim.equals("heartbeat")) {
-            duration = 400; 
-            scaleX.setInterpolator(new BounceInterpolator());
-        } else if (customAnim.equals("glitch")) {
-            duration = 200; 
-            scaleX.setFloatValues(1f, 1.3f, 0.8f, 1.1f, 1f);
-        }
+        ValueAnimator colorAnim = ValueAnimator.ofObject(new ArgbEvaluator(), 
+            Color.parseColor("#CC00E5FF"), Color.parseColor("#CCFF00E5"), 
+            Color.parseColor("#CCE5FF00"), Color.parseColor("#CC00FF73"), 
+            Color.parseColor("#CC00E5FF"));
+            
+        colorAnim.addUpdateListener(anim -> {
+            if (jellyBg.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) jellyBg.getBackground()).setColor((int) anim.getAnimatedValue());
+            }
+        });
 
         scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
         scaleFaceX.setRepeatCount(ValueAnimator.INFINITE); scaleFaceY.setRepeatCount(ValueAnimator.INFINITE);
+        colorAnim.setRepeatCount(ValueAnimator.INFINITE);
+        
+        long duration = "heartbeat".equals(customAnim) ? 400 : 1200;
+        
         scaleX.setDuration(duration); scaleY.setDuration(duration);
         scaleFaceX.setDuration(duration); scaleFaceY.setDuration(duration);
+        colorAnim.setDuration(4500); 
 
-        currentAnimator = new AnimatorSet();
-        currentAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY);
-        currentAnimator.start();
+        pulseAnimator = new AnimatorSet();
+        pulseAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY, colorAnim);
+        pulseAnimator.start();
+    }
+
+    private void setStatus(String text) {
+        if (tvStatus != null && panelExpand != null) {
+            tvStatus.post(() -> {
+                if (panelExpand.getVisibility() == View.GONE) panelExpand.setVisibility(View.VISIBLE);
+                tvStatus.setText(text);
+                if (!text.startsWith("🗣️")) {
+                    tvStatus.postDelayed(() -> {
+                        if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
+                    }, 4000);
+                }
+            });
+        }
     }
 
     public void show() {
@@ -203,26 +228,29 @@ public class FloatingBubbleView implements EventBus.EventListener {
             String state = String.valueOf(event.payload);
             
             if (state.startsWith("RMS:")) {
-                if (!isListeningMode || customAnim.equals("static")) return;
+                if (!isListeningMode || "static".equals(customAnim)) return;
                 try {
                     float rms = Float.parseFloat(state.substring(4));
-                    float rawScale = 1.0f + (Math.max(0, rms) / 15.0f);
-                    if (rawScale > 1.6f) rawScale = 1.6f;
-                    
-                    // SOLUSI LAMBDA: Mengunci variabel agar menjadi 'effectively final'
-                    final float finalScale = rawScale;
+                    float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                    if (targetScale > 1.6f) targetScale = 1.6f;
                     
                     bubbleView.post(() -> {
-                        jellyBg.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                        jellyFace.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).start();
+                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).start();
                     });
                 } catch (Exception e){}
             } 
+            else if (state.startsWith("PARTIAL:")) {
+                String partial = state.substring(8);
+                setStatus("🗣️ " + partial + "...");
+            }
             else if ("NOVA_SPEAKING_START".equals(state)) {
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
             }
-            else if ("INTERRUPT_TRIGGERED".equals(state)) {
-                jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
+            else if ("LISTENING_READY".equals(state)) {
+                if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
             }
         }
     }

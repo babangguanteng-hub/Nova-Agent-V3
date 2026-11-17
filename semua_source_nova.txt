@@ -1484,7 +1484,6 @@ package com.novaagent.app.core.audio;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -1499,7 +1498,6 @@ import android.widget.Toast;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -1515,16 +1513,18 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private boolean isMouthReady = false;
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
-    private boolean isStreamFirstChunk = true;
-    private boolean isMicMutedBySystem = false;
+    
+    // FASE 4: isMicMutedBySystem Dihapus! Mic sekarang SELALU ON (Full-Duplex)
 
     public NovaAudioDirector(Context context) {
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
+        
         mainHandler.post(() -> {
             initMouth();
             initEar();
         });
+        
         EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
@@ -1542,105 +1542,135 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mouth.setLanguage(Locale.getDefault()); 
             }
             
-            SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-            float pitch = prefs.getFloat("voice_pitch", 1.2f);
-            float speed = prefs.getFloat("voice_speed", 1.05f); // Sedikit dipercepat agar natural
+            float pitch = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE).getFloat("voice_pitch", 1.0f); 
             mouth.setPitch(pitch);
-            mouth.setSpeechRate(speed);
             isMouthReady = true;
             
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                @Override public void onStart(String utteranceId) { isCurrentlySpeaking = true; }
+                @Override public void onStart(String utteranceId) {
+                    isCurrentlySpeaking = true;
+                }
+                
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
+                    mainHandler.postDelayed(() -> resumeListening(), 100); 
                 }
+                
                 @Override public void onError(String utteranceId) {
                     isCurrentlySpeaking = false;
+                    mainHandler.post(() -> resumeListening());
                 }
             });
         }
     }
 
     private void initEar() {
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) return;
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            return;
+        }
+
         try {
+            // MENGAKTIFKAN ECHO CANCELLATION HARDWARE AGAR NOVA TIDAK MENDENGAR SUARANYA SENDIRI
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION); // AGC ON
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
         } catch (Exception e) {}
 
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        // Sensitivitas cepat
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L); 
+        
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); 
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
-            @Override public void onReadyForSpeech(Bundle params) { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); }
-            @Override public void onBeginningOfSpeech() { EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); }
-            @Override public void onRmsChanged(float rmsdB) {
-                if (isListeningAbadi && !isCurrentlySpeaking) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsdB));
+            @Override public void onReadyForSpeech(Bundle params) { 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY")); 
             }
+            @Override public void onBeginningOfSpeech() { 
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING")); 
+            }
+            
+            @Override public void onRmsChanged(float rmsdB) {
+                if (isListeningAbadi && !isCurrentlySpeaking) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsdB));
+                }
+            }
+            
             @Override public void onBufferReceived(byte[] buffer) {}
             @Override public void onEndOfSpeech() { 
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); 
-                isStreamFirstChunk = true; // Reset aliran
             }
+            
             @Override public void onError(int error) {
-                if (isListeningAbadi && !isMicMutedBySystem) {
+                if (isListeningAbadi) {
                     mainHandler.postDelayed(() -> {
-                        if (isListeningAbadi && !isMicMutedBySystem) {
+                        if (isListeningAbadi) {
                             try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 300); 
+                    }, 400); 
                 }
             }
+
             @Override public void onPartialResults(Bundle partialResults) {
                 ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String partialText = matches.get(0);
                     
-                    // 🛑 FULL-DUPLEX: Jika Nova sedang bicara dan Anda memotongnya (minimal 3 huruf)
+                    // 🛑 FASE 4: LOGIKA FULL-DUPLEX INTERRUPTION 🛑
+                    // Jika Nova sedang bicara, dan user menginterupsi (> 3 huruf)
                     if (isCurrentlySpeaking && partialText.length() > 3) {
-                        mouth.stop();
+                        mouth.stop(); // Hentikan mulut seketika
                         isCurrentlySpeaking = false;
-                        isStreamFirstChunk = true;
+                        Log.w(TAG, "User memotong pembicaraan! INTERRUPT_TRIGGERED");
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
                     }
+                    
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PARTIAL:" + partialText));
                 }
             }
+
             @Override public void onResults(Bundle results) {
                 ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String command = matches.get(0);
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PERINTAH: " + command));
+                    
                     try {
-                        com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).startTask(command);
+                        com.novaagent.app.core.di.ServiceLocator.getInstance()
+                            .resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class)
+                            .startTask(command);
                     } catch (Exception e) {}
                 } else {
-                    if (isListeningAbadi && !isMicMutedBySystem) resumeListening();
+                    if (isListeningAbadi) resumeListening();
                 }
             }
             @Override public void onEvent(int eventType, Bundle params) {}
         });
+        
         resumeListening();
     }
 
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null && !isMicMutedBySystem) {
-                try { ear.cancel(); ear.startListening(earIntent); } catch (Exception e) {}
+            if (ear != null) {
+                try {
+                    ear.cancel(); 
+                    ear.startListening(earIntent);
+                } catch (Exception e) {}
             }
         });
     }
 
     public void setListeningMode(boolean isActive) {
         this.isListeningAbadi = isActive;
-        if (!isActive) mainHandler.post(() -> { if (ear != null) ear.cancel(); });
-        else resumeListening();
+        if (!isActive) {
+            mainHandler.post(() -> { if (ear != null) ear.cancel(); });
+        } else {
+            resumeListening();
+        }
     }
 
     @Override
@@ -1649,15 +1679,16 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             String textChunk = String.valueOf(event.payload);
             if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
                 mainHandler.post(() -> {
-                    if (isStreamFirstChunk) {
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                        // QUEUE_FLUSH untuk kata pertama (memotong omongan lama jika ada)
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
-                        isStreamFirstChunk = false;
-                    } else {
-                        // QUEUE_ADD untuk menyambung kalimat secara mulus
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
-                    }
+                    mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
+                });
+            }
+        } else if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
+            String textToSpeak = String.valueOf(event.payload);
+            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
+                mainHandler.post(() -> {
+                    // MUTLAK: Tidak ada ear.cancel() di sini. Telinga tetap ON!
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
+                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
         }
@@ -1668,6 +1699,10 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
+        try {
+            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_NORMAL);
+        } catch (Exception e) {}
         mainHandler.post(() -> {
             if (ear != null) { ear.destroy(); ear = null; }
             if (mouth != null) { mouth.stop(); mouth.shutdown(); mouth = null; }
@@ -2636,6 +2671,7 @@ FILE: ./app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
 package com.novaagent.app.ui.bubble;
 
 import android.animation.AnimatorSet;
+import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -2646,8 +2682,6 @@ import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -2680,9 +2714,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private boolean isAdded = false;
     private boolean isListeningMode = true; 
-    private AnimatorSet currentAnimator;
-    
-    // Tema & Animasi Preferences
+    private AnimatorSet pulseAnimator;
     private String customColor;
     private String customAnim;
 
@@ -2693,7 +2725,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         this.customColor = prefs.getString("custom_color", "cyan");
         this.customAnim = prefs.getString("custom_anim", "breathe");
-        
+
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         initView();
         initCloseTarget();
@@ -2718,19 +2750,26 @@ public class FloatingBubbleView implements EventBus.EventListener {
         bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
         jellyBg = bubbleView.findViewById(R.id.jellyBg);
         jellyFace = bubbleView.findViewById(R.id.jellyFace);
+        
+        // Error handling if panelExpand or tvStatus are not in the layout
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
+        tvStatus = bubbleView.findViewById(R.id.tvStatus);
 
         applyCustomTheme();
+        if (!"static".equals(customAnim)) startJellyPulseAnimation();
 
         bubbleView.setOnClickListener(v -> {
             playUISound(AudioManager.FX_KEY_CLICK);
             isListeningMode = !isListeningMode;
             if (isListeningMode) {
                 jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
-                if (currentAnimator != null && !customAnim.equals("static")) currentAnimator.resume();
+                if (pulseAnimator != null && !"static".equals(customAnim)) pulseAnimator.resume();
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+                setStatus("MENDENGARKAN...");
             } else {
                 jellyBg.setAlpha(0.3f); jellyFace.setAlpha(0.3f);
-                if (currentAnimator != null) currentAnimator.pause();
+                if (pulseAnimator != null) pulseAnimator.pause();
+                setStatus("NOVA TIDUR");
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
             }
         });
@@ -2784,38 +2823,59 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private void applyCustomTheme() {
         int baseColor = Color.parseColor("#CC00E5FF"); 
-        if (customColor.equals("red")) baseColor = Color.parseColor("#CCFF003C");
-        else if (customColor.equals("green")) baseColor = Color.parseColor("#CC00FF73");
-        else if (customColor.equals("purple")) baseColor = Color.parseColor("#CCB000FF");
+        if ("red".equals(customColor)) baseColor = Color.parseColor("#CCFF003C");
+        else if ("green".equals(customColor)) baseColor = Color.parseColor("#CC00FF73");
+        else if ("purple".equals(customColor)) baseColor = Color.parseColor("#CCB000FF");
 
         if (jellyBg.getBackground() instanceof GradientDrawable) {
             ((GradientDrawable) jellyBg.getBackground()).setColor(baseColor);
         }
+    }
 
-        if (customAnim.equals("static")) return;
-
+    private void startJellyPulseAnimation() {
         ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.05f, 1f);
         ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.15f, 1f);
         ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.05f, 1f);
 
-        long duration = 1200;
-        if (customAnim.equals("heartbeat")) {
-            duration = 400; 
-            scaleX.setInterpolator(new BounceInterpolator());
-        } else if (customAnim.equals("glitch")) {
-            duration = 200; 
-            scaleX.setFloatValues(1f, 1.3f, 0.8f, 1.1f, 1f);
-        }
+        ValueAnimator colorAnim = ValueAnimator.ofObject(new ArgbEvaluator(), 
+            Color.parseColor("#CC00E5FF"), Color.parseColor("#CCFF00E5"), 
+            Color.parseColor("#CCE5FF00"), Color.parseColor("#CC00FF73"), 
+            Color.parseColor("#CC00E5FF"));
+            
+        colorAnim.addUpdateListener(anim -> {
+            if (jellyBg.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) jellyBg.getBackground()).setColor((int) anim.getAnimatedValue());
+            }
+        });
 
         scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
         scaleFaceX.setRepeatCount(ValueAnimator.INFINITE); scaleFaceY.setRepeatCount(ValueAnimator.INFINITE);
+        colorAnim.setRepeatCount(ValueAnimator.INFINITE);
+        
+        long duration = "heartbeat".equals(customAnim) ? 400 : 1200;
+        
         scaleX.setDuration(duration); scaleY.setDuration(duration);
         scaleFaceX.setDuration(duration); scaleFaceY.setDuration(duration);
+        colorAnim.setDuration(4500); 
 
-        currentAnimator = new AnimatorSet();
-        currentAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY);
-        currentAnimator.start();
+        pulseAnimator = new AnimatorSet();
+        pulseAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY, colorAnim);
+        pulseAnimator.start();
+    }
+
+    private void setStatus(String text) {
+        if (tvStatus != null && panelExpand != null) {
+            tvStatus.post(() -> {
+                if (panelExpand.getVisibility() == View.GONE) panelExpand.setVisibility(View.VISIBLE);
+                tvStatus.setText(text);
+                if (!text.startsWith("🗣️")) {
+                    tvStatus.postDelayed(() -> {
+                        if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
+                    }, 4000);
+                }
+            });
+        }
     }
 
     public void show() {
@@ -2838,26 +2898,29 @@ public class FloatingBubbleView implements EventBus.EventListener {
             String state = String.valueOf(event.payload);
             
             if (state.startsWith("RMS:")) {
-                if (!isListeningMode || customAnim.equals("static")) return;
+                if (!isListeningMode || "static".equals(customAnim)) return;
                 try {
                     float rms = Float.parseFloat(state.substring(4));
-                    float rawScale = 1.0f + (Math.max(0, rms) / 15.0f);
-                    if (rawScale > 1.6f) rawScale = 1.6f;
-                    
-                    // SOLUSI LAMBDA: Mengunci variabel agar menjadi 'effectively final'
-                    final float finalScale = rawScale;
+                    float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                    if (targetScale > 1.6f) targetScale = 1.6f;
                     
                     bubbleView.post(() -> {
-                        jellyBg.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
-                        jellyFace.animate().scaleX(finalScale).scaleY(finalScale).setDuration(100).start();
+                        jellyBg.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                        jellyFace.animate().scaleX(targetScale).scaleY(targetScale)
+                               .setDuration(100).start();
                     });
                 } catch (Exception e){}
             } 
+            else if (state.startsWith("PARTIAL:")) {
+                String partial = state.substring(8);
+                setStatus("🗣️ " + partial + "...");
+            }
             else if ("NOVA_SPEAKING_START".equals(state)) {
                 jellyFace.animate().rotationBy(360f).setDuration(1000).start(); 
             }
-            else if ("INTERRUPT_TRIGGERED".equals(state)) {
-                jellyBg.animate().scaleX(1.4f).scaleY(1.4f).setDuration(150).start();
+            else if ("LISTENING_READY".equals(state)) {
+                if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
             }
         }
     }
@@ -4519,7 +4582,7 @@ public class UniversalNetworkClient {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
                 payload.put("temperature", 0.6);
-                payload.put("stream", true); 
+                payload.put("stream", true); // MENGAKTIFKAN MODE STREAMING 0-DELAY
                 
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
@@ -4635,7 +4698,7 @@ public class UniversalNetworkClient {
                             }
                         }
                         
-                        // Sisa kalimat terakhir
+                        // Sisa kalimat terakhir saat stream selesai
                         String textSoFar = fullResponse.toString();
                         int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
                         if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
