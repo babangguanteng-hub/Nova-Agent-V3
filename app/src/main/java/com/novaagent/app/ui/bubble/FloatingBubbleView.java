@@ -36,8 +36,6 @@ public class FloatingBubbleView implements EventBus.EventListener {
     private View bubbleView;
     private ImageView jellyBg;
     private ImageView jellyFace;
-    private android.widget.LinearLayout panelExpand;
-    private android.widget.TextView tvStatus;
     private LinearLayout panelExpand;
     private TextView tvStatus;
 
