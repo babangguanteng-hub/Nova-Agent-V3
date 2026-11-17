@@ -42,187 +42,26 @@ Installing Android SDK Build-Tools 33.0.1 in /usr/local/lib/android/sdk/build-to
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:compressDebugAssets
-> Task :app:mergeDebugJavaResource
-> Task :app:mergeDebugJniLibFolders
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugNativeLibs
 > Task :app:processDebugManifestForPackage
-> Task :app:mergeExtDexDebug
-> Task :app:mergeLibDexDebug
-
-> Task :app:stripDebugDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libmlkit_google_ocr_pipeline.so.
-
+> Task :app:mergeDebugJavaResource
+> Task :app:checkDebugDuplicateClasses
 > Task :app:processDebugResources
-> Task :app:validateSigningDebug
+> Task :app:mergeExtDexDebug
 
 > Task :app:compileDebugJavaWithJavac
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:2: error: illegal character: '\u200b'
-​import android.Manifest;
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:2: error: class, interface, enum, or record expected
-​import android.Manifest;
-        ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:36: error: illegal character: '\u200b'
-​import com.novaagent.app.R;
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:36: error: class, interface, enum, or record expected
-​import com.novaagent.app.R;
-        ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:38: error: illegal character: '\u200b'
-​import java.util.ArrayList;
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:38: error: class, interface, enum, or record expected
-​import java.util.ArrayList;
-        ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:40: error: illegal character: '\u200b'
-​public class MainActivity extends AppCompatActivity {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:46: error: illegal character: '\u200b'
-​private final String[] providers = {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:50: error: illegal character: '\u200b'
-​private final String[] models = {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:54: error: illegal character: '\u200b'
-​// State Pengaturan
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:61: error: illegal character: '\u200b'
-​@Override
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:61: error: <identifier> expected
-​@Override
-          ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:65: error: illegal character: '\u200b'
-​prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:68: error: illegal character: '\u200b'
-​EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:71: error: illegal character: '\u200b'
-​if (apiKeyInput != null) {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:74: error: illegal character: '\u200b'
-​View btnPaste = findViewById(R.id.btnPasteKey);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:88: error: illegal character: '\u200b'
-​ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:98: error: illegal character: '\u200b'
-​spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:108: error: illegal character: '\u200b'
-​View btnSaveKey = findViewById(R.id.btnSaveKey);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:121: error: illegal character: '\u200b'
-​View btnSettings = findViewById(R.id.btnSettings);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:123: error: illegal character: '\u200b'
-​View btnTheme = findViewById(R.id.btnThemeToggle);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:125: error: illegal character: '\u200b'
-​View btnA11y = findViewById(R.id.btnAccessibility);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:127: error: illegal character: '\u200b'
-​View btnOvr = findViewById(R.id.btnOverlay);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:129: error: illegal character: '\u200b'
-​View btnStart = findViewById(R.id.btnStart);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:131: error: illegal character: '\u200b'
-​setupBottomNav();
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:133: error: illegal character: '\u200b'
-​private void setupBottomNav() {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:136: error: illegal character: '\u200b'
-​View navStatus = findViewById(R.id.navStatus);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:145: error: illegal character: '\u200b'
-​View navTentang = findViewById(R.id.navTentang);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:155: error: illegal character: '\u200b'
-​@Override
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:155: error: <identifier> expected
-​@Override
-          ^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:170: error: illegal character: '\u200b'
-​// --- LOGIKA MENU PENGATURAN (100% IDENTIK) ---
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:173: error: illegal character: '\u200b'
-​currentDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:181: error: illegal character: '\u200b'
-​selectedVoice = prefs.getString("custom_voice", "nova");
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:187: error: illegal character: '\u200b'
-​view.findViewById(R.id.btnBackSettings).setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:190: error: illegal character: '\u200b'
-​// 1. Suara
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:195: error: illegal character: '\u200b'
-​Runnable updateVoiceUI = () -> {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:206: error: illegal character: '\u200b'
-​// 2. Animasi
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:223: error: illegal character: '\u200b'
-​// 3. Bentuk
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:228: error: illegal character: '\u200b'
-​Runnable updateShapeUI = () -> {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:239: error: illegal character: '\u200b'
-​// 4. Warna
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:245: error: illegal character: '\u200b'
-​Runnable updateColorUI = () -> {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:258: error: illegal character: '\u200b'
-​// 5. Sliders
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:269: error: illegal character: '\u200b'
-​SeekBar seekAlpha = view.findViewById(R.id.seekBubbleAlpha);
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:279: error: illegal character: '\u200b'
-​// 6. Switches
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:284: error: illegal character: '\u200b'
-​// 7. Reset
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:294: error: illegal character: '\u200b'
-​// 8. Simpan
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:301: error: illegal character: '\u200b'
-​String finalAnim = switchPower.isChecked() ? "static" : selectedAnim;
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:302: error: illegal character: '\u200b'
-​prefs.edit()
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:314: error: illegal character: '\u200b'
-​Toast.makeText(this, "💾 Pengaturan Nova Berhasil Disimpan!", Toast.LENGTH_SHORT).show();
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:317: error: illegal character: '\u200b'
-​currentDialog.show();
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:319: error: illegal character: '\u200b'
-​private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:320: error: illegal character: '\u200b'
-​private void requestBasicPermissions() {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:330: error: illegal character: '\u200b'
-​private void checkPermissionsAndStart() {
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:342: error: illegal character: '\u200b'
-​@Override
-^
-/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/config/MainActivity.java:342: error: <identifier> expected
-​@Override
-          ^
-55 errors
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java:85: error: cannot find symbol
+        panelExpand = bubbleView.findViewById(R.id.panelExpand);
+                                                  ^
+  symbol:   variable panelExpand
+  location: class id
+/home/runner/work/Nova-Agent-V3/Nova-Agent-V3/app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java:86: error: cannot find symbol
+        tvStatus = bubbleView.findViewById(R.id.tvStatus);
+                                               ^
+  symbol:   variable tvStatus
+  location: class id
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+2 errors
 
 > Task :app:compileDebugJavaWithJavac FAILED
 
@@ -427,5 +266,5 @@ Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Com
 	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
 
 
-BUILD FAILED in 1m 27s
-26 actionable tasks: 26 executed
+BUILD FAILED in 1m 53s
+21 actionable tasks: 21 executed
