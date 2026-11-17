@@ -1,9 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/bubbleRoot"
+
+```
+<FrameLayout
+    android:id="@+id/jellyContainer"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:layout_height="wrap_content">
+
     <ImageView
         android:id="@+id/jellyBg"
         android:layout_width="65dp"
@@ -11,6 +12,7 @@
         android:layout_gravity="center"
         android:background="@drawable/bg_jelly_bubble"
         android:elevation="8dp" />
+
     <ImageView
         android:id="@+id/jellyFace"
         android:layout_width="65dp"
@@ -19,3 +21,778 @@
         android:src="@drawable/ic_jelly_face"
         android:elevation="9dp" />
 </FrameLayout>
+
+<LinearLayout
+    android:id="@+id/panelExpand"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="8dp"
+    android:background="@drawable/bg_bubble_cyber"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="6dp"
+    android:visibility="gone"
+    android:elevation="8dp">
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxWidth="180dp"
+        android:text="MENDENGARKAN..."
+        android:textColor="#00E5FF"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+</LinearLayout>
+
+```
+
+echo "ðŸ“± 2. Merapikan activity_main.xml, dialog_status.xml, dan dialog_about.xml (Bebas Karakter Rusak)..."
+cat << 'EOF' > app/src/main/res/layout/activity_main.xml
+
+```
+<ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_above="@+id/bottomNavContainer"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- HEADER UTAMA -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp">
+            
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_centerVertical="true">
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="bottom">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Nova Agent "
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="v6.0"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="#00E5FF"
+                        android:layout_marginBottom="2dp"/>
+                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Smart &#8226; Fast &#8226; Powerful"
+                    android:textSize="12sp"
+                    android:textColor="#88FFFFFF"
+                    android:layout_marginTop="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:orientation="horizontal">
+                
+                <ImageView
+                    android:id="@+id/btnThemeToggle"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@android:drawable/ic_menu_view"
+                    android:tint="#8B95A5"
+                    android:background="@drawable/bg_ultra_input"
+                    android:padding="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:clickable="true"
+                    android:focusable="true"/>
+
+                <ImageView
+                    android:id="@+id/btnSettings"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@android:drawable/ic_menu_manage"
+                    android:tint="#8B95A5"
+                    android:background="@drawable/bg_ultra_input"
+                    android:padding="12dp"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+        </RelativeLayout>
+
+        <!-- KARTU 1: PROVIDER AI -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ultra_card"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Provider AI" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih penyedia layanan AI" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="14dp"/>
+            
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                <Spinner
+                    android:id="@+id/spinnerProvider"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:background="@drawable/bg_ultra_input"
+                    android:popupBackground="#111827"
+                    android:paddingStart="16dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#10004; Aktif"
+                    android:background="@drawable/bg_badge_green"
+                    android:textColor="#00E676"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="6dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginEnd="16dp"/>
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- KARTU 2: API KEY OMNI-ROTATOR -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ultra_card"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="API Key Omni-Rotator" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Masukkan kunci API Anda" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_marginBottom="14dp"/>
+            
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="@drawable/bg_ultra_input"
+                android:paddingHorizontal="16dp"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_vertical">
+                
+                <EditText
+                    android:id="@+id/apiKeyInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:hint="gsk_... (Pisahkan koma jika >1)"
+                    android:textColorHint="#555555"
+                    android:textColor="#FFFFFF"
+                    android:background="@null"
+                    android:inputType="textVisiblePassword"
+                    android:textSize="14sp"
+                    android:layout_toStartOf="@+id/btnPasteKey"/>
+
+                <ImageView
+                    android:id="@+id/btnPasteKey"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:tint="#00E5FF"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </RelativeLayout>
+
+            <Button
+                android:id="@+id/btnSaveKey"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="Simpan Konfigurasi"
+                android:textAllCaps="false"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_btn_gradient"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="15sp"/>
+        </LinearLayout>
+
+        <!-- KARTU 3: MODEL AI OTOMATIS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ultra_card"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:layout_marginBottom="16dp">
+            
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="14dp">
+                <TextView android:id="@+id/tvModelHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model AI Otomatis" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode terbaik dipilih secara otomatis" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvModelHeader"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#9889; Teringan"
+                    android:background="@drawable/bg_badge_green_solid"
+                    android:textColor="#080B14"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="4dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="@drawable/bg_ultra_input"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical">
+                
+                <TextView
+                    android:id="@+id/tvAutoModel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="llama-3.3-70b-versatile"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_toStartOf="@+id/ivArrowModel"/>
+
+                <ImageView
+                    android:id="@+id/ivArrowModel"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@android:drawable/ic_media_play"
+                    android:tint="#88FFFFFF"
+                    android:rotation="90"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- KARTU 4: STATUS PERIZINAN -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ultra_card"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:layout_marginBottom="24dp">
+            
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+                <TextView android:id="@+id/tvPermHeader" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status Perizinan Wajib" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aplikasi siap digunakan" android:textColor="#88FFFFFF" android:textSize="12sp" android:layout_below="@id/tvPermHeader"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="&#10004; Terverifikasi"
+                    android:background="@drawable/bg_badge_green"
+                    android:textColor="#00E676"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="4dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnAccessibility"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_ultra_input"
+                android:layout_marginBottom="12dp"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aksesibilitas Otonom" android:textColor="#FFF" android:textSize="13sp"/>
+                <TextView android:id="@+id/tvStatusA11y" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Terverifikasi" android:background="@drawable/bg_badge_green" android:textColor="#00E676" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_ultra_input"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Izin Jendela Mengambang" android:textColor="#FFF" android:textSize="13sp"/>
+                <TextView android:id="@+id/tvStatusOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Terverifikasi" android:background="@drawable/bg_badge_green" android:textColor="#00E676" android:textSize="10sp" android:textStyle="bold" android:paddingHorizontal="10dp" android:paddingVertical="4dp" android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
+        </LinearLayout>
+
+        <!-- TOMBOL UTAMA -->
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="65dp"
+            android:backgroundTint="@null"
+            android:background="@drawable/bg_btn_gradient"
+            android:text="&#9654;  Mulai Nova"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp"
+            android:elevation="6dp"/>
+
+        <!-- DEVELOPER CREDIT -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="30dp">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@android:drawable/star_on"
+                android:tint="#FFD700"
+                android:layout_marginBottom="4dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Developed by"
+                android:textSize="10sp"
+                android:textColor="#88FFFFFF"/>
+            <TextView
+                android:id="@+id/tvDeveloperCredit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MOCH KHOIRUL AZMAN"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#00E5FF"
+                android:letterSpacing="0.1"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
+
+<!-- BOTTOM NAVIGATION (GLOBAL) -->
+<LinearLayout
+    android:id="@+id/bottomNavContainer"
+    android:layout_width="match_parent"
+    android:layout_height="70dp"
+    android:layout_alignParentBottom="true"
+    android:background="#050810"
+    android:orientation="horizontal"
+    android:weightSum="3"
+    android:elevation="24dp">
+    
+    <LinearLayout
+        android:id="@+id/navBeranda"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true">
+        <View android:id="@+id/lineBeranda" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:layout_marginBottom="6dp"/>
+        <ImageView android:id="@+id/icBeranda" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_today" android:tint="#00E5FF"/>
+        <TextView android:id="@+id/tvBeranda" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beranda" android:textColor="#00E5FF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="2dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/navStatus"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true">
+        <View android:id="@+id/lineStatus" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:visibility="invisible" android:layout_marginBottom="6dp"/>
+        <ImageView android:id="@+id/icStatus" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_sort_by_size" android:tint="#8B95A5"/>
+        <TextView android:id="@+id/tvStatusNav" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/navTentang"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true">
+        <View android:id="@+id/lineTentang" android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:visibility="invisible" android:layout_marginBottom="6dp"/>
+        <ImageView android:id="@+id/icTentang" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_preferences" android:tint="#8B95A5"/>
+        <TextView android:id="@+id/tvTentangNav" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pengaturan" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+    </LinearLayout>
+</LinearLayout>
+
+```
+
+cat << 'EOF' > app/src/main/res/layout/dialog_status.xml
+
+```
+<TextView
+    android:id="@+id/tvStatHead"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Status Sistem"
+    android:textColor="#FFFFFF"
+    android:textSize="24sp"
+    android:textStyle="bold"
+    android:layout_marginTop="10dp"
+    android:layout_marginBottom="24dp"/>
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_ultra_card"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:layout_below="@id/tvStatHead">
+    
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kesehatan Modul Otonom" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="16dp"/>
+    
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Mesin Neural (LLM Streaming) : Aktif &amp; Siaga" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Omni-Rotator Multi-Key : Stabil" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Modul Visi (OCR) : Hemat Daya" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="&#10004; Audio Full-Duplex : Siap Interupsi" android:textColor="#FFF"/>
+</LinearLayout>
+
+```
+
+echo "ðŸ”® 3. Memperbarui FloatingBubbleView.java (Sinkronisasi Penuh Bentuk, Warna, Ukuran, Transparansi & Live Status)..."
+cat << 'EOF' > app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java
+package com.novaagent.app.ui.bubble;
+
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
+import android.os.Build;
+import android.util.DisplayMetrics;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.BounceInterpolator;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import com.novaagent.app.R;
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.di.ServiceLocator;
+import com.novaagent.app.core.engine.AutonomousLoopEngine;
+import com.novaagent.app.services.foreground.NovaForegroundService;
+
+public class FloatingBubbleView implements EventBus.EventListener {
+private final Context context;
+private final WindowManager windowManager;
+private View bubbleView;
+private ImageView jellyBg;
+private ImageView jellyFace;
+private LinearLayout panelExpand;
+private TextView tvStatus;
+
+```
+private View closeTargetView;
+private WindowManager.LayoutParams closeParams;
+
+private boolean isAdded = false;
+private boolean isListeningMode = true; 
+private AnimatorSet pulseAnimator;
+private String customColor = "cyan";
+private String customShape = "circle";
+private String customAnim = "breathe";
+private int sizePct = 75;
+private int alphaPct = 85;
+
+public FloatingBubbleView(Context context) {
+    this.context = context;
+    this.windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+    EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
+    initView();
+    initCloseTarget();
+}
+
+private void playUISound(int soundEffectType) {
+    AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+    if (am != null) am.playSoundEffect(soundEffectType, 1.0f);
+}
+
+private void initCloseTarget() {
+    closeTargetView = LayoutInflater.from(context).inflate(R.layout.layout_close_target, null);
+    int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+    closeParams = new WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+        layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+    closeParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+    closeParams.y = 150;
+}
+
+private void initView() {
+    bubbleView = LayoutInflater.from(context).inflate(R.layout.layout_floating_bubble, null);
+    jellyBg = bubbleView.findViewById(R.id.jellyBg);
+    jellyFace = bubbleView.findViewById(R.id.jellyFace);
+    panelExpand = bubbleView.findViewById(R.id.panelExpand);
+    tvStatus = bubbleView.findViewById(R.id.tvStatus);
+
+    reloadAndApplySettings();
+
+    bubbleView.setOnClickListener(v -> {
+        playUISound(AudioManager.FX_KEY_CLICK);
+        isListeningMode = !isListeningMode;
+        if (isListeningMode) {
+            float alpha = Math.max(0.2f, alphaPct / 100.0f);
+            jellyBg.setAlpha(alpha);
+            jellyFace.setAlpha(alpha);
+            if (pulseAnimator != null && !"static".equals(customAnim)) pulseAnimator.resume();
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            setStatus("MENDENGARKAN...");
+        } else {
+            jellyBg.setAlpha(0.3f);
+            jellyFace.setAlpha(0.3f);
+            if (pulseAnimator != null) pulseAnimator.pause();
+            setStatus("NOVA TIDUR");
+            try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception e) {}
+        }
+    });
+
+    bubbleView.setOnTouchListener(new View.OnTouchListener() {
+        private int initialX, initialY;
+        private float initialTouchX, initialTouchY;
+        private WindowManager.LayoutParams params;
+        private boolean isDragging = false;
+        
+        @Override public boolean onTouch(View v, MotionEvent event) {
+            if (params == null) params = (WindowManager.LayoutParams) bubbleView.getLayoutParams();
+            DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+            
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    isDragging = false;
+                    initialX = params.x; initialY = params.y;
+                    initialTouchX = event.getRawX(); initialTouchY = event.getRawY();
+                    if (closeTargetView.getParent() == null) windowManager.addView(closeTargetView, closeParams);
+                    return false; 
+                    
+                case MotionEvent.ACTION_MOVE:
+                    int diffX = (int) (event.getRawX() - initialTouchX);
+                    int diffY = (int) (event.getRawY() - initialTouchY);
+                    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) isDragging = true;
+                    params.x = initialX + diffX;
+                    params.y = initialY + diffY;
+                    windowManager.updateViewLayout(bubbleView, params);
+                    
+                    if (params.y > metrics.heightPixels - 500) {
+                        closeTargetView.setScaleX(1.3f); closeTargetView.setScaleY(1.3f);
+                        closeTargetView.setAlpha(1.0f);
+                    } else {
+                        closeTargetView.setScaleX(1.0f); closeTargetView.setScaleY(1.0f);
+                        closeTargetView.setAlpha(0.7f);
+                    }
+                    return true;
+                    
+                case MotionEvent.ACTION_UP:
+                    if (closeTargetView.getParent() != null) windowManager.removeView(closeTargetView);
+                    if (params.y > metrics.heightPixels - 500) {
+                        playUISound(AudioManager.FX_KEYPRESS_DELETE);
+                        isListeningMode = false;
+                        context.stopService(new Intent(context, NovaForegroundService.class));
+                    }
+                    return isDragging;
+            }
+            return false;
+        }
+    });
+}
+
+public void reloadAndApplySettings() {
+    SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+    this.customColor = prefs.getString("custom_color", "cyan");
+    this.customShape = prefs.getString("custom_shape", "circle");
+    boolean powerSave = prefs.getBoolean("power_save", false);
+    boolean masterAnim = prefs.getBoolean("bubble_master", true);
+    this.customAnim = (powerSave || !masterAnim) ? "static" : prefs.getString("custom_anim", "breathe");
+    this.sizePct = prefs.getInt("bubble_size_pct", 75);
+    this.alphaPct = prefs.getInt("bubble_alpha_pct", 85);
+
+    int baseColor = Color.parseColor("#00E5FF");
+    if ("red".equals(customColor)) baseColor = Color.parseColor("#FF4D8D");
+    else if ("green".equals(customColor)) baseColor = Color.parseColor("#52B788");
+    else if ("purple".equals(customColor)) baseColor = Color.parseColor("#9D4EDD");
+    else if ("orange".equals(customColor)) baseColor = Color.parseColor("#FFAA00");
+
+    // Terapkan Bentuk (Shape) & Warna
+    if ("star".equals(customShape)) {
+        jellyBg.setBackgroundResource(R.drawable.ic_shape_star);
+        jellyBg.getBackground().setTint(baseColor);
+    } else if ("heart".equals(customShape)) {
+        jellyBg.setBackgroundResource(R.drawable.ic_shape_heart);
+        jellyBg.getBackground().setTint(baseColor);
+    } else if ("square".equals(customShape)) {
+        GradientDrawable sq = new GradientDrawable();
+        sq.setShape(GradientDrawable.RECTANGLE);
+        sq.setCornerRadius(28f);
+        sq.setColor(baseColor);
+        sq.setStroke(4, Color.WHITE);
+        jellyBg.setBackground(sq);
+    } else {
+        GradientDrawable oval = new GradientDrawable();
+        oval.setShape(GradientDrawable.OVAL);
+        oval.setColor(baseColor);
+        oval.setStroke(4, Color.WHITE);
+        jellyBg.setBackground(oval);
+    }
+
+    // Terapkan Ukuran (Size)
+    float density = context.getResources().getDisplayMetrics().density;
+    int pixelSize = Math.round((45 + (sizePct * 0.4f)) * density);
+    ViewGroup.LayoutParams bgParams = jellyBg.getLayoutParams();
+    ViewGroup.LayoutParams faceParams = jellyFace.getLayoutParams();
+    if (bgParams != null && faceParams != null) {
+        bgParams.width = pixelSize;
+        bgParams.height = pixelSize;
+        faceParams.width = pixelSize;
+        faceParams.height = pixelSize;
+        jellyBg.setLayoutParams(bgParams);
+        jellyFace.setLayoutParams(faceParams);
+    }
+
+    // Terapkan Transparansi (Alpha)
+    float alpha = Math.max(0.2f, alphaPct / 100.0f);
+    jellyBg.setAlpha(alpha);
+    jellyFace.setAlpha(alpha);
+
+    // Terapkan Animasi
+    if (pulseAnimator != null) {
+        pulseAnimator.cancel();
+        pulseAnimator = null;
+    }
+    if (!"static".equals(customAnim)) {
+        startJellyPulseAnimation();
+    }
+}
+
+private void startJellyPulseAnimation() {
+    ObjectAnimator scaleX = ObjectAnimator.ofFloat(jellyBg, "scaleX", 1f, 1.14f, 1f);
+    ObjectAnimator scaleY = ObjectAnimator.ofFloat(jellyBg, "scaleY", 1f, 1.06f, 1f);
+    ObjectAnimator scaleFaceX = ObjectAnimator.ofFloat(jellyFace, "scaleX", 1f, 1.14f, 1f);
+    ObjectAnimator scaleFaceY = ObjectAnimator.ofFloat(jellyFace, "scaleY", 1f, 1.06f, 1f);
+
+    long duration = 1200;
+    if ("heartbeat".equals(customAnim)) {
+        duration = 450;
+        scaleX.setInterpolator(new BounceInterpolator());
+    } else if ("glitch".equals(customAnim)) {
+        duration = 250;
+        scaleX.setFloatValues(1f, 1.25f, 0.85f, 1.1f, 1f);
+    }
+
+    scaleX.setRepeatCount(ValueAnimator.INFINITE); scaleY.setRepeatCount(ValueAnimator.INFINITE);
+    scaleFaceX.setRepeatCount(ValueAnimator.INFINITE); scaleFaceY.setRepeatCount(ValueAnimator.INFINITE);
+    scaleX.setDuration(duration); scaleY.setDuration(duration);
+    scaleFaceX.setDuration(duration); scaleFaceY.setDuration(duration);
+
+    pulseAnimator = new AnimatorSet();
+    pulseAnimator.playTogether(scaleX, scaleY, scaleFaceX, scaleFaceY);
+    pulseAnimator.start();
+}
+
+private void setStatus(String text) {
+    if (tvStatus != null && panelExpand != null) {
+        tvStatus.post(() -> {
+            panelExpand.setVisibility(View.VISIBLE);
+            tvStatus.setText(text);
+            if (!text.startsWith("ðŸ—£ï¸")) {
+                tvStatus.postDelayed(() -> {
+                    if (tvStatus.getText().toString().equals(text)) panelExpand.setVisibility(View.GONE);
+                }, 3500);
+            }
+        });
+    }
+}
+
+public void show() {
+    if (isAdded) return;
+    int layoutFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
+    WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, layoutFlag, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+    params.gravity = Gravity.TOP | Gravity.START; params.x = 20; params.y = 200;
+    try { windowManager.addView(bubbleView, params); isAdded = true; } catch (Exception e) {}
+}
+
+public void remove() {
+    isListeningMode = false;
+    if (isAdded && bubbleView != null) { try { windowManager.removeView(bubbleView); } catch (Exception e) {} isAdded = false; }
+    EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
+}
+
+@Override
+public void onEvent(AgentEvent event) {
+    if (event.type == AgentEvent.EventType.STATE_CHANGED) {
+        String state = String.valueOf(event.payload);
+        
+        if ("SETTINGS_UPDATED".equals(state)) {
+            bubbleView.post(this::reloadAndApplySettings);
+        }
+        else if (state.startsWith("RMS:")) {
+            if (!isListeningMode || "static".equals(customAnim)) return;
+            try {
+                float rms = Float.parseFloat(state.substring(4));
+                float targetScale = 1.0f + (Math.max(0, rms) / 15.0f);
+                if (targetScale > 1.55f) targetScale = 1.55f;
+                
+                final float finalScale = targetScale;
+                bubbleView.post(() -> {
+                    jellyBg.animate().scaleX(finalScale).scaleY(finalScale)
+                           .setDuration(90).setInterpolator(new AccelerateDecelerateInterpolator()).start();
+                    jellyFace.animate().scaleX(finalScale).scaleY(finalScale)
+                           .setDuration(90).start();
+                });
+            } catch (Exception e){}
+        } 
+        else if (state.startsWith("PARTIAL:")) {
+            String partial = state.substring(8);
+            setStatus("ðŸ—£ï¸ " + partial + "...");
+        }
+        else if ("NOVA_SPEAKING_START".equals(state)) {
+            jellyFace.post(() -> jellyFace.animate().rotationBy(360f).setDuration(900).start());
+        }
+        else if ("LISTENING_READY".equals(state)) {
+            if (panelExpand != null) panelExpand.post(() -> panelExpand.setVisibility(View.GONE));
+        }
+        else if ("INTERRUPT_TRIGGERED".equals(state)) {
+            setStatus("ðŸ›‘ DISela...");
+            jellyBg.post(() -> jellyBg.animate().scaleX(1.35f).scaleY(1.35f).setDuration(150).start());
+        }
+    }
+}
+
+```
+
+}
