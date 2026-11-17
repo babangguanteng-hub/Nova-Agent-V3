@@ -1499,7 +1499,6 @@ import android.widget.Toast;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-import com.novaagent.app.core.di.ServiceLocator;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -1517,6 +1516,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
     private boolean isStreamFirstChunk = true;
+    private boolean isMicMutedBySystem = false;
 
     public NovaAudioDirector(Context context) {
         this.context = context;
@@ -1542,10 +1542,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mouth.setLanguage(Locale.getDefault()); 
             }
             
-            // TERAPKAN KUSTOMISASI SUARA (PITCH & SPEED)
             SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-            float pitch = prefs.getFloat("voice_pitch", 1.2f); // Default Elegan
-            float speed = prefs.getFloat("voice_speed", 1.0f);
+            float pitch = prefs.getFloat("voice_pitch", 1.2f);
+            float speed = prefs.getFloat("voice_speed", 1.05f); // Sedikit dipercepat agar natural
             mouth.setPitch(pitch);
             mouth.setSpeechRate(speed);
             isMouthReady = true;
@@ -1554,15 +1553,11 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 @Override public void onStart(String utteranceId) { isCurrentlySpeaking = true; }
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    mainHandler.postDelayed(() -> resumeListening(), 200); 
                 }
                 @Override public void onError(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    mainHandler.post(() -> resumeListening());
                 }
             });
-        } else {
-            mainHandler.post(() -> Toast.makeText(context, "⚠️ Mesin TTS Android gagal dimuat!", Toast.LENGTH_SHORT).show());
         }
     }
 
@@ -1570,15 +1565,15 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         if (!SpeechRecognizer.isRecognitionAvailable(context)) return;
         try {
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION); // AGC ON
         } catch (Exception e) {}
 
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); 
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+        // Sensitivitas cepat
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L); 
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
@@ -1590,22 +1585,23 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onBufferReceived(byte[] buffer) {}
             @Override public void onEndOfSpeech() { 
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); 
-                isStreamFirstChunk = true; // Reset stream state
+                isStreamFirstChunk = true; // Reset aliran
             }
             @Override public void onError(int error) {
-                if (isListeningAbadi && !isCurrentlySpeaking) {
+                if (isListeningAbadi && !isMicMutedBySystem) {
                     mainHandler.postDelayed(() -> {
-                        if (isListeningAbadi && !isCurrentlySpeaking) {
+                        if (isListeningAbadi && !isMicMutedBySystem) {
                             try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 400); 
+                    }, 300); 
                 }
             }
             @Override public void onPartialResults(Bundle partialResults) {
                 ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String partialText = matches.get(0);
-                    // 🛑 FASE 6: FULL-DUPLEX INTERRUPTION
+                    
+                    // 🛑 FULL-DUPLEX: Jika Nova sedang bicara dan Anda memotongnya (minimal 3 huruf)
                     if (isCurrentlySpeaking && partialText.length() > 3) {
                         mouth.stop();
                         isCurrentlySpeaking = false;
@@ -1624,7 +1620,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                         com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).startTask(command);
                     } catch (Exception e) {}
                 } else {
-                    resumeListening();
+                    if (isListeningAbadi && !isMicMutedBySystem) resumeListening();
                 }
             }
             @Override public void onEvent(int eventType, Bundle params) {}
@@ -1635,7 +1631,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null && !isCurrentlySpeaking) {
+            if (ear != null && !isMicMutedBySystem) {
                 try { ear.cancel(); ear.startListening(earIntent); } catch (Exception e) {}
             }
         });
@@ -1649,24 +1645,18 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     @Override
     public void onEvent(AgentEvent event) {
-        if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
-            String textToSpeak = String.valueOf(event.payload);
-            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
-                mainHandler.post(() -> {
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
-                });
-            }
-        } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
+        if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
             String textChunk = String.valueOf(event.payload);
             if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
                 mainHandler.post(() -> {
                     if (isStreamFirstChunk) {
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "nova_chunk_" + System.currentTimeMillis());
+                        // QUEUE_FLUSH untuk kata pertama (memotong omongan lama jika ada)
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
                         isStreamFirstChunk = false;
                     } else {
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "nova_chunk_" + System.currentTimeMillis());
+                        // QUEUE_ADD untuk menyambung kalimat secara mulus
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
                     }
                 });
             }
@@ -1678,10 +1668,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
-        try {
-            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) am.setMode(AudioManager.MODE_NORMAL);
-        } catch (Exception e) {}
         mainHandler.post(() -> {
             if (ear != null) { ear.destroy(); ear = null; }
             if (mouth != null) { mouth.stop(); mouth.shutdown(); mouth = null; }
@@ -2215,7 +2201,6 @@ FILE: ./app/src/main/java/com/novaagent/app/ui/config/MainActivity.java
 ==================================================
 
 package com.novaagent.app.ui.config;
-
 import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -2225,6 +2210,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.media.projection.MediaProjectionManager;
@@ -2240,262 +2227,330 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.novaagent.app.R;
 import com.novaagent.app.services.foreground.NovaForegroundService;
-
 import java.util.ArrayList;
 import java.util.List;
-
 public class MainActivity extends AppCompatActivity {
-    private static final int REQUEST_MEDIA_PROJECTION = 1001;
-    private static final int REQUEST_PERMISSIONS = 101;
-    private SharedPreferences prefs;
-    private ToneGenerator toneGen;
-    
-    private final String[] providers = {
-        "Groq", "Google AI Studio", "Cerebral", "Mistral AI", 
-        "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
-    };
-
-    private final String[] models = {
-        "openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
-        "north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
-    };
-
-    private Dialog currentDialog = null;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
-        
-        requestBasicPermissions();
-
-        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
-        TextView tvAutoModel = findViewById(R.id.tvAutoModel);
-        
-        if (apiKeyInput != null) {
-            apiKeyInput.setText(prefs.getString("api_key", ""));
-        }
-
-        View btnPaste = findViewById(R.id.btnPasteKey);
-        if (btnPaste != null && apiKeyInput != null) {
-            btnPaste.setOnClickListener(v -> {
-                playClickSound();
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                if (clipboard != null && clipboard.hasPrimaryClip()) {
-                    ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
-                    if (item.getText() != null) {
-                        apiKeyInput.setText(item.getText().toString());
-                        Toast.makeText(this, "ðŸ“‹ API Key ditempel!", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
-        if (spinnerProvider != null) {
-            spinnerProvider.setAdapter(adapter);
-            String savedProvider = prefs.getString("ai_provider", "Groq");
-            for (int i = 0; i < providers.length; i++) {
-                if (providers[i].equals(savedProvider)) {
-                    spinnerProvider.setSelection(i);
-                    break;
-                }
-            }
-
-            spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if (view instanceof TextView) ((TextView) view).setTextColor(0xFFFFFFFF);
-                    if (tvAutoModel != null) tvAutoModel.setText(models[position]);
-                    prefs.edit().putString("ai_provider", providers[position]).putString("ai_model", models[position]).apply();
-                }
-                @Override public void onNothingSelected(AdapterView<?> parent) {}
-            });
-        }
-
-        View btnSaveKey = findViewById(R.id.btnSaveKey);
-        if (btnSaveKey != null && apiKeyInput != null) {
-            btnSaveKey.setOnClickListener(v -> {
-                playClickSound();
-                String key = apiKeyInput.getText().toString().trim();
-                if (key.isEmpty()) {
-                    Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                prefs.edit().putString("api_key", key).apply();
-                Toast.makeText(this, "ðŸ’¾ Konfigurasi Tersimpan & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
-            });
-        }
-
-        View btnSettings = findViewById(R.id.btnSettings);
-        if (btnSettings != null) btnSettings.setOnClickListener(v -> { playClickSound(); switchTab("settings"); });
-
-        View btnTheme = findViewById(R.id.btnThemeToggle);
-        if (btnTheme != null) btnTheme.setOnClickListener(v -> { playClickSound(); Toast.makeText(this, "ðŸŒ™ Mode Dark UI Aktif", Toast.LENGTH_SHORT).show(); });
-
-        View btnA11y = findViewById(R.id.btnAccessibility);
-        if (btnA11y != null) btnA11y.setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
-
-        View btnOvr = findViewById(R.id.btnOverlay);
-        if (btnOvr != null) btnOvr.setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
-
-        View btnStart = findViewById(R.id.btnStart);
-        if (btnStart != null) btnStart.setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
-
-        // Navigasi Bawah
-        setupBottomNav();
-    }
-
-    private void setupBottomNav() {
-        View navBeranda = findViewById(R.id.navBeranda);
-        View navStatus = findViewById(R.id.navStatus);
-        View navTentang = findViewById(R.id.navTentang);
-
-        if (navBeranda != null) navBeranda.setOnClickListener(v -> { playClickSound(); switchTab("beranda"); });
-        if (navStatus != null) navStatus.setOnClickListener(v -> { playClickSound(); switchTab("status"); });
-        if (navTentang != null) navTentang.setOnClickListener(v -> { playClickSound(); switchTab("tentang"); });
-    }
-
-    private void switchTab(String tab) {
-        if (currentDialog != null && currentDialog.isShowing()) {
-            currentDialog.dismiss();
-        }
-        
-        updateBottomNavUI(tab);
-
-        if (tab.equals("beranda")) {
-            // Beranda adalah activity utama, jadi tutup dialog saja
-            return; 
-        }
-
-        currentDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-        currentDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        
-        int layoutId = R.layout.dialog_settings; // Default
-        if (tab.equals("status")) layoutId = R.layout.dialog_status;
-        else if (tab.equals("tentang")) layoutId = R.layout.dialog_about;
-        
-        View view = LayoutInflater.from(this).inflate(layoutId, null);
-        currentDialog.setContentView(view);
-        if (currentDialog.getWindow() != null) {
-            currentDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            currentDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
-        }
-
-        // Jika tab Pengaturan, setup tombol simpan dll
-        if (tab.equals("settings")) {
-            View btnSave = view.findViewById(R.id.btnSaveSettings);
-            if (btnSave != null) btnSave.setOnClickListener(v -> {
-                playClickSound();
-                Toast.makeText(this, "âœ¨ Pengaturan Disimpan!", Toast.LENGTH_SHORT).show();
-                switchTab("beranda");
-            });
-            View btnBack = view.findViewById(R.id.btnBackSettings);
-            if (btnBack != null) btnBack.setOnClickListener(v -> { playClickSound(); switchTab("beranda"); });
-        }
-
-        // Deteksi penutupan sistem (back button)
-        currentDialog.setOnDismissListener(dialog -> updateBottomNavUI("beranda"));
-        
-        currentDialog.show();
-    }
-
-    private void updateBottomNavUI(String activeTab) {
-        int colorActive = 0xFF00E5FF;
-        int colorInactive = 0xFF8B95A5;
-        
-        View lineBeranda = findViewById(R.id.lineBeranda);
-        ImageView icBeranda = findViewById(R.id.icBeranda);
-        TextView tvBeranda = findViewById(R.id.tvBeranda);
-        
-        View lineStatus = findViewById(R.id.lineStatus);
-        ImageView icStatus = findViewById(R.id.icStatus);
-        TextView tvStatusNav = findViewById(R.id.tvStatusNav);
-        
-        View lineTentang = findViewById(R.id.lineTentang);
-        ImageView icTentang = findViewById(R.id.icTentang);
-        TextView tvTentangNav = findViewById(R.id.tvTentangNav);
-
-        if (lineBeranda != null) {
-            lineBeranda.setVisibility(activeTab.equals("beranda") || activeTab.equals("settings") ? View.VISIBLE : View.INVISIBLE);
-            icBeranda.setColorFilter(activeTab.equals("beranda") || activeTab.equals("settings") ? colorActive : colorInactive);
-            tvBeranda.setTextColor(activeTab.equals("beranda") || activeTab.equals("settings") ? colorActive : colorInactive);
-            
-            lineStatus.setVisibility(activeTab.equals("status") ? View.VISIBLE : View.INVISIBLE);
-            icStatus.setColorFilter(activeTab.equals("status") ? colorActive : colorInactive);
-            tvStatusNav.setTextColor(activeTab.equals("status") ? colorActive : colorInactive);
-            
-            lineTentang.setVisibility(activeTab.equals("tentang") ? View.VISIBLE : View.INVISIBLE);
-            icTentang.setColorFilter(activeTab.equals("tentang") ? colorActive : colorInactive);
-            tvTentangNav.setTextColor(activeTab.equals("tentang") ? colorActive : colorInactive);
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        TextView tvA11y = findViewById(R.id.tvStatusA11y);
-        TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
-        boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
-        if (tvOverlay != null) { 
-            tvOverlay.setText(overlayOn ? "âœ” Terverifikasi" : "Aktifkan"); 
-            tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_green : R.drawable.bg_ultra_input); 
-        }
-        if (tvA11y != null) { 
-            tvA11y.setText("âœ” Terverifikasi"); 
-            tvA11y.setBackgroundResource(R.drawable.bg_badge_green); 
-        }
-        updateBottomNavUI("beranda");
-    }
-
-    private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
-
-    private void requestBasicPermissions() {
-        List<String> permissionsNeeded = new ArrayList<>();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
-        if (!permissionsNeeded.isEmpty()) {
-            new AlertDialog.Builder(this).setTitle("ðŸŽ™ï¸ Izin Wajib").setMessage("Nova AI membutuhkan izin Mikrofon dan Notifikasi.").setPositiveButton("Beri Izin", (dialog, which) -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
-            }).setCancelable(false).show();
-        }
-    }
-
-    private void checkPermissionsAndStart() {
-        EditText apiKeyInput = findViewById(R.id.apiKeyInput);
-        if (apiKeyInput != null) {
-            String key = apiKeyInput.getText().toString().trim();
-            if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
-        }
-        if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
-        if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Jendela Mengambang!", Toast.LENGTH_LONG).show(); return; }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Izinkan mikrofon terlebih dahulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
-        MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
-        if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_MEDIA_PROJECTION && resultCode == RESULT_OK && data != null) {
-            Intent intent = new Intent(this, NovaForegroundService.class);
-            intent.putExtra("code", resultCode); intent.putExtra("data", data);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent);
-            finish();
-        }
-    }
+private static final int REQUEST_MEDIA_PROJECTION = 1001;
+private static final int REQUEST_PERMISSIONS = 101;
+private SharedPreferences prefs;
+private ToneGenerator toneGen;
+private Dialog currentDialog = null;
+private final String[] providers = {
+"Groq", "Google AI Studio", "Cerebral", "Mistral AI",
+"Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
+};
+private final String[] models = {
+"openai/gpt-oss-20b", "gemini-3.5-flash", "GPT-OSS / Qwen 3.8 27B", "ministral-3b-latest",
+"north-mini-code-1.0", "@cf/google/gemma-4-26b-a4b-it", "nemotron-3.5-bolt-e4b", "nvidia/nemotron-3.5-lightning-30b-a3b:free"
+};
+// State Pengaturan
+private String selectedVoice = "nova";
+private String selectedColor = "cyan";
+private String selectedShape = "circle";
+private String selectedAnim = "breathe";
+private int selectedSizePct = 75;
+private int selectedAlphaPct = 85;
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+super.onCreate(savedInstanceState);
+setContentView(R.layout.activity_main);
+prefs = getSharedPreferences("nova_config", Context.MODE_PRIVATE);
+toneGen = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+requestBasicPermissions();
+EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+Spinner spinnerProvider = findViewById(R.id.spinnerProvider);
+TextView tvAutoModel = findViewById(R.id.tvAutoModel);
+if (apiKeyInput != null) {
+apiKeyInput.setText(prefs.getString("api_key", ""));
+}
+View btnPaste = findViewById(R.id.btnPasteKey);
+if (btnPaste != null && apiKeyInput != null) {
+btnPaste.setOnClickListener(v -> {
+playClickSound();
+ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+if (clipboard != null && clipboard.hasPrimaryClip()) {
+ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+if (item.getText() != null) {
+apiKeyInput.setText(item.getText().toString());
+Toast.makeText(this, "📋 API Key ditempel!", Toast.LENGTH_SHORT).show();
+}
+}
+});
+}
+ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, providers);
+if (spinnerProvider != null) {
+spinnerProvider.setAdapter(adapter);
+String savedProvider = prefs.getString("ai_provider", "Groq");
+for (int i = 0; i < providers.length; i++) {
+if (providers[i].equals(savedProvider)) {
+spinnerProvider.setSelection(i);
+break;
+}
+}
+spinnerProvider.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+@Override
+public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+if (view instanceof TextView) ((TextView) view).setTextColor(0xFFFFFFFF);
+if (tvAutoModel != null) tvAutoModel.setText(models[position]);
+prefs.edit().putString("ai_provider", providers[position]).putString("ai_model", models[position]).apply();
+}
+@Override public void onNothingSelected(AdapterView<?> parent) {}
+});
+}
+View btnSaveKey = findViewById(R.id.btnSaveKey);
+if (btnSaveKey != null && apiKeyInput != null) {
+btnSaveKey.setOnClickListener(v -> {
+playClickSound();
+String key = apiKeyInput.getText().toString().trim();
+if (key.isEmpty()) {
+Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
+return;
+}
+prefs.edit().putString("api_key", key).apply();
+Toast.makeText(this, "💾 Konfigurasi Tersimpan & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
+});
+}
+View btnSettings = findViewById(R.id.btnSettings);
+if (btnSettings != null) btnSettings.setOnClickListener(v -> { playClickSound(); showSettingsDialog(); });
+View btnTheme = findViewById(R.id.btnThemeToggle);
+if (btnTheme != null) btnTheme.setOnClickListener(v -> { playClickSound(); Toast.makeText(this, "🌙 Mode Neo Dark Aktif", Toast.LENGTH_SHORT).show(); });
+View btnA11y = findViewById(R.id.btnAccessibility);
+if (btnA11y != null) btnA11y.setOnClickListener(v -> { playClickSound(); startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); });
+View btnOvr = findViewById(R.id.btnOverlay);
+if (btnOvr != null) btnOvr.setOnClickListener(v -> { playClickSound(); if (!Settings.canDrawOverlays(this)) startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()))); });
+View btnStart = findViewById(R.id.btnStart);
+if (btnStart != null) btnStart.setOnClickListener(v -> { playClickSound(); checkPermissionsAndStart(); });
+setupBottomNav();
+}
+private void setupBottomNav() {
+View navBeranda = findViewById(R.id.navBeranda);
+if (navBeranda != null) navBeranda.setOnClickListener(v -> { playClickSound(); Toast.makeText(this, "Beranda Aktif", Toast.LENGTH_SHORT).show(); });
+View navStatus = findViewById(R.id.navStatus);
+if (navStatus != null) navStatus.setOnClickListener(v -> {
+playClickSound();
+new AlertDialog.Builder(this)
+.setTitle("📊 Status Sistem Nova")
+.setMessage("• Mesin Neural: Aktif & Siaga\n• Omni-Rotator: Siap Digunakan\n• Modul Visi: Hemat Daya\n• Watchdog: Berdetak Normal")
+.setPositiveButton("Tutup", null)
+.show();
+});
+View navTentang = findViewById(R.id.navTentang);
+if (navTentang != null) navTentang.setOnClickListener(v -> {
+playClickSound();
+new AlertDialog.Builder(this)
+.setTitle("ℹ️ Tentang Nova Agent v6.0")
+.setMessage("Nova Agent adalah asisten AI otonom tingkat dewa.\n\nDeveloped by:\nMOCH KHOIRUL AZMAN\nHak Cipta © 2026")
+.setPositiveButton("Tutup", null)
+.show();
+});
+}
+@Override
+protected void onResume() {
+super.onResume();
+TextView tvA11y = findViewById(R.id.tvStatusA11y);
+TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
+boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
+if (tvOverlay != null) {
+tvOverlay.setText(overlayOn ? "✔ Terverifikasi" : "Aktifkan");
+tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_green : R.drawable.bg_ultra_input);
+}
+if (tvA11y != null) {
+tvA11y.setText("✔ Terverifikasi");
+tvA11y.setBackgroundResource(R.drawable.bg_badge_green);
+}
+}
+// --- LOGIKA MENU PENGATURAN (100% IDENTIK) ---
+private void showSettingsDialog() {
+if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+currentDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+currentDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+View view = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
+currentDialog.setContentView(view);
+if (currentDialog.getWindow() != null) {
+currentDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+currentDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+}
+selectedVoice = prefs.getString("custom_voice", "nova");
+selectedColor = prefs.getString("custom_color", "cyan");
+selectedShape = prefs.getString("custom_shape", "circle");
+selectedAnim = prefs.getString("custom_anim", "breathe");
+selectedSizePct = prefs.getInt("bubble_size_pct", 75);
+selectedAlphaPct = prefs.getInt("bubble_alpha_pct", 85);
+view.findViewById(R.id.btnBackSettings).setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+view.findViewById(R.id.navSettingsBeranda).setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+view.findViewById(R.id.navSettingsStatus).setOnClickListener(v -> { playClickSound(); findViewById(R.id.navStatus).performClick(); });
+// 1. Suara
+LinearLayout boxDefault = view.findViewById(R.id.boxVoiceDefault);
+LinearLayout boxNatural = view.findViewById(R.id.boxVoiceNatural);
+LinearLayout boxPremium = view.findViewById(R.id.boxVoicePremium);
+LinearLayout boxExpressive = view.findViewById(R.id.boxVoiceExpressive);
+Runnable updateVoiceUI = () -> {
+boxDefault.setBackgroundResource(selectedVoice.equals("nova") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+boxNatural.setBackgroundResource(selectedVoice.equals("jarvis") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+boxPremium.setBackgroundResource(selectedVoice.equals("robot") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+boxExpressive.setBackgroundResource(selectedVoice.equals("friday") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+};
+updateVoiceUI.run();
+boxDefault.setOnClickListener(v -> { playClickSound(); selectedVoice = "nova"; updateVoiceUI.run(); });
+boxNatural.setOnClickListener(v -> { playClickSound(); selectedVoice = "jarvis"; updateVoiceUI.run(); });
+boxPremium.setOnClickListener(v -> { playClickSound(); selectedVoice = "robot"; updateVoiceUI.run(); });
+boxExpressive.setOnClickListener(v -> { playClickSound(); selectedVoice = "friday"; updateVoiceUI.run(); });
+// 2. Animasi
+Spinner spinnerAnim = view.findViewById(R.id.spinnerAnimStyle);
+String[] animNames = {"Modern Glow", "Pulse Cepat", "Cyber Glitch", "Statis Hemat"};
+String[] animKeys = {"breathe", "heartbeat", "glitch", "static"};
+ArrayAdapter<String> animAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, animNames);
+spinnerAnim.setAdapter(animAdapter);
+for (int i = 0; i < animKeys.length; i++) {
+if (animKeys[i].equals(selectedAnim)) spinnerAnim.setSelection(i);
+}
+spinnerAnim.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+@Override
+public void onItemSelected(AdapterView<?> parent, View v, int pos, long id) {
+if (v instanceof TextView) { ((TextView) v).setTextColor(0xFFFFFFFF); ((TextView) v).setTextSize(11f); }
+selectedAnim = animKeys[pos];
+}
+@Override public void onNothingSelected(AdapterView<?> parent) {}
+});
+// 3. Bentuk
+ImageView btnCircle = view.findViewById(R.id.btnShapeCircle);
+ImageView btnStar = view.findViewById(R.id.btnShapeStar);
+ImageView btnHeart = view.findViewById(R.id.btnShapeHeart);
+ImageView btnSquare = view.findViewById(R.id.btnShapeSquare);
+Runnable updateShapeUI = () -> {
+btnCircle.setBackgroundResource(selectedShape.equals("circle") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+btnStar.setBackgroundResource(selectedShape.equals("star") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+btnHeart.setBackgroundResource(selectedShape.equals("heart") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+btnSquare.setBackgroundResource(selectedShape.equals("square") ? R.drawable.bg_box_selected : R.drawable.bg_box_unselected);
+};
+updateShapeUI.run();
+btnCircle.setOnClickListener(v -> { playClickSound(); selectedShape = "circle"; updateShapeUI.run(); });
+btnStar.setOnClickListener(v -> { playClickSound(); selectedShape = "star"; updateShapeUI.run(); });
+btnHeart.setOnClickListener(v -> { playClickSound(); selectedShape = "heart"; updateShapeUI.run(); });
+btnSquare.setOnClickListener(v -> { playClickSound(); selectedShape = "square"; updateShapeUI.run(); });
+// 4. Warna
+View cCyan = view.findViewById(R.id.btnColorCyan);
+View cPurple = view.findViewById(R.id.btnColorPurple);
+View cPink = view.findViewById(R.id.btnColorPink);
+View cOrange = view.findViewById(R.id.btnColorOrange);
+View cGreen = view.findViewById(R.id.btnColorGreen);
+Runnable updateColorUI = () -> {
+cCyan.setScaleX(selectedColor.equals("cyan") ? 1.25f : 1.0f); cCyan.setScaleY(selectedColor.equals("cyan") ? 1.25f : 1.0f);
+cPurple.setScaleX(selectedColor.equals("purple") ? 1.25f : 1.0f); cPurple.setScaleY(selectedColor.equals("purple") ? 1.25f : 1.0f);
+cPink.setScaleX(selectedColor.equals("red") ? 1.25f : 1.0f); cPink.setScaleY(selectedColor.equals("red") ? 1.25f : 1.0f);
+cOrange.setScaleX(selectedColor.equals("orange") ? 1.25f : 1.0f); cOrange.setScaleY(selectedColor.equals("orange") ? 1.25f : 1.0f);
+cGreen.setScaleX(selectedColor.equals("green") ? 1.25f : 1.0f); cGreen.setScaleY(selectedColor.equals("green") ? 1.25f : 1.0f);
+};
+updateColorUI.run();
+cCyan.setOnClickListener(v -> { playClickSound(); selectedColor = "cyan"; updateColorUI.run(); });
+cPurple.setOnClickListener(v -> { playClickSound(); selectedColor = "purple"; updateColorUI.run(); });
+cPink.setOnClickListener(v -> { playClickSound(); selectedColor = "red"; updateColorUI.run(); });
+cOrange.setOnClickListener(v -> { playClickSound(); selectedColor = "orange"; updateColorUI.run(); });
+cGreen.setOnClickListener(v -> { playClickSound(); selectedColor = "green"; updateColorUI.run(); });
+// 5. Sliders
+SeekBar seekSize = view.findViewById(R.id.seekBubbleSize);
+TextView tvSize = view.findViewById(R.id.tvBubbleSizePct);
+seekSize.setProgress(selectedSizePct);
+tvSize.setText(selectedSizePct + "%");
+seekSize.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+@Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+selectedSizePct = Math.max(30, progress); tvSize.setText(selectedSizePct + "%");
+}
+@Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+});
+SeekBar seekAlpha = view.findViewById(R.id.seekBubbleAlpha);
+TextView tvAlpha = view.findViewById(R.id.tvBubbleAlphaPct);
+seekAlpha.setProgress(selectedAlphaPct);
+tvAlpha.setText(selectedAlphaPct + "%");
+seekAlpha.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+@Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+selectedAlphaPct = Math.max(20, progress); tvAlpha.setText(selectedAlphaPct + "%");
+}
+@Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+});
+// 6. Switches
+Switch cbHologram = view.findViewById(R.id.cbHologram);
+Switch switchPower = view.findViewById(R.id.switchPowerSave);
+cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
+switchPower.setChecked(prefs.getBoolean("power_save", false));
+// 7. Reset
+view.findViewById(R.id.rowResetSettings).setOnClickListener(v -> {
+playClickSound();
+selectedVoice = "nova"; selectedColor = "cyan"; selectedShape = "circle"; selectedAnim = "breathe";
+selectedSizePct = 75; selectedAlphaPct = 85;
+seekSize.setProgress(75); seekAlpha.setProgress(85);
+cbHologram.setChecked(true); switchPower.setChecked(false);
+updateVoiceUI.run(); updateShapeUI.run(); updateColorUI.run();
+Toast.makeText(this, "🔄 Dikembalikan ke pengaturan awal", Toast.LENGTH_SHORT).show();
+});
+// 8. Simpan
+view.findViewById(R.id.btnSaveSettings).setOnClickListener(v -> {
+playClickSound();
+float pitch = 1.2f; float speed = 1.0f;
+if (selectedVoice.equals("jarvis")) { pitch = 0.6f; speed = 0.95f; }
+else if (selectedVoice.equals("friday")) { pitch = 1.6f; speed = 1.15f; }
+else if (selectedVoice.equals("robot")) { pitch = 0.4f; speed = 0.85f; }
+String finalAnim = switchPower.isChecked() ? "static" : selectedAnim;
+prefs.edit()
+.putString("custom_voice", selectedVoice)
+.putFloat("voice_pitch", pitch)
+.putFloat("voice_speed", speed)
+.putString("custom_color", selectedColor)
+.putString("custom_shape", selectedShape)
+.putString("custom_anim", finalAnim)
+.putInt("bubble_size_pct", selectedSizePct)
+.putInt("bubble_alpha_pct", selectedAlphaPct)
+.putBoolean("enable_hologram", cbHologram.isChecked())
+.putBoolean("power_save", switchPower.isChecked())
+.apply();
+Toast.makeText(this, "💾 Pengaturan Nova Berhasil Disimpan!", Toast.LENGTH_SHORT).show();
+currentDialog.dismiss();
+});
+currentDialog.show();
+}
+private void playClickSound() { try { if(toneGen != null) toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 50); } catch(Exception e){} }
+private void requestBasicPermissions() {
+List<String> permissionsNeeded = new ArrayList<>();
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissionsNeeded.add(Manifest.permission.POST_NOTIFICATIONS);
+if (!permissionsNeeded.isEmpty()) {
+new AlertDialog.Builder(this).setTitle("🎙️ Izin Wajib Nova AI").setMessage("Nova AI membutuhkan izin Mikrofon dan Notifikasi.").setPositiveButton("Beri Izin", (dialog, which) -> {
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) requestPermissions(permissionsNeeded.toArray(new String[0]), REQUEST_PERMISSIONS);
+}).setCancelable(false).show();
+}
+}
+private void checkPermissionsAndStart() {
+EditText apiKeyInput = findViewById(R.id.apiKeyInput);
+if (apiKeyInput != null) {
+String key = apiKeyInput.getText().toString().trim();
+if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+}
+if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
+if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Jendela Mengambang!", Toast.LENGTH_LONG).show(); return; }
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Izinkan mikrofon terlebih dahulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
+MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
+if (pm != null) startActivityForResult(pm.createScreenCaptureIntent(), REQUEST_MEDIA_PROJECTION);
+}
+@Override
+protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+super.onActivityResult(requestCode, resultCode, data);
+if (requestCode == REQUEST_MEDIA_PROJECTION && resultCode == RESULT_OK && data != null) {
+Intent intent = new Intent(this, NovaForegroundService.class);
+intent.putExtra("code", resultCode); intent.putExtra("data", data);
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent); else startService(intent);
+finish();
+}
+}
 }
 
 
@@ -4378,7 +4433,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 
@@ -4387,8 +4441,9 @@ public class UniversalNetworkClient {
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private Call activeCall; 
+    private Call activeCall;
     private static final int MAX_RETRIES = 2;
+    private static int currentKeyIndex = 0;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -4400,64 +4455,48 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS) 
+                .readTimeout(45, TimeUnit.SECONDS) 
                 .build();
     }
 
     public void cancelActiveCall() {
         if (activeCall != null && !activeCall.isCanceled()) {
             activeCall.cancel();
-            Log.w(TAG, "Panggilan jaringan dibatalkan (User Interupsi)!");
+            Log.w(TAG, "Panggilan LLM Dibatalkan (Interupsi Suara)!");
         }
     }
 
-    // Titik Masuk Utama
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        // Mulai dari API Key urutan ke-0
-        executeCallInternal(messages, callback, retryCount, 0);
+        executeCallWithRotation(messages, callback, retryCount, 0);
     }
 
-    private void executeCallInternal(JSONArray messages, NetworkCallback callback, int retryCount, int keyIndex) {
+    private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
-            else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
-            else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
-            else modelName = "llama-3.3-70b-versatile";
-        }
+        if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
-        if (rawKeys.isEmpty()) {
-            callback.onError("Maaf Bos, API Key Anda masih kosong.");
-            return;
-        }
-
-        // 🔄 ROTATOR BERANTAI: Memilih Kunci berdasarkan Index
-        String[] keyArray = rawKeys.split(",");
-        if (keyIndex >= keyArray.length) {
-            callback.onError("Maaf Bos, semua API Key (" + keyArray.length + " kunci) sudah dilimit. Kita butuh kunci baru.");
-            return;
-        }
-        String apiKey = keyArray[keyIndex].trim();
-        Log.i(TAG, "Mengeksekusi Jaringan dengan Kunci ke-" + (keyIndex + 1) + " dari " + keyArray.length);
+        String[] keys = rawKeys.split(",");
+        if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
+        String apiKey = keys[currentKeyIndex].trim();
+        final String finalProvider = provider;
+        final boolean isGeminiCore = finalProvider.equals("Google AI Studio");
 
         try {
-            Request request = null;
+            Request request;
+            String url;
+            RequestBody body;
 
-            if (provider.equals("Gemini (Google Studio)")) {
+            if (isGeminiCore) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
-                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
@@ -4471,16 +4510,16 @@ public class UniversalNetworkClient {
                     }
                 }
                 payload.put("contents", contents);
-                payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
+                payload.put("generationConfig", new JSONObject().put("temperature", 0.6));
 
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
-                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + apiKey;
+                body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
-            } 
-            else {
+            } else {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
-                payload.put("temperature", 0.3);
+                payload.put("temperature", 0.6);
+                payload.put("stream", true); 
                 
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
@@ -4488,7 +4527,6 @@ public class UniversalNetworkClient {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
                         JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
                         lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
@@ -4499,78 +4537,139 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url;
-                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
-                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
-                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else url = "https://api.codex.com/v1/chat/completions";
+                url = "https://api.groq.com/openai/v1/chat/completions";
+                if (finalProvider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
+                else if (finalProvider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
 
-                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .addHeader("Content-Type", "application/json")
-                        .post(body).build();
+                body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
             }
 
             activeCall = client.newCall(request);
             activeCall.enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, keyIndex, "Jaringan tidak stabil", false);
+                    if (!activeCall.isCanceled()) handleRetry(messages, callback, retryCount, keyRotationCount, "Koneksi RTO");
                 }
+
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
-                        
-                        if (code == 429 || code == 401 || code == 403 || code == 400) {
-                            Log.w(TAG, "Kunci ke-" + (keyIndex + 1) + " Limit/Ditolak (HTTP " + code + "). Beralih ke Kunci Berikutnya...");
-                            handleRetry(messages, callback, retryCount, keyIndex, "Ganti Kunci", true);
-                            return;
-                        } 
-                        else if (code >= 500) {
-                            handleRetry(messages, callback, retryCount, keyIndex, "Server " + provider + " sibuk", false);
-                            return;
+                        if (code == 429) {
+                            if (keyRotationCount < keys.length - 1) {
+                                currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+                                retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1));
+                            } else { callback.onError("Kuota semua API Key habis."); }
                         } else {
-                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
-                            return;
+                            handleRetry(messages, callback, retryCount, keyRotationCount, "HTTP " + code);
                         }
+                        return;
                     }
-                    try {
-                        String respBody = response.body().string();
-                        String content = "";
-                        if (provider.equals("Gemini (Google Studio)")) {
-                            JSONObject jsonResponse = new JSONObject(respBody);
-                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
-                            if (candidate.has("content")) {
-                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                            } else {
-                                callback.onError("Maaf Bos, jawaban diblokir filter Google.");
-                                return;
+                    
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
+                        String line;
+                        StringBuilder fullResponse = new StringBuilder();
+                        int lastSpokenIndex = 0;
+                        
+                        while ((line = reader.readLine()) != null) {
+                            if (activeCall.isCanceled()) break;
+                            
+                            if (line.startsWith("data: ")) {
+                                String data = line.substring(6).trim();
+                                if (data.equals("[DONE]")) break;
+                                
+                                try {
+                                    JSONObject json = new JSONObject(data);
+                                    String chunk = "";
+                                    
+                                    if (isGeminiCore) {
+                                        JSONArray candidates = json.optJSONArray("candidates");
+                                        if (candidates != null && candidates.length() > 0) {
+                                            JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
+                                            if (parts != null && parts.length() > 0) chunk = parts.getJSONObject(0).optString("text", "");
+                                        }
+                                    } else {
+                                        JSONArray choices = json.optJSONArray("choices");
+                                        if (choices != null && choices.length() > 0) {
+                                            JSONObject delta = choices.getJSONObject(0).optJSONObject("delta");
+                                            if (delta != null) chunk = delta.optString("content", "");
+                                        }
+                                    }
+                                    
+                                    fullResponse.append(chunk);
+                                    String textSoFar = fullResponse.toString();
+                                    
+                                    // ⚡ LOGIKA STREAMING 0-DELAY UNTUK JSON "speech"
+                                    int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                                    if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                                    
+                                    if (speechKeyIdx != -1) {
+                                        int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                                        if (valStart != -1) {
+                                            int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                            String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                            currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+
+                                            if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                                String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
+                                                
+                                                // Potong jika ketemu tanda baca bacaan natural
+                                                int boundary = -1;
+                                                int[] stops = {unqueued.indexOf(","), unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf("\n")};
+                                                for (int stop : stops) {
+                                                    if (stop != -1 && (boundary == -1 || stop < boundary)) boundary = stop;
+                                                }
+                                                
+                                                // Jika panjang kata pengisi ("Hmm") langsung di-stream tanpa nunggu tanda baca
+                                                if (boundary != -1 || (unqueued.length() > 10 && unqueued.contains(" "))) {
+                                                    int cutIndex = boundary != -1 ? boundary + 1 : unqueued.lastIndexOf(" ");
+                                                    String sentence = unqueued.substring(0, cutIndex).trim();
+                                                    if (!sentence.isEmpty()) {
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                    }
+                                                    lastSpokenIndex += cutIndex;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) { }
                             }
-                        } else {
-                            content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
-                        callback.onSuccess(content);
+                        
+                        // Sisa kalimat terakhir
+                        String textSoFar = fullResponse.toString();
+                        int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                        if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                        if (speechKeyIdx != -1) {
+                            int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                            if (valStart != -1) {
+                                int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+                                if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                    String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                }
+                            }
+                        }
+                        
+                        if (!activeCall.isCanceled()) callback.onSuccess(fullResponse.toString());
                     } catch (Exception e) {
-                        callback.onError("Gagal membaca struktur AI dari " + provider);
+                        if (!activeCall.isCanceled()) callback.onError("Gagal membaca aliran stream.");
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit permintaan jaringan.");
+            callback.onError("Gagal merakit request streaming.");
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyIndex, String humanReason, boolean switchKey) {
-        if (switchKey) {
-            // Jika limit/diblokir, ganti indeks kunci berikutnya TANPA menghitung sebagai Retry jaringan
-            executeCallInternal(messages, callback, currentRetry, keyIndex + 1);
-        } else if (currentRetry < MAX_RETRIES) {
-            // Gangguan jaringan biasa, tunggu sebentar lalu coba pakai kunci yang sama
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, String reason) {
+        if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCallInternal(messages, callback, nextRetry, keyIndex), delay);
+            long delay = 1000 * (long) Math.pow(2, currentRetry);
+            retryHandler.postDelayed(() -> executeCallWithRotation(messages, callback, nextRetry, keyRotationCount), delay);
         } else {
-            callback.onError(humanReason);
+            callback.onError(reason);
         }
     }
 }
@@ -4585,16 +4684,19 @@ package com.novaagent.app.data.repository;
 
 public class PromptRegistry {
     public static final String SYSTEM_PROMPT_TEMPLATE = 
-        "Anda adalah Nova (Jarvis), AI asisten super proaktif dan cerdas yang hidup di HP pengguna.\n" +
-        "INGATAN JANGKA PANJANG TENTANG USER:\n%s\n\n" +
-        "KESADARAN SEMANTIK & HUKUM:\n" +
-        "1. PAHAMI KONTEKS: Analisis nama aplikasi dan susunan layar sebelum bertindak.\n" +
-        "2. SELF-HEALING: Anda memiliki insting bertahan hidup. Jika aksi Anda gagal, sistem akan otomatis melakukan scroll untuk Anda. Tugas Anda adalah memberikan kordinat target baru yang belum terlihat sebelumnya.\n" +
-        "3. NGOBROL: Jika user curhat atau tanya jawab, balas action: 'done' dan isi jawaban elegan/futuristik di 'speech'.\n" +
-        "4. AKSI LAYAR: Gunakan 'tap', 'swipe', 'type', atau 'open_app'.\n" +
-        "5. INGATAN LOKAL: Jika user memberi info penting tentang profilnya (misal: 'istri saya namanya Siti'), gunakan action: 'save_memory' dan isi faktanya di 'textToType'.\n\n" +
-        "FORMAT OUTPUT (JSON MURNI WAJIB):\n" +
-        "{\"thought\":\"alasan/analisis layar\",\"action\":\"[pilih action]\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"respon suara singkat\"}";
+        "Anda adalah Nova, asisten AI super cerdas yang hidup di HP pengguna.\n" +
+        "INGATAN TENTANG USER:\n%s\n\n" +
+        "ATURAN GAYA BICARA (SANGAT PENTING):\n" +
+        "1. Berbicaralah PERSIS seperti manusia asli di telepon (Gaya ChatGPT Voice).\n" +
+        "2. Gunakan kata pengisi natural seperti: 'Hmm...', 'Bentar ya...', 'Oke bos...', 'Waduh...'.\n" +
+        "3. JANGAN KAKU. Gunakan bahasa santai, asyik, dan berempati.\n" +
+        "4. JANGAN gunakan tanda bintang (*) atau markdown di dalam 'speech'.\n" +
+        "5. Kalimat di 'speech' harus langsung *to the point* agar latensi suara sangat cepat.\n\n" +
+        "ATURAN AKSI LAYAR:\n" +
+        "- Jika diminta membuka aplikasi, gunakan action: 'open_app', textToType: '[nama app]'.\n" +
+        "- Jika sekadar ngobrol, gunakan action: 'done'.\n\n" +
+        "FORMAT OUTPUT WAJIB (JSON MURNI, TANPA MARKDOWN):\n" +
+        "{\"thought\":\"analisis singkat\",\"action\":\"done/open_app/dll\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"[Tulis ucapan natural Anda di sini...]\"}";
 
     public static String buildSystemPrompt(String longTermMemory) {
         if (longTermMemory == null || longTermMemory.isEmpty()) longTermMemory = "Belum ada ingatan khusus.";
@@ -4602,7 +4704,7 @@ public class PromptRegistry {
     }
 
     public static String buildUserPrompt(String task, String screenContext) {
-        return "PERINTAH: \"" + task + "\"\n\nDATA LAYAR: " + screenContext;
+        return "PERINTAH: \"" + task + "\"\n\nDATA LAYAR SAAT INI: " + screenContext;
     }
 }
 
@@ -4614,140 +4716,326 @@ FILE: ./app/src/main/res/layout/dialog_settings.xml
 
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/bg_ultra_main">
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <!-- HEADER PENGATURAN -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="24dp">
-                <ImageView
-                    android:id="@+id/btnBackSettings"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@android:drawable/ic_menu_revert"
-                    android:tint="#8B95A5"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="12dp"
-                    android:layout_centerVertical="true"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_toEndOf="@id/btnBackSettings"
-                    android:layout_marginStart="16dp"
-                    android:layout_centerVertical="true">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Pengaturan"
-                        android:textColor="#FFFFFF"
-                        android:textSize="22sp"
-                        android:textStyle="bold"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sesuaikan Nova Agent sesuai keinginanmu"
-                        android:textColor="#88FFFFFF"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@android:drawable/btn_star_big_on"
-                    android:tint="#FFD700"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="10dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"/>
-            </RelativeLayout>
-
-            <!-- BANNER KARTU -->
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_ultra_card"
-                android:padding="18dp"
-                android:layout_marginBottom="16dp">
-
-                <ImageView
-                    android:id="@+id/ivNLogo"
-                    android:layout_width="54dp"
-                    android:layout_height="54dp"
-                    android:src="@android:drawable/ic_menu_gallery"
-                    android:tint="#00E5FF"
-                    android:background="@drawable/bg_ultra_input"
-                    android:padding="12dp"
-                    android:layout_centerVertical="true"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_toEndOf="@id/ivNLogo"
-                    android:layout_marginStart="16dp"
-                    android:layout_centerVertical="true">
-                    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#B000FF" android:textSize="18sp" android:textStyle="bold"/>
-                    </LinearLayout>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart â€¢ Fast â€¢ Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="âœ” Aktif"
-                    android:background="@drawable/bg_badge_green"
-                    android:textColor="#00E676"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:paddingHorizontal="14dp"
-                    android:paddingVertical="6dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_centerVertical="true"/>
-            </RelativeLayout>
-
-            <!-- (Isi Pengaturan Model Suara, Booble, dsb bisa ditambahkan di sini, untuk sekarang menggunakan struktur yang ringkas agar muat dan rapi) -->
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Fitur Pengaturan sedang dioptimasi di V7..." android:textColor="#88FFFFFF" android:textSize="14sp" android:layout_gravity="center" android:layout_marginVertical="40dp"/>
-
-            <Button
-                android:id="@+id/btnSaveSettings"
-                android:layout_width="match_parent"
-                android:layout_height="65dp"
-                android:backgroundTint="@null"
-                android:background="@drawable/bg_btn_gradient"
-                android:text="ðŸ’¾  Simpan Pengaturan"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="40dp"
-                android:elevation="6dp"/>
-
-        </LinearLayout>
-    </ScrollView>
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:background="@drawable/bg_ultra_main">
+<ScrollView
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:layout_above="@+id/bottomSettingsBar"
+android:fillViewport="true"
+android:scrollbars="none">
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:padding="20dp">
+<!-- HEADER PENGATURAN -->
+<RelativeLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:layout_marginTop="8dp"
+android:layout_marginBottom="20dp">
+<ImageView
+android:id="@+id/btnBackSettings"
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@android:drawable/ic_menu_revert"
+android:tint="#8B95A5"
+android:background="@drawable/bg_circle_btn"
+android:padding="12dp"
+android:layout_centerVertical="true"
+android:clickable="true"
+android:focusable="true"/>
+<ImageView
+android:id="@+id/ivHeaderLogo"
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@drawable/ic_nova_n_logo"
+android:layout_toEndOf="@id/btnBackSettings"
+android:layout_marginStart="12dp"
+android:layout_centerVertical="true"/>
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:layout_toEndOf="@id/ivHeaderLogo"
+android:layout_marginStart="12dp"
+android:layout_centerVertical="true">
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Pengaturan"
+android:textColor="#FFFFFF"
+android:textSize="22sp"
+android:textStyle="bold"/>
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Sesuaikan Nova Agent sesuai keinginanmu"
+android:textColor="#88FFFFFF"
+android:textSize="11sp"
+android:layout_marginTop="2dp"/>
+</LinearLayout>
+<ImageView
+android:layout_width="44dp"
+android:layout_height="44dp"
+android:src="@android:drawable/btn_star_big_on"
+android:tint="#FFD700"
+android:background="@drawable/bg_circle_btn"
+android:padding="10dp"
+android:layout_alignParentEnd="true"
+android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- KARTU BANNER: NOVA AGENT V6.0 -->
+<RelativeLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_banner_glow"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+<ImageView
+android:id="@+id/ivBannerLogo"
+android:layout_width="54dp"
+android:layout_height="54dp"
+android:src="@drawable/ic_nova_n_logo"
+android:background="@drawable/bg_box_unselected"
+android:padding="8dp"
+android:layout_centerVertical="true"/>
+<LinearLayout
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:orientation="vertical"
+android:layout_toEndOf="@id/ivBannerLogo"
+android:layout_marginStart="14dp"
+android:layout_centerVertical="true">
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#A78BFA" android:textSize="18sp" android:textStyle="bold"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart • Fast • Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+<TextView
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="✔ Aktif"
+android:background="@drawable/bg_badge_green"
+android:textColor="#00E676"
+android:textSize="12sp"
+android:textStyle="bold"
+android:paddingHorizontal="14dp"
+android:paddingVertical="6dp"
+android:layout_alignParentEnd="true"
+android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- KARTU: MODEL SUARA -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+<ImageView android:id="@+id/icSpeaker" android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_lock_silent_mode_off" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSpeaker" android:layout_marginStart="12dp">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Model Suara" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih suara yang akan digunakan" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#88FFFFFF" android:textSize="24sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:weightSum="4">
+<LinearLayout android:id="@+id/boxVoiceDefault" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_selected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#00E5FF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Default" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoiceNatural" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#B5179E"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Natural" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoicePremium" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#00F5D4"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Premium" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/boxVoiceExpressive" android:layout_width="0dp" android:layout_height="80dp" android:layout_weight="1" android:background="@drawable/bg_box_unselected" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@drawable/ic_soundwave" android:tint="#FFAA00"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Expressive" android:textColor="#CCFFFFFF" android:textSize="11sp" android:layout_marginTop="6dp"/>
+</LinearLayout>
+</LinearLayout>
+</LinearLayout>
+<!-- KARTU: ANIMASI & BOOBLE JELLY -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="16dp">
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
+<ImageView android:id="@+id/icSparkle" android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/btn_star_big_on" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSparkle" android:layout_marginStart="12dp">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi &amp; Booble Jelly" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tampilan animasi dan booble jelly" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/switchBubbleMaster" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:thumbTint="#FFFFFF" android:trackTint="#00E5FF" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Animasi Dropdown -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icPlayAnim" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_media_play" android:tint="#4895EF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPlayAnim" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih gaya animasi booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<Spinner android:id="@+id/spinnerAnimStyle" android:layout_width="145dp" android:layout_height="36dp" android:background="@drawable/bg_dropdown_pill" android:popupBackground="#0C1428" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Bentuk Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icShape" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_shape_square" android:tint="#9D4EDD" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icShape" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bentuk Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bentuk booble jelly" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
+<ImageView android:id="@+id/btnShapeCircle" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_selected" android:src="@drawable/ic_shape_circle" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeStar" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_star" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeHeart" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_heart" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
+<ImageView android:id="@+id/btnShapeSquare" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_square" android:padding="8dp" android:clickable="true" android:focusable="true"/>
+</LinearLayout>
+</RelativeLayout>
+<!-- Warna Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icPalette" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#4EA8DE" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPalette" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih warna utama booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
+<View android:id="@+id/btnColorCyan" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/bg_color_cyan" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorPurple" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_purple" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorPink" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_pink" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorOrange" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_orange" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
+<View android:id="@+id/btnColorGreen" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_green" android:clickable="true" android:focusable="true"/>
+</LinearLayout>
+</RelativeLayout>
+<!-- Ukuran Booble -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
+<ImageView android:id="@+id/icSize" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_crop" android:tint="#4895EF" android:layout_centerVertical="true"/>
+<LinearLayout android:id="@+id/llSizeLabel" android:layout_width="110dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSize" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ukuran Booble" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur ukuran booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<TextView android:id="@+id/tvBubbleSizePct" android:layout_width="38dp" android:layout_height="wrap_content" android:text="75%" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:gravity="end" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+<SeekBar android:id="@+id/seekBubbleSize" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="75" android:progressTint="#0096FF" android:thumbTint="#FFFFFF" android:layout_toEndOf="@id/llSizeLabel" android:layout_toStartOf="@id/tvBubbleSizePct" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Transparansi -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp">
+<ImageView android:id="@+id/icAlpha" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_view" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:id="@+id/llAlphaLabel" android:layout_width="110dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icAlpha" android:layout_marginStart="12dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Transparansi" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tingkat transparansi" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+</LinearLayout>
+<TextView android:id="@+id/tvBubbleAlphaPct" android:layout_width="38dp" android:layout_height="wrap_content" android:text="85%" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:gravity="end" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+<SeekBar android:id="@+id/seekBubbleAlpha" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="85" android:progressTint="#0096FF" android:thumbTint="#FFFFFF" android:layout_toEndOf="@id/llAlphaLabel" android:layout_toStartOf="@id/tvBubbleAlphaPct" android:layout_centerVertical="true"/>
+</RelativeLayout>
+</LinearLayout>
+<!-- KARTU: PENGATURAN LAINNYA -->
+<LinearLayout
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:background="@drawable/bg_ultra_card"
+android:orientation="vertical"
+android:padding="16dp"
+android:layout_marginBottom="24dp">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="16dp">
+<ImageView android:layout_width="26dp" android:layout_height="26dp" android:src="@android:drawable/ic_menu_preferences" android:tint="#8E9AAF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pengaturan Lainnya" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:layout_marginStart="10dp"/>
+</LinearLayout>
+<!-- Mode Hemat Daya -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icLeaf" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_lock_idle_charging" android:tint="#00E676" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icLeaf" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mode Hemat Daya" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mengurangi penggunaan baterai" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/switchPowerSave" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="false" android:thumbTint="#FFFFFF" android:trackTint="#00E676" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Notifikasi Pintar -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icBell" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_popup_reminder" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icBell" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Notifikasi Pintar" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Terima notifikasi penting" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<Switch android:id="@+id/cbHologram" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:thumbTint="#FFFFFF" android:trackTint="#00E5FF" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Tema Aplikasi -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icTheme" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_slideshow" android:tint="#F72585" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icTheme" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tema Aplikasi" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ubah tema tampilan aplikasi" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Neo Dark  ▾" android:background="@drawable/bg_dropdown_pill" android:textColor="#FFFFFF" android:textSize="12sp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Bahasa -->
+<RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp">
+<ImageView android:id="@+id/icLang" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_mapmode" android:tint="#00E5FF" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icLang" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bahasa" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bahasa aplikasi" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🇮🇩 Indonesia  ▾" android:background="@drawable/bg_dropdown_pill" android:textColor="#FFFFFF" android:textSize="12sp" android:paddingHorizontal="14dp" android:paddingVertical="6dp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+<!-- Reset Pengaturan -->
+<RelativeLayout android:id="@+id/rowResetSettings" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="10dp" android:clickable="true" android:focusable="true">
+<ImageView android:id="@+id/icReset" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_rotate" android:tint="#FFAA00" android:layout_centerVertical="true"/>
+<LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icReset" android:layout_marginStart="14dp" android:layout_centerVertical="true">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Reset Pengaturan" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kembalikan ke pengaturan awal" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="›" android:textColor="#88FFFFFF" android:textSize="24sp" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
+</RelativeLayout>
+</LinearLayout>
+<!-- TOMBOL SIMPAN PENGATURAN -->
+<Button
+android:id="@+id/btnSaveSettings"
+android:layout_width="match_parent"
+android:layout_height="65dp"
+android:backgroundTint="@null"
+android:background="@drawable/bg_btn_gradient"
+android:text="💾   Simpan Pengaturan"
+android:textAllCaps="false"
+android:textColor="#FFFFFF"
+android:textSize="18sp"
+android:textStyle="bold"
+android:layout_marginBottom="24dp"
+android:elevation="6dp"/>
+</LinearLayout>
+</ScrollView>
+<!-- BOTTOM NAVIGATION (PENGATURAN) -->
+<LinearLayout
+android:id="@+id/bottomSettingsBar"
+android:layout_width="match_parent"
+android:layout_height="68dp"
+android:layout_alignParentBottom="true"
+android:background="#050810"
+android:orientation="horizontal"
+android:weightSum="3"
+android:elevation="24dp">
+<LinearLayout android:id="@+id/navSettingsBeranda" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_today" android:tint="#8B95A5"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Beranda" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/navSettingsStatus" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:clickable="true" android:focusable="true">
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_sort_by_size" android:tint="#8B95A5"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Status" android:textColor="#8B95A5" android:textSize="11sp" android:layout_marginTop="2dp"/>
+</LinearLayout>
+<LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+<View android:layout_width="32dp" android:layout_height="3dp" android:background="#00E5FF" android:layout_marginBottom="6dp"/>
+<ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_preferences" android:tint="#00E5FF"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pengaturan" android:textColor="#00E5FF" android:textSize="11sp" android:textStyle="bold" android:layout_marginTop="2dp"/>
+</LinearLayout>
+</LinearLayout>
 </RelativeLayout>
 
 
