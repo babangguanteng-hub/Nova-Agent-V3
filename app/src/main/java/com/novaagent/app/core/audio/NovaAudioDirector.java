@@ -17,7 +17,6 @@ import android.widget.Toast;
 
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
-import com.novaagent.app.core.di.ServiceLocator;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -35,6 +34,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private boolean isListeningAbadi = true;
     private boolean isCurrentlySpeaking = false;
     private boolean isStreamFirstChunk = true;
+    private boolean isMicMutedBySystem = false;
 
     public NovaAudioDirector(Context context) {
         this.context = context;
@@ -60,10 +60,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mouth.setLanguage(Locale.getDefault()); 
             }
             
-            // TERAPKAN KUSTOMISASI SUARA (PITCH & SPEED)
             SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-            float pitch = prefs.getFloat("voice_pitch", 1.2f); // Default Elegan
-            float speed = prefs.getFloat("voice_speed", 1.0f);
+            float pitch = prefs.getFloat("voice_pitch", 1.2f);
+            float speed = prefs.getFloat("voice_speed", 1.05f); // Sedikit dipercepat agar natural
             mouth.setPitch(pitch);
             mouth.setSpeechRate(speed);
             isMouthReady = true;
@@ -72,15 +71,11 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 @Override public void onStart(String utteranceId) { isCurrentlySpeaking = true; }
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    mainHandler.postDelayed(() -> resumeListening(), 200); 
                 }
                 @Override public void onError(String utteranceId) {
                     isCurrentlySpeaking = false;
-                    mainHandler.post(() -> resumeListening());
                 }
             });
-        } else {
-            mainHandler.post(() -> Toast.makeText(context, "⚠️ Mesin TTS Android gagal dimuat!", Toast.LENGTH_SHORT).show());
         }
     }
 
@@ -88,15 +83,15 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         if (!SpeechRecognizer.isRecognitionAvailable(context)) return;
         try {
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            if (audioManager != null) audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION); // AGC ON
         } catch (Exception e) {}
 
         ear = SpeechRecognizer.createSpeechRecognizer(context);
         earIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         earIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID");
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L); 
-        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L);
+        // Sensitivitas cepat
+        earIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1000L); 
         earIntent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         ear.setRecognitionListener(new RecognitionListener() {
@@ -108,22 +103,23 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             @Override public void onBufferReceived(byte[] buffer) {}
             @Override public void onEndOfSpeech() { 
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "PROCESSING_AUDIO")); 
-                isStreamFirstChunk = true; // Reset stream state
+                isStreamFirstChunk = true; // Reset aliran
             }
             @Override public void onError(int error) {
-                if (isListeningAbadi && !isCurrentlySpeaking) {
+                if (isListeningAbadi && !isMicMutedBySystem) {
                     mainHandler.postDelayed(() -> {
-                        if (isListeningAbadi && !isCurrentlySpeaking) {
+                        if (isListeningAbadi && !isMicMutedBySystem) {
                             try { ear.startListening(earIntent); } catch(Exception e){}
                         }
-                    }, 400); 
+                    }, 300); 
                 }
             }
             @Override public void onPartialResults(Bundle partialResults) {
                 ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                 if (matches != null && !matches.isEmpty()) {
                     String partialText = matches.get(0);
-                    // 🛑 FASE 6: FULL-DUPLEX INTERRUPTION
+                    
+                    // 🛑 FULL-DUPLEX: Jika Nova sedang bicara dan Anda memotongnya (minimal 3 huruf)
                     if (isCurrentlySpeaking && partialText.length() > 3) {
                         mouth.stop();
                         isCurrentlySpeaking = false;
@@ -142,7 +138,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                         com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class).startTask(command);
                     } catch (Exception e) {}
                 } else {
-                    resumeListening();
+                    if (isListeningAbadi && !isMicMutedBySystem) resumeListening();
                 }
             }
             @Override public void onEvent(int eventType, Bundle params) {}
@@ -153,7 +149,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private void resumeListening() {
         if (!isListeningAbadi) return;
         mainHandler.post(() -> {
-            if (ear != null && !isCurrentlySpeaking) {
+            if (ear != null && !isMicMutedBySystem) {
                 try { ear.cancel(); ear.startListening(earIntent); } catch (Exception e) {}
             }
         });
@@ -167,24 +163,18 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     @Override
     public void onEvent(AgentEvent event) {
-        if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
-            String textToSpeak = String.valueOf(event.payload);
-            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
-                mainHandler.post(() -> {
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
-                });
-            }
-        } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
+        if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
             String textChunk = String.valueOf(event.payload);
             if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
                 mainHandler.post(() -> {
                     if (isStreamFirstChunk) {
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "nova_chunk_" + System.currentTimeMillis());
+                        // QUEUE_FLUSH untuk kata pertama (memotong omongan lama jika ada)
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
                         isStreamFirstChunk = false;
                     } else {
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "nova_chunk_" + System.currentTimeMillis());
+                        // QUEUE_ADD untuk menyambung kalimat secara mulus
+                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
                     }
                 });
             }
@@ -196,10 +186,6 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_RECEIVED, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.VOICE_STREAM_CHUNK, this);
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
-        try {
-            AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (am != null) am.setMode(AudioManager.MODE_NORMAL);
-        } catch (Exception e) {}
         mainHandler.post(() -> {
             if (ear != null) { ear.destroy(); ear = null; }
             if (mouth != null) { mouth.stop(); mouth.shutdown(); mouth = null; }

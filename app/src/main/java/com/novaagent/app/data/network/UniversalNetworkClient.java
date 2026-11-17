@@ -19,7 +19,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 
@@ -28,8 +27,9 @@ public class UniversalNetworkClient {
     private final OkHttpClient client;
     private final Context context;
     private final Handler retryHandler;
-    private Call activeCall; 
+    private Call activeCall;
     private static final int MAX_RETRIES = 2;
+    private static int currentKeyIndex = 0;
 
     public interface NetworkCallback {
         void onSuccess(String rawJsonContent);
@@ -41,64 +41,48 @@ public class UniversalNetworkClient {
         this.retryHandler = new Handler(Looper.getMainLooper());
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(35, TimeUnit.SECONDS) 
+                .readTimeout(45, TimeUnit.SECONDS) 
                 .build();
     }
 
     public void cancelActiveCall() {
         if (activeCall != null && !activeCall.isCanceled()) {
             activeCall.cancel();
-            Log.w(TAG, "Panggilan jaringan dibatalkan (User Interupsi)!");
+            Log.w(TAG, "Panggilan LLM Dibatalkan (Interupsi Suara)!");
         }
     }
 
-    // Titik Masuk Utama
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        // Mulai dari API Key urutan ke-0
-        executeCallInternal(messages, callback, retryCount, 0);
+        executeCallWithRotation(messages, callback, retryCount, 0);
     }
 
-    private void executeCallInternal(JSONArray messages, NetworkCallback callback, int retryCount, int keyIndex) {
+    private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount) {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = prefs.getString("api_key", "").trim();
         String modelName = prefs.getString("ai_model", "").trim();
 
-        if (modelName.isEmpty()) {
-            if (provider.equals("Gemini (Google Studio)")) modelName = "gemini-2.0-flash";
-            else if (provider.equals("DeepSeek")) modelName = "deepseek-chat";
-            else if (provider.equals("OpenAI")) modelName = "gpt-4o-mini";
-            else if (provider.equals("TokoVPN (Proxy)")) modelName = "claude-3-7-sonnet";
-            else modelName = "llama-3.3-70b-versatile";
-        }
+        if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
-        if (rawKeys.isEmpty()) {
-            callback.onError("Maaf Bos, API Key Anda masih kosong.");
-            return;
-        }
-
-        // 🔄 ROTATOR BERANTAI: Memilih Kunci berdasarkan Index
-        String[] keyArray = rawKeys.split(",");
-        if (keyIndex >= keyArray.length) {
-            callback.onError("Maaf Bos, semua API Key (" + keyArray.length + " kunci) sudah dilimit. Kita butuh kunci baru.");
-            return;
-        }
-        String apiKey = keyArray[keyIndex].trim();
-        Log.i(TAG, "Mengeksekusi Jaringan dengan Kunci ke-" + (keyIndex + 1) + " dari " + keyArray.length);
+        String[] keys = rawKeys.split(",");
+        if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
+        String apiKey = keys[currentKeyIndex].trim();
+        final String finalProvider = provider;
+        final boolean isGeminiCore = finalProvider.equals("Google AI Studio");
 
         try {
-            Request request = null;
+            Request request;
+            String url;
+            RequestBody body;
 
-            if (provider.equals("Gemini (Google Studio)")) {
+            if (isGeminiCore) {
                 JSONObject payload = new JSONObject();
                 JSONArray contents = new JSONArray();
-                
                 String lastRole = "";
                 for (int i = 0; i < messages.length(); i++) {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals("system")) {
                         payload.put("systemInstruction", new JSONObject().put("parts", new JSONArray().put(new JSONObject().put("text", content))));
                     } else {
@@ -112,16 +96,16 @@ public class UniversalNetworkClient {
                     }
                 }
                 payload.put("contents", contents);
-                payload.put("generationConfig", new JSONObject().put("temperature", 0.3));
+                payload.put("generationConfig", new JSONObject().put("temperature", 0.6));
 
-                String url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent?key=" + apiKey;
-                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + apiKey;
+                body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
-            } 
-            else {
+            } else {
                 JSONObject payload = new JSONObject();
                 payload.put("model", modelName);
-                payload.put("temperature", 0.3);
+                payload.put("temperature", 0.6);
+                payload.put("stream", true); 
                 
                 JSONArray safeMessages = new JSONArray();
                 String lastRole = "";
@@ -129,7 +113,6 @@ public class UniversalNetworkClient {
                     JSONObject msg = messages.getJSONObject(i);
                     String role = msg.getString("role");
                     String content = msg.getString("content");
-                    
                     if (role.equals(lastRole) && !role.equals("system") && safeMessages.length() > 0) {
                         JSONObject lastMsg = safeMessages.getJSONObject(safeMessages.length() - 1);
                         lastMsg.put("content", lastMsg.getString("content") + "\n\n" + content);
@@ -140,78 +123,139 @@ public class UniversalNetworkClient {
                 }
                 payload.put("messages", safeMessages);
                 
-                String url;
-                if (provider.equals("Groq")) url = "https://api.groq.com/openai/v1/chat/completions";
-                else if (provider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
-                else if (provider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
-                else url = "https://api.codex.com/v1/chat/completions";
+                url = "https://api.groq.com/openai/v1/chat/completions";
+                if (finalProvider.equals("DeepSeek")) url = "https://api.deepseek.com/chat/completions";
+                else if (finalProvider.equals("OpenAI")) url = "https://api.openai.com/v1/chat/completions";
 
-                RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url)
-                        .addHeader("Authorization", "Bearer " + apiKey)
-                        .addHeader("Content-Type", "application/json")
-                        .post(body).build();
+                body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+                request = new Request.Builder().url(url).addHeader("Authorization", "Bearer " + apiKey).addHeader("Content-Type", "application/json").post(body).build();
             }
 
             activeCall = client.newCall(request);
             activeCall.enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
-                    handleRetry(messages, callback, retryCount, keyIndex, "Jaringan tidak stabil", false);
+                    if (!activeCall.isCanceled()) handleRetry(messages, callback, retryCount, keyRotationCount, "Koneksi RTO");
                 }
+
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
-                        
-                        if (code == 429 || code == 401 || code == 403 || code == 400) {
-                            Log.w(TAG, "Kunci ke-" + (keyIndex + 1) + " Limit/Ditolak (HTTP " + code + "). Beralih ke Kunci Berikutnya...");
-                            handleRetry(messages, callback, retryCount, keyIndex, "Ganti Kunci", true);
-                            return;
-                        } 
-                        else if (code >= 500) {
-                            handleRetry(messages, callback, retryCount, keyIndex, "Server " + provider + " sibuk", false);
-                            return;
+                        if (code == 429) {
+                            if (keyRotationCount < keys.length - 1) {
+                                currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+                                retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1));
+                            } else { callback.onError("Kuota semua API Key habis."); }
                         } else {
-                            callback.onError("Maaf Bos, ada gangguan HTTP " + code);
-                            return;
+                            handleRetry(messages, callback, retryCount, keyRotationCount, "HTTP " + code);
                         }
+                        return;
                     }
-                    try {
-                        String respBody = response.body().string();
-                        String content = "";
-                        if (provider.equals("Gemini (Google Studio)")) {
-                            JSONObject jsonResponse = new JSONObject(respBody);
-                            JSONObject candidate = jsonResponse.getJSONArray("candidates").getJSONObject(0);
-                            if (candidate.has("content")) {
-                                content = candidate.getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                            } else {
-                                callback.onError("Maaf Bos, jawaban diblokir filter Google.");
-                                return;
+                    
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
+                        String line;
+                        StringBuilder fullResponse = new StringBuilder();
+                        int lastSpokenIndex = 0;
+                        
+                        while ((line = reader.readLine()) != null) {
+                            if (activeCall.isCanceled()) break;
+                            
+                            if (line.startsWith("data: ")) {
+                                String data = line.substring(6).trim();
+                                if (data.equals("[DONE]")) break;
+                                
+                                try {
+                                    JSONObject json = new JSONObject(data);
+                                    String chunk = "";
+                                    
+                                    if (isGeminiCore) {
+                                        JSONArray candidates = json.optJSONArray("candidates");
+                                        if (candidates != null && candidates.length() > 0) {
+                                            JSONArray parts = candidates.getJSONObject(0).getJSONObject("content").optJSONArray("parts");
+                                            if (parts != null && parts.length() > 0) chunk = parts.getJSONObject(0).optString("text", "");
+                                        }
+                                    } else {
+                                        JSONArray choices = json.optJSONArray("choices");
+                                        if (choices != null && choices.length() > 0) {
+                                            JSONObject delta = choices.getJSONObject(0).optJSONObject("delta");
+                                            if (delta != null) chunk = delta.optString("content", "");
+                                        }
+                                    }
+                                    
+                                    fullResponse.append(chunk);
+                                    String textSoFar = fullResponse.toString();
+                                    
+                                    // ⚡ LOGIKA STREAMING 0-DELAY UNTUK JSON "speech"
+                                    int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                                    if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                                    
+                                    if (speechKeyIdx != -1) {
+                                        int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                                        if (valStart != -1) {
+                                            int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                            String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                            currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+
+                                            if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                                String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
+                                                
+                                                // Potong jika ketemu tanda baca bacaan natural
+                                                int boundary = -1;
+                                                int[] stops = {unqueued.indexOf(","), unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf("\n")};
+                                                for (int stop : stops) {
+                                                    if (stop != -1 && (boundary == -1 || stop < boundary)) boundary = stop;
+                                                }
+                                                
+                                                // Jika panjang kata pengisi ("Hmm") langsung di-stream tanpa nunggu tanda baca
+                                                if (boundary != -1 || (unqueued.length() > 10 && unqueued.contains(" "))) {
+                                                    int cutIndex = boundary != -1 ? boundary + 1 : unqueued.lastIndexOf(" ");
+                                                    String sentence = unqueued.substring(0, cutIndex).trim();
+                                                    if (!sentence.isEmpty()) {
+                                                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
+                                                    }
+                                                    lastSpokenIndex += cutIndex;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (Exception ignored) { }
                             }
-                        } else {
-                            content = new JSONObject(respBody).getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content");
                         }
-                        callback.onSuccess(content);
+                        
+                        // Sisa kalimat terakhir
+                        String textSoFar = fullResponse.toString();
+                        int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
+                        if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
+                        if (speechKeyIdx != -1) {
+                            int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
+                            if (valStart != -1) {
+                                int valEnd = textSoFar.indexOf("\"", valStart + 1);
+                                String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+                                currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
+                                if (currentSpeechRaw.length() > lastSpokenIndex) {
+                                    String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
+                                    if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
+                                }
+                            }
+                        }
+                        
+                        if (!activeCall.isCanceled()) callback.onSuccess(fullResponse.toString());
                     } catch (Exception e) {
-                        callback.onError("Gagal membaca struktur AI dari " + provider);
+                        if (!activeCall.isCanceled()) callback.onError("Gagal membaca aliran stream.");
                     }
                 }
             });
         } catch (Exception e) {
-            callback.onError("Gagal merakit permintaan jaringan.");
+            callback.onError("Gagal merakit request streaming.");
         }
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyIndex, String humanReason, boolean switchKey) {
-        if (switchKey) {
-            // Jika limit/diblokir, ganti indeks kunci berikutnya TANPA menghitung sebagai Retry jaringan
-            executeCallInternal(messages, callback, currentRetry, keyIndex + 1);
-        } else if (currentRetry < MAX_RETRIES) {
-            // Gangguan jaringan biasa, tunggu sebentar lalu coba pakai kunci yang sama
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, String reason) {
+        if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
-            long delay = 1500 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCallInternal(messages, callback, nextRetry, keyIndex), delay);
+            long delay = 1000 * (long) Math.pow(2, currentRetry);
+            retryHandler.postDelayed(() -> executeCallWithRotation(messages, callback, nextRetry, keyRotationCount), delay);
         } else {
-            callback.onError(humanReason);
+            callback.onError(reason);
         }
     }
 }
