@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -94,7 +95,16 @@ public int onStartCommand(Intent intent, int flags, int startId) {
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build();
-    startForeground(1, notification);
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        int serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && intent != null && intent.getIntExtra("code", 0) != 0) {
+            serviceType |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+        }
+        startForeground(1, notification, serviceType);
+    } else {
+        startForeground(1, notification);
+    }
 
     if (intent != null && intent.getIntExtra("code", 0) != 0) {
         int resultCode = intent.getIntExtra("code", 0);

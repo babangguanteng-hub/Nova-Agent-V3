@@ -87,6 +87,8 @@ public class UniversalNetworkClient {
     }
 
     private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount, boolean useFallbackModel) {
+        cancelActiveCall();
+
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKey(context).trim();
@@ -129,15 +131,34 @@ public class UniversalNetworkClient {
                         }
                     }
                 }
+
+                if (contents.length() == 0) {
+                    contents.put(new JSONObject().put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", "Halo Nova"))));
+                } else if (contents.getJSONObject(0).optString("role", "").equals("model")) {
+                    JSONArray newContents = new JSONArray();
+                    newContents.put(new JSONObject().put("role", "user").put("parts", new JSONArray().put(new JSONObject().put("text", "Lanjutkan percakapan."))));
+                    for (int k = 0; k < contents.length(); k++) newContents.put(contents.getJSONObject(k));
+                    contents = newContents;
+                }
+
                 payload.put("contents", contents);
                 payload.put("generationConfig", new JSONObject().put("temperature", 0.5));
 
-                url = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":streamGenerateContent?alt=sse&key=" + rawApiKey;
+                String cleanModel = modelName.startsWith("models/") ? modelName.substring(7) : modelName;
+                if (useFallbackModel) cleanModel = "gemini-2.0-flash";
+
+                url = "https://generativelanguage.googleapis.com/v1beta/models/" + cleanModel + ":streamGenerateContent?alt=sse&key=" + rawApiKey;
                 body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
                 request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
             } else {
                 JSONObject payload = new JSONObject();
-                payload.put("model", modelName);
+                String targetModel = modelName;
+                if (finalProvider.equals("Cerebral")) {
+                    if (useFallbackModel || targetModel.contains("/") || targetModel.contains("Qwen") || targetModel.contains("GPT-OSS")) {
+                        targetModel = "llama-3.3-70b";
+                    }
+                }
+                payload.put("model", targetModel);
                 payload.put("temperature", 0.5);
                 payload.put("stream", true);
 
@@ -154,6 +175,9 @@ public class UniversalNetworkClient {
                         safeMessages.put(new JSONObject().put("role", role).put("content", content));
                         lastRole = role;
                     }
+                }
+                if (safeMessages.length() == 0) {
+                    safeMessages.put(new JSONObject().put("role", "user").put("content", "Halo Nova"));
                 }
                 payload.put("messages", safeMessages);
 
@@ -211,15 +235,15 @@ public class UniversalNetworkClient {
                     if (!response.isSuccessful()) {
                         int code = response.code();
 
-                        // 1. Fallback jika nama model tidak dikenal/didukung akun
-                        if ((code == 400 || code == 404) && !useFallbackModel) {
-                            Log.w(TAG, "Model " + modelName + " return HTTP " + code + ", rotasi ke fallback model...");
+                        // 1. Fallback jika nama model tidak dikenal/didukung akun atau terjadi konflik (400, 404, 409, 422)
+                        if ((code == 400 || code == 404 || code == 409 || code == 422) && !useFallbackModel) {
+                            Log.w(TAG, "Model " + modelName + " return HTTP " + code + ", rotasi ke fallback model: " + getFallbackModel(provider));
                             retryHandler.post(() -> executeCallWithRotation(messages, callback, retryCount, keyRotationCount, true));
                             return;
                         }
 
-                        // 2. Omni-Rotator: Rotasi kunci jika limit (429) atau invalid/auth error (401, 403)
-                        if (code == 429 || code == 401 || code == 403) {
+                        // 2. Omni-Rotator: Rotasi kunci jika limit (429), invalid/auth error (401, 403), atau conflict berulang (409)
+                        if (code == 429 || code == 401 || code == 403 || code == 409) {
                             if (keyList.size() > 1 && keyRotationCount < keyList.size() - 1) {
                                 int nextKeyIdx = (currentIdx + 1) % keyList.size();
                                 currentKeyIndex.set(nextKeyIdx);
@@ -229,8 +253,10 @@ public class UniversalNetworkClient {
                             } else {
                                 if (code == 429) {
                                     callback.onError("Omni-Rotator: Kuota habis pada semua " + keyList.size() + " API Key (HTTP 429).");
+                                } else if (code == 409) {
+                                    callback.onError("Omni-Rotator: Server provider menolak dengan HTTP 409 (Konflik Model/Akun).");
                                 } else {
-                                    callback.onError("Omni-Rotator: Autentikasi ditolak pada semua API Key (HTTP " + code + ").");
+                                    callback.onError("Omni-Rotator: Autentikasi ditolak pada API Key (HTTP " + code + ").");
                                 }
                                 return;
                             }

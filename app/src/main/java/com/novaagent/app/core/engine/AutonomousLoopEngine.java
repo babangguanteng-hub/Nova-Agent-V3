@@ -94,6 +94,8 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             if (route.nextTask != null) {
                 this.currentTask = route.nextTask;
                 setupEngineStart();
+            } else {
+                stopTask();
             }
             return;
         }
@@ -106,7 +108,6 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.isRunning = true;
         this.stepCount = 0;
         this.consecutiveFailures = 0;
-        this.lastScreenContext = null;
         this.lastCommandExecuted = null;
         cognitiveCore.getPlanner().setMainGoal(currentTask);
         
@@ -115,13 +116,24 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         Log.i(TAG, "Misi Kognitif: " + currentTask);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         
-        // FASE 4: Buka Mata Visual
+        // FASE 4: Buka Mata Visual jika tersedia
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.resumeVision();
         } catch (Exception e) {}
         
         requestScreenData();
+
+        // FAIL-SAFE PERCAKAPAN CEPAT:
+        // Jika Accessibility belum aktif atau SCREEN_UPDATED belum tiba dalam 1000ms,
+        // langsung proses suara agar Nova segera menjawab pertanyaan user tanpa hening!
+        loopHandler.removeCallbacksAndMessages(null);
+        loopHandler.postDelayed(() -> {
+            if (isRunning && stepCount == 0) {
+                Log.i(TAG, "Mode Suara Langsung (Respon cepat tanpa menunggu layar)");
+                processWithCore(lastScreenContext, null);
+            }
+        }, 1000);
     }
 
     public void stopTask() {
@@ -140,8 +152,14 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         if (!isRunning) return;
         try {
             NovaAccessibilityService service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
-            service.requestScreenScan();
-        } catch (Exception e) { stopTask(); }
+            if (service != null) {
+                service.requestScreenScan();
+            } else {
+                Log.w(TAG, "NovaAccessibilityService tidak aktif, berjalan dalam mode suara murni.");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Gagal requestScreenScan: " + e.getMessage());
+        }
     }
 
     @Override
@@ -261,7 +279,16 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
             @Override
             public void onConfusion(String errorMessage) {
-                if (isRunning) { speak(errorMessage); stopTask(); }
+                if (isRunning) {
+                    String speech = errorMessage;
+                    if (errorMessage != null && (errorMessage.contains("409") || errorMessage.contains("Conflict"))) {
+                        speech = "Terjadi kendala konfigurasi pada server AI (HTTP 409). Mencoba model alternatif.";
+                    } else if (errorMessage != null && errorMessage.startsWith("HTTP")) {
+                        speech = "Koneksi ke server AI terganggu (" + errorMessage + "). Silakan coba lagi.";
+                    }
+                    speak(speech);
+                    stopTask();
+                }
             }
         });
     }
