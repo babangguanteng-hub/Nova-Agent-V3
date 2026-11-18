@@ -18,8 +18,13 @@ import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
 
+import com.novaagent.app.core.audio.fullduplex.BargeInCoordinator;
+import com.novaagent.app.core.audio.fullduplex.FullDuplexVoiceCoordinator;
+import com.novaagent.app.core.audio.fullduplex.StreamingSentenceChunker;
+import com.novaagent.app.core.brain.CognitiveCore;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.di.ServiceLocator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -40,6 +45,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private volatile boolean isStreamFirstChunk = true;
     private final StringBuilder recentSpokenBuffer = new StringBuilder();
     private AudioFocusRequest audioFocusRequest;
+
+    private final FullDuplexVoiceCoordinator fullDuplexCoordinator;
+    private final BargeInCoordinator bargeInCoordinator;
 
     private final Runnable listeningWatchdog = () -> {
         if (!isCurrentlySpeaking) {
@@ -105,14 +113,8 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
                 // INTERUPSI ANTI-BOCOR SUARA SENDIRI (BARGE-IN CEPAT)
                 if (isCurrentlySpeaking) {
-                    if (isGenuineUserInterruption(partialText)) {
-                        if (mouth != null) mouth.stop();
-                        isCurrentlySpeaking = false;
-                        isStreamFirstChunk = true;
-                        recentSpokenBuffer.setLength(0);
-                        abandonAudioFocus();
-                        Log.w(TAG, "Interupsi Valid Terdeteksi: " + partialText);
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+                    if (bargeInCoordinator.isGenuineUserSpeech(partialText, recentSpokenBuffer.toString())) {
+                        bargeInCoordinator.triggerBargeIn("Partial STT Interruption: " + partialText);
                     } else {
                         return; // Abaikan pantulan speaker Nova sendiri
                     }
@@ -127,11 +129,8 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             if (matches != null && !matches.isEmpty()) {
                 String command = matches.get(0).trim();
                 if (isCurrentlySpeaking) {
-                    if (isGenuineUserInterruption(command)) {
-                        if (mouth != null) mouth.stop();
-                        isCurrentlySpeaking = false;
-                        abandonAudioFocus();
-                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+                    if (bargeInCoordinator.isGenuineUserSpeech(command, recentSpokenBuffer.toString())) {
+                        bargeInCoordinator.triggerBargeIn("Result STT Interruption: " + command);
                     } else {
                         resumeListening();
                         return;
@@ -163,6 +162,53 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     public NovaAudioDirector(Context context) {
         this.context = context;
         this.mainHandler = new Handler(Looper.getMainLooper());
+        this.fullDuplexCoordinator = new FullDuplexVoiceCoordinator(context);
+        this.bargeInCoordinator = new BargeInCoordinator(mainHandler);
+
+        this.bargeInCoordinator.setSpeechStopper(() -> {
+            if (mouth != null) mouth.stop();
+            isCurrentlySpeaking = false;
+            isStreamFirstChunk = true;
+            String spokenText = recentSpokenBuffer.toString().trim();
+            if (!spokenText.isEmpty()) {
+                try {
+                    CognitiveCore core = ServiceLocator.getInstance().resolve(CognitiveCore.class);
+                    if (core != null) core.recordInterruption(spokenText);
+                } catch (Exception ignored) {}
+            }
+            recentSpokenBuffer.setLength(0);
+            abandonAudioFocus();
+            if (fullDuplexCoordinator != null) {
+                fullDuplexCoordinator.onAiSpeechFinished();
+            }
+        });
+
+        this.fullDuplexCoordinator.setListener(new FullDuplexVoiceCoordinator.FullDuplexListener() {
+            @Override
+            public void onUserSpeechBegan() {
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING"));
+            }
+
+            @Override
+            public void onUserSpeechEnded(long durationMs) {
+                Log.i(TAG, "FullDuplex: Pengguna selesai bicara (" + durationMs + "ms)");
+            }
+
+            @Override
+            public void onUserInterruptionDetected() {
+                Log.w(TAG, "⚡ FullDuplex: Interupsi pengguna terdeteksi (Barge-in VAD)!");
+                bargeInCoordinator.triggerBargeIn("VAD User Speech Interruption");
+            }
+
+            @Override
+            public void onAudioRmsLevel(double rmsDb) {
+                if (isListeningAbadi && !isCurrentlySpeaking) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RMS:" + rmsDb));
+                }
+            }
+        });
+
+        fullDuplexCoordinator.start();
 
         mainHandler.post(() -> {
             initMouth();
@@ -192,6 +238,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
+                    if (fullDuplexCoordinator != null) {
+                        fullDuplexCoordinator.onAiSpeechStarted();
+                    }
                     mainHandler.removeCallbacks(listeningWatchdog);
                     requestAudioFocus();
                     // Jaga mikrofon tetap siaga mendengarkan interupsi user saat Nova bicara
@@ -200,12 +249,18 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
+                    if (fullDuplexCoordinator != null) {
+                        fullDuplexCoordinator.onAiSpeechFinished();
+                    }
                     abandonAudioFocus();
                     mainHandler.postDelayed(() -> resumeListening(), 80);
                 }
 
                 @Override public void onError(String utteranceId) {
                     isCurrentlySpeaking = false;
+                    if (fullDuplexCoordinator != null) {
+                        fullDuplexCoordinator.onAiSpeechFinished();
+                    }
                     abandonAudioFocus();
                     mainHandler.post(() -> resumeListening());
                 }
@@ -387,36 +442,47 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             }
         } else if (event.type == AgentEvent.EventType.VOICE_STREAM_CHUNK) {
             String textChunk = String.valueOf(event.payload);
-            if (isMouthReady && textChunk != null && !textChunk.trim().isEmpty()) {
+            String cleanChunk = StreamingSentenceChunker.cleanForSpeech(textChunk);
+            if (isMouthReady && cleanChunk != null && !cleanChunk.trim().isEmpty()) {
                 mainHandler.removeCallbacks(listeningWatchdog);
-                recentSpokenBuffer.append(textChunk).append(" ");
+                recentSpokenBuffer.append(cleanChunk).append(" ");
                 mainHandler.post(() -> {
                     if (isStreamFirstChunk) {
                         isStreamFirstChunk = false;
                         isCurrentlySpeaking = true;
+                        if (fullDuplexCoordinator != null) {
+                            fullDuplexCoordinator.onAiSpeechStarted();
+                        }
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
+                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
                     } else {
-                        mouth.speak(textChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
+                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
                     }
                 });
             }
         } else if (event.type == AgentEvent.EventType.VOICE_RECEIVED) {
             String textToSpeak = String.valueOf(event.payload);
-            if (isMouthReady && textToSpeak != null && !textToSpeak.trim().isEmpty()) {
+            String cleanSpeech = StreamingSentenceChunker.cleanForSpeech(textToSpeak);
+            if (isMouthReady && cleanSpeech != null && !cleanSpeech.trim().isEmpty()) {
                 mainHandler.removeCallbacks(listeningWatchdog);
                 recentSpokenBuffer.setLength(0);
-                recentSpokenBuffer.append(textToSpeak);
+                recentSpokenBuffer.append(cleanSpeech);
                 mainHandler.post(() -> {
                     isCurrentlySpeaking = true;
+                    if (fullDuplexCoordinator != null) {
+                        fullDuplexCoordinator.onAiSpeechStarted();
+                    }
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
+                    mouth.speak(cleanSpeech, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
         }
     }
 
     public void destroy() {
+        if (fullDuplexCoordinator != null) {
+            fullDuplexCoordinator.stop();
+        }
         setListeningMode(false);
         abandonAudioFocus();
         mainHandler.removeCallbacks(listeningWatchdog);

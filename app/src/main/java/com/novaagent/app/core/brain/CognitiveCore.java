@@ -39,6 +39,12 @@ public class CognitiveCore {
         if (networkClient != null) networkClient.cancelActiveCall();
     }
 
+    public void recordInterruption(String partialSpoken) {
+        if (memoryCoordinator != null) {
+            memoryCoordinator.recordInterruption(partialSpoken);
+        }
+    }
+
     public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
         try {
             if (!taskPlanner.hasActivePlan()) {

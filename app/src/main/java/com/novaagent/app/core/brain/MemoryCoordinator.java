@@ -28,6 +28,10 @@ public class MemoryCoordinator {
         else workingMemory.addAssistantMessage(content);
     }
 
+    public void recordInterruption(String partialSpoken) {
+        workingMemory.recordAssistantInterrupted(partialSpoken);
+    }
+
     public JSONArray getRecentChatHistory() {
         return workingMemory.getMemoryAsJsonArray();
     }
