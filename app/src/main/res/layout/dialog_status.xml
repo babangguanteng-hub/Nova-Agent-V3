@@ -5,30 +5,272 @@
     android:background="@drawable/bg_ultra_main"
     android:padding="20dp">
 
-    <TextView
-        android:id="@+id/tvStatHead"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Status Sistem"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="24dp"/>
-
-    <LinearLayout
+    <!-- HEADER STATUS -->
+    <RelativeLayout
+        android:id="@+id/headerStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_ultra_card"
-        android:orientation="vertical"
-        android:padding="20dp"
-        android:layout_below="@id/tvStatHead">
-        
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Kesehatan Modul" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="16dp"/>
-        
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ§  Mesin Neural (LLM) : Aktif &amp; Siaga" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ›¡ï¸ Omni-Rotator : Stabil" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ðŸ‘ï¸ Modul Visi (OCR) : Hemat Daya" android:textColor="#FFF" android:layout_marginBottom="8dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="â³ Watchdog : Berdetak Normal" android:textColor="#FFF"/>
-    </LinearLayout>
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="20dp">
+
+        <ImageView
+            android:id="@+id/btnBackStatus"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="#8B95A5"
+            android:background="@drawable/bg_circle_btn"
+            android:padding="12dp"
+            android:layout_centerVertical="true"
+            android:clickable="true"
+            android:focusable="true"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_toEndOf="@id/btnBackStatus"
+            android:layout_marginStart="14dp"
+            android:layout_centerVertical="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Status Sistem"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Diagnostik &amp; Kesehatan Nova Agent"
+                android:textColor="#88FFFFFF"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/headerStatus"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- KARTU 1: KESEHATAN MODUL -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="20dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Kesehatan Modul Utama"
+                    android:textColor="#00E5FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <!-- Neural LLM -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🧠  Mesin Neural (LLM)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Aktif &amp; Siaga"
+                        android:background="@drawable/bg_badge_green"
+                        android:textColor="#00E676"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <!-- Omni-Rotator -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🛡️  Omni-Rotator Multi-Key"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Siap &amp; Stabil"
+                        android:background="@drawable/bg_badge_green"
+                        android:textColor="#00E676"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <!-- Vision OCR -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👁️  Modul Persepsi Layar"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Siaga Hemat Daya"
+                        android:background="@drawable/bg_ultra_input"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <!-- Watchdog -->
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⏱️  Background Watchdog"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Berdetak Normal"
+                        android:background="@drawable/bg_badge_green"
+                        android:textColor="#00E676"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="3dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- KARTU 2: DETAIL KONFIGURASI AKTIF -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="20dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Konfigurasi Aktif"
+                    android:textColor="#00E5FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Provider Aktif"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="13sp"/>
+                    <TextView
+                        android:id="@+id/tvStatusProvider"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Groq"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Model LLM"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="13sp"/>
+                    <TextView
+                        android:id="@+id/tvStatusModel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="openai/gpt-oss-20b"
+                        android:textColor="#00E5FF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Kunci Omni-Rotator"
+                        android:textColor="#88FFFFFF"
+                        android:textSize="13sp"/>
+                    <TextView
+                        android:id="@+id/tvStatusKeyCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1 Kunci Terdaftar"
+                        android:textColor="#00E676"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+            </LinearLayout>
+
+            <!-- TOMBOL KEMBALI -->
+            <Button
+                android:id="@+id/btnCloseStatus"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="Tutup Status"
+                android:textAllCaps="false"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_btn_gradient"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="24dp"/>
+
+        </LinearLayout>
+    </ScrollView>
 </RelativeLayout>

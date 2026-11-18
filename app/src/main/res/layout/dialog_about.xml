@@ -5,31 +5,148 @@
     android:background="@drawable/bg_ultra_main"
     android:padding="20dp">
 
-    <TextView
-        android:id="@+id/tvAboutHead"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tentang Nova"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="24dp"/>
-
-    <LinearLayout
+    <!-- HEADER TENTANG -->
+    <RelativeLayout
+        android:id="@+id/headerAbout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_ultra_card"
-        android:orientation="vertical"
-        android:padding="20dp"
-        android:layout_below="@id/tvAboutHead"
-        android:gravity="center">
-        
-        <ImageView android:layout_width="80dp" android:layout_height="80dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#00E5FF" android:layout_marginBottom="16dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent Otonom" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="8dp"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Versi 6.0 Masterpiece" android:textColor="#B000FF" android:textSize="14sp" android:layout_marginBottom="24dp"/>
-        
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Dikembangkan oleh:\nMOCH KHOIRUL AZMAN" android:textColor="#00E5FF" android:textSize="14sp" android:textStyle="bold" android:textAlignment="center" android:layout_marginBottom="8dp"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hak Cipta Â© 2026. Semua Sistem Dilindungi." android:textColor="#88FFFFFF" android:textSize="12sp" android:textAlignment="center"/>
-    </LinearLayout>
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="20dp">
+
+        <ImageView
+            android:id="@+id/btnBackAbout"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="#8B95A5"
+            android:background="@drawable/bg_circle_btn"
+            android:padding="12dp"
+            android:layout_centerVertical="true"
+            android:clickable="true"
+            android:focusable="true"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_toEndOf="@id/btnBackAbout"
+            android:layout_marginStart="14dp"
+            android:layout_centerVertical="true">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tentang Nova"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Informasi &amp; Arsitektur Nova Agent"
+                android:textColor="#88FFFFFF"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/headerAbout"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ultra_card"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:gravity="center_horizontal"
+                android:layout_marginBottom="20dp">
+
+                <ImageView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:src="@drawable/ic_nova_n_logo"
+                    android:background="@drawable/bg_box_unselected"
+                    android:padding="12dp"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nova Agent V3"
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Autonomous Real-Time Voice Agent"
+                    android:textColor="#00E5FF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Nova Agent V3 dirancang untuk percakapan suara real-time alami, interupsi instan (barge-in), persepsi layar otomatis, dan multi-provider Omni-Rotator cerdas dengan rotasi kunci API tanpa henti."
+                    android:textColor="#B0BEC5"
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="4dp"
+                    android:textAlignment="center"
+                    android:layout_marginBottom="20dp"/>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#22FFFFFF"
+                    android:layout_marginBottom="16dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Dikembangkan oleh:\nMOCH KHOIRUL AZMAN"
+                    android:textColor="#00E5FF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textAlignment="center"
+                    android:lineSpacingExtra="3dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Hak Cipta © 2026. Semua Sistem Dilindungi."
+                    android:textColor="#88FFFFFF"
+                    android:textSize="11sp"
+                    android:textAlignment="center"/>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnCloseAbout"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:text="Kembali ke Beranda"
+                android:textAllCaps="false"
+                android:backgroundTint="@null"
+                android:background="@drawable/bg_btn_gradient"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:layout_marginBottom="24dp"/>
+
+        </LinearLayout>
+    </ScrollView>
 </RelativeLayout>

@@ -95,7 +95,7 @@ android:layout_marginStart="14dp"
 android:layout_centerVertical="true">
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="bottom">
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Nova Agent " android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v6.0" android:textColor="#A78BFA" android:textSize="18sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v3.0" android:textColor="#A78BFA" android:textSize="18sp" android:textStyle="bold"/>
 </LinearLayout>
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Smart • Fast • Powerful" android:textColor="#88FFFFFF" android:textSize="11sp" android:layout_marginTop="2dp"/>
 </LinearLayout>
@@ -158,8 +158,8 @@ android:layout_marginBottom="16dp">
 <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="16dp">
 <ImageView android:id="@+id/icSparkle" android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/btn_star_big_on" android:tint="#FFAA00" android:layout_centerVertical="true"/>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSparkle" android:layout_marginStart="12dp">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi &amp; Booble Jelly" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tampilan animasi dan booble jelly" android:textColor="#88FFFFFF" android:textSize="11sp"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi &amp; Bubble Floating" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur tampilan animasi dan bubble floating" android:textColor="#88FFFFFF" android:textSize="11sp"/>
 </LinearLayout>
 <Switch android:id="@+id/switchBubbleMaster" android:layout_width="wrap_content" android:layout_height="wrap_content" android:checked="true" android:thumbTint="#FFFFFF" android:trackTint="#00E5FF" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
 </RelativeLayout>
@@ -168,16 +168,16 @@ android:layout_marginBottom="16dp">
 <ImageView android:id="@+id/icPlayAnim" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_media_play" android:tint="#4895EF" android:layout_centerVertical="true"/>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPlayAnim" android:layout_marginStart="12dp" android:layout_centerVertical="true">
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Animasi" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih gaya animasi booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih gaya animasi bubble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
 </LinearLayout>
 <Spinner android:id="@+id/spinnerAnimStyle" android:layout_width="145dp" android:layout_height="36dp" android:background="@drawable/bg_dropdown_pill" android:popupBackground="#0C1428" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
 </RelativeLayout>
-<!-- Bentuk Booble -->
+<!-- Bentuk Bubble -->
 <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
 <ImageView android:id="@+id/icShape" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_shape_square" android:tint="#9D4EDD" android:layout_centerVertical="true"/>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icShape" android:layout_marginStart="12dp" android:layout_centerVertical="true">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bentuk Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bentuk booble jelly" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bentuk Bubble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih bentuk bubble floating" android:textColor="#88FFFFFF" android:textSize="10sp"/>
 </LinearLayout>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
 <ImageView android:id="@+id/btnShapeCircle" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_selected" android:src="@drawable/ic_shape_circle" android:padding="8dp" android:layout_marginEnd="6dp" android:clickable="true" android:focusable="true"/>
@@ -186,12 +186,12 @@ android:layout_marginBottom="16dp">
 <ImageView android:id="@+id/btnShapeSquare" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_box_unselected" android:src="@drawable/ic_shape_square" android:padding="8dp" android:clickable="true" android:focusable="true"/>
 </LinearLayout>
 </RelativeLayout>
-<!-- Warna Booble -->
+<!-- Warna Bubble -->
 <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
 <ImageView android:id="@+id/icPalette" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_gallery" android:tint="#4EA8DE" android:layout_centerVertical="true"/>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icPalette" android:layout_marginStart="12dp" android:layout_centerVertical="true">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Booble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih warna utama booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Warna Bubble" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pilih warna utama bubble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
 </LinearLayout>
 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_alignParentEnd="true" android:layout_centerVertical="true">
 <View android:id="@+id/btnColorCyan" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/bg_color_cyan" android:layout_marginEnd="8dp" android:clickable="true" android:focusable="true"/>
@@ -201,12 +201,12 @@ android:layout_marginBottom="16dp">
 <View android:id="@+id/btnColorGreen" android:layout_width="26dp" android:layout_height="26dp" android:background="@drawable/bg_color_green" android:clickable="true" android:focusable="true"/>
 </LinearLayout>
 </RelativeLayout>
-<!-- Ukuran Booble -->
+<!-- Ukuran Bubble -->
 <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ultra_input" android:padding="12dp" android:layout_marginBottom="10dp">
 <ImageView android:id="@+id/icSize" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_menu_crop" android:tint="#4895EF" android:layout_centerVertical="true"/>
 <LinearLayout android:id="@+id/llSizeLabel" android:layout_width="110dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_toEndOf="@id/icSize" android:layout_marginStart="12dp" android:layout_centerVertical="true">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ukuran Booble" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur ukuran booble" android:textColor="#88FFFFFF" android:textSize="10sp"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ukuran Bubble" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold"/>
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Atur ukuran bubble floating" android:textColor="#88FFFFFF" android:textSize="10sp"/>
 </LinearLayout>
 <TextView android:id="@+id/tvBubbleSizePct" android:layout_width="38dp" android:layout_height="wrap_content" android:text="75%" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:gravity="end" android:layout_alignParentEnd="true" android:layout_centerVertical="true"/>
 <SeekBar android:id="@+id/seekBubbleSize" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="100" android:progress="75" android:progressTint="#0096FF" android:thumbTint="#FFFFFF" android:layout_toEndOf="@id/llSizeLabel" android:layout_toStartOf="@id/tvBubbleSizePct" android:layout_centerVertical="true"/>

@@ -54,8 +54,14 @@ private final String[] providers = {
 };
 
 private final String[] models = {
-    "llama-3.3-70b-versatile", "gemini-2.0-flash", "llama-3.3-70b", "ministral-8b-latest",
-    "command-r-plus", "@cf/meta/llama-3.1-8b-instruct", "meta/llama-3.1-70b-instruct", "meta-llama/llama-3.3-70b-instruct:free"
+    "openai/gpt-oss-20b",
+    "gemini-3.5-flash",
+    "GPT-OSS / Qwen 3.8 27B",
+    "ministral-3b-latest",
+    "north-mini-code-1.0",
+    "@cf/google/gemma-4-26b-a4b-it",
+    "meta/llama-3.1-70b-instruct",
+    "meta-llama/llama-3.3-70b-instruct:free"
 };
 
 private String selectedVoice = "nova";
@@ -100,6 +106,9 @@ protected void onCreate(Bundle savedInstanceState) {
     if (spinnerProvider != null) {
         spinnerProvider.setAdapter(adapter);
         String savedProvider = prefs.getString("ai_provider", "Groq");
+        String savedModel = prefs.getString("ai_model", models[0]);
+        if (tvAutoModel != null) tvAutoModel.setText(savedModel);
+
         for (int i = 0; i < providers.length; i++) {
             if (providers[i].equals(savedProvider)) {
                 spinnerProvider.setSelection(i);
@@ -127,7 +136,12 @@ protected void onCreate(Bundle savedInstanceState) {
                 return;
             }
             com.novaagent.app.data.repository.SecureConfigManager.saveApiKey(this, key);
-            Toast.makeText(this, "Konfigurasi Tersimpan Aman & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
+            String[] tokens = key.split("[,;\\r\\n]+");
+            int count = 0;
+            for (String t : tokens) {
+                if (!t.trim().isEmpty()) count++;
+            }
+            Toast.makeText(this, "Omni-Rotator: " + count + " API Key berhasil disimpan aman!", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -162,7 +176,7 @@ private void setupBottomNav() {
     View navTentang = findViewById(R.id.navTentang);
     if (navTentang != null) navTentang.setOnClickListener(v -> {
         playClickSound();
-        showSettingsDialog();
+        showAboutDialog();
     });
 }
 
@@ -176,7 +190,49 @@ private void showStatusDialog() {
         currentDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         currentDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
     }
-    view.setOnClickListener(v -> currentDialog.dismiss());
+    
+    TextView tvProv = view.findViewById(R.id.tvStatusProvider);
+    TextView tvMod = view.findViewById(R.id.tvStatusModel);
+    TextView tvKeys = view.findViewById(R.id.tvStatusKeyCount);
+
+    String currentProv = prefs.getString("ai_provider", "Groq");
+    String currentMod = prefs.getString("ai_model", models[0]);
+    String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKey(this);
+    int keyCount = 0;
+    if (!rawKeys.isEmpty()) {
+        for (String t : rawKeys.split("[,;\\r\\n]+")) {
+            if (!t.trim().isEmpty()) keyCount++;
+        }
+    }
+
+    if (tvProv != null) tvProv.setText(currentProv);
+    if (tvMod != null) tvMod.setText(currentMod);
+    if (tvKeys != null) tvKeys.setText(keyCount > 0 ? (keyCount + " Kunci Terdaftar") : "Belum Ada Kunci");
+
+    View btnBack = view.findViewById(R.id.btnBackStatus);
+    if (btnBack != null) btnBack.setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+    View btnClose = view.findViewById(R.id.btnCloseStatus);
+    if (btnClose != null) btnClose.setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+
+    currentDialog.show();
+}
+
+private void showAboutDialog() {
+    if (currentDialog != null && currentDialog.isShowing()) currentDialog.dismiss();
+    currentDialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+    currentDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+    View view = LayoutInflater.from(this).inflate(R.layout.dialog_about, null);
+    currentDialog.setContentView(view);
+    if (currentDialog.getWindow() != null) {
+        currentDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        currentDialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+    }
+
+    View btnBack = view.findViewById(R.id.btnBackAbout);
+    if (btnBack != null) btnBack.setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+    View btnClose = view.findViewById(R.id.btnCloseAbout);
+    if (btnClose != null) btnClose.setOnClickListener(v -> { playClickSound(); currentDialog.dismiss(); });
+
     currentDialog.show();
 }
 
@@ -187,11 +243,11 @@ protected void onResume() {
     TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
     boolean overlayOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this);
     if (tvOverlay != null) {
-        tvOverlay.setText(overlayOn ? "âœ” Terverifikasi" : "Aktifkan");
+        tvOverlay.setText(overlayOn ? "✔ Terverifikasi" : "Aktifkan");
         tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_badge_green : R.drawable.bg_ultra_input);
     }
     if (tvA11y != null) {
-        tvA11y.setText("âœ” Terverifikasi");
+        tvA11y.setText("✔ Terverifikasi");
         tvA11y.setBackgroundResource(R.drawable.bg_badge_green);
     }
 }
