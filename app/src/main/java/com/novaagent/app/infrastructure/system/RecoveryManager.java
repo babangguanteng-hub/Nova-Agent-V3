@@ -58,11 +58,11 @@ public class RecoveryManager implements EventBus.EventListener {
             switch (strategy) {
                 case SCROLL_SEARCH_DOWN:
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area bawah..."));
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"down\"}")));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("scroll", "", "down", -1, -1, "")));
                     break;
                 case SCROLL_SEARCH_UP:
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Mencari di area atas..."));
-                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("{\"action\":\"scroll\", \"direction\":\"up\"}")));
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, new ActionCommandDto("scroll", "", "up", -1, -1, "")));
                     break;
                 case SOFT_RESET_CACHE:
                     NodeCache nc = locator.find(NodeCache.class); if (nc != null) nc.invalidate();

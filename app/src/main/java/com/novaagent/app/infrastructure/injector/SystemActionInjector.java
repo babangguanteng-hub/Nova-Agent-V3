@@ -15,9 +15,11 @@ import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
+import com.novaagent.app.core.app.AppDiscoveryEngine;
 import com.novaagent.app.core.brain.LongTermMemoryEngine;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.core.device.DeviceSystemController;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.SafetyPolicyEngine;
 import com.novaagent.app.core.proactive.ConditionalSentinelEngine;
@@ -34,7 +36,8 @@ private final int screenWidth;
 private final int screenHeight;
 private final Handler delayHandler;
 private final Context context;
-private boolean isFlashlightOn = false;
+private final AppDiscoveryEngine appDiscoveryEngine;
+private final DeviceSystemController deviceSystemController;
 
 public SystemActionInjector(Context context) {
     this.context = context;
@@ -42,6 +45,8 @@ public SystemActionInjector(Context context) {
     this.screenWidth = metrics.widthPixels;
     this.screenHeight = metrics.heightPixels;
     this.delayHandler = new Handler(Looper.getMainLooper());
+    this.appDiscoveryEngine = new AppDiscoveryEngine(context);
+    this.deviceSystemController = new DeviceSystemController(context);
 }
 
 public void executeAction(ActionCommandDto cmd) {
@@ -169,24 +174,8 @@ public void executeAction(ActionCommandDto cmd) {
 }
 
 private boolean openAppInstantly(Context ctx, String targetApp) {
-    if (targetApp == null || targetApp.trim().isEmpty()) return false;
-    String normalizedTarget = targetApp.toLowerCase().replaceAll("[^a-z0-9]", "");
-    PackageManager pm = ctx.getPackageManager();
-    List<ApplicationInfo> packages = pm.getInstalledApplications(PackageManager.GET_META_DATA);
-    Intent bestIntent = null;
-    for (ApplicationInfo info : packages) {
-        Intent launchIntent = pm.getLaunchIntentForPackage(info.packageName);
-        if (launchIntent == null) continue;
-        String label = pm.getApplicationLabel(info).toString().toLowerCase().replaceAll("[^a-z0-9]", "");
-        String pkgName = info.packageName.toLowerCase();
-        if (label.equals(normalizedTarget)) { bestIntent = launchIntent; break; }
-        if (pkgName.contains(normalizedTarget)) { bestIntent = launchIntent; }
-        if (bestIntent == null && (label.contains(normalizedTarget) || normalizedTarget.contains(label))) { bestIntent = launchIntent; }
-    }
-    if (bestIntent != null) {
-        bestIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        ctx.startActivity(bestIntent);
-        return true;
+    if (appDiscoveryEngine != null) {
+        return appDiscoveryEngine.launchApp(targetApp);
     }
     return false;
 }
@@ -219,17 +208,13 @@ private void handleLocalHardware(Context context, String cmd) {
     try {
         String lowerCmd = cmd.toLowerCase();
         if (lowerCmd.contains("senter") || lowerCmd.contains("lampu") || lowerCmd.contains("flashlight")) {
-            CameraManager camManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-            if (camManager != null) {
-                String cameraId = camManager.getCameraIdList()[0];
-                isFlashlightOn = !isFlashlightOn;
-                camManager.setTorchMode(cameraId, isFlashlightOn);
+            if (deviceSystemController != null) {
+                deviceSystemController.toggleFlashlight();
             }
         } else if (lowerCmd.contains("volume") || lowerCmd.contains("suara")) {
-            AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-            if (audioManager != null) {
-                int adjust = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up") ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
-                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust, AudioManager.FLAG_SHOW_UI);
+            if (deviceSystemController != null) {
+                boolean raise = lowerCmd.contains("naik") || lowerCmd.contains("tambah") || lowerCmd.contains("besar") || lowerCmd.contains("up");
+                deviceSystemController.adjustVolume(AudioManager.STREAM_MUSIC, raise);
             }
         } else if (lowerCmd.contains("wifi") || lowerCmd.contains("internet")) {
             Intent panelIntent = new Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY);

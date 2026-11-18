@@ -54,7 +54,6 @@ public class CognitiveCore {
                 }
             }
 
-            String compressedUI = contextManager.compressContext(rawContext);
             JSONArray finalMessages = new JSONArray();
 
             // ⚡ FASE 7: LOCAL RAG INJECTION
@@ -70,7 +69,11 @@ public class CognitiveCore {
             for (int i = 0; i < history.length(); i++) finalMessages.put(history.getJSONObject(i));
 
             String activeTask = taskPlanner.getGoalAndProgress();
-            String contextPrompt = activeTask + "\nDATA UI:\n" + compressedUI;
+            String contextPrompt = activeTask;
+            if (rawContext != null) {
+                String compressedUI = contextManager.compressContext(rawContext);
+                contextPrompt += "\nDATA UI:\n" + compressedUI;
+            }
             if (previousFailedAction != null) {
                 contextPrompt = "⚠️ AKSI '" + previousFailedAction + "' GAGAL. Cari strategi lain.\n" + contextPrompt;
             }

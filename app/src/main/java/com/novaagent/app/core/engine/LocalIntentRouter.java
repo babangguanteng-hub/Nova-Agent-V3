@@ -1,17 +1,23 @@
 package com.novaagent.app.core.engine;
 
+import android.content.Context;
 import android.util.Log;
+import com.novaagent.app.core.skills.NovaSkill;
+import com.novaagent.app.core.skills.SkillRegistry;
+import com.novaagent.app.core.skills.SkillResult;
 import com.novaagent.app.data.model.ActionCommandDto;
 import org.json.JSONObject;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * PENJAGA GERBANG NIAT (FASE 1, 2, 3, & 7) - AUDITED VERSION [N010]
- * JSON dibangun menggunakan JSONObject murni untuk mencegah error parsing/injeksi.
+ * PENJAGA GERBANG NIAT (NOVA JARVIS PHASE 2 & 3)
+ * Mengintegrasikan Modular Skill Registry untuk mengeksekusi keahlian luring (Zero-Internet).
  */
 public class LocalIntentRouter {
     private static final String TAG = "LocalIntentRouter";
+    private final SkillRegistry skillRegistry;
+    private final Context context;
 
     public static class RoutingResult {
         public final boolean isOfflineAction;
@@ -31,25 +37,32 @@ public class LocalIntentRouter {
         }
     }
 
+    public LocalIntentRouter() {
+        this(null);
+    }
+
+    public LocalIntentRouter(Context context) {
+        this.context = context;
+        this.skillRegistry = new SkillRegistry();
+    }
+
+    public SkillRegistry getSkillRegistry() {
+        return skillRegistry;
+    }
+
     private ActionCommandDto safeCmd(String action, String text, String dir, int x) {
-        try {
-            JSONObject j = new JSONObject();
-            j.put("action", action);
-            if (text != null) j.put("textToType", text);
-            if (dir != null) j.put("direction", dir);
-            if (x != -1) j.put("x", x);
-            return new ActionCommandDto(j.toString());
-        } catch (Exception e) {
-            return null;
-        }
+        return new ActionCommandDto(action, text, dir, x, -1, "");
     }
 
     public RoutingResult route(String rawCommand) {
+        if (rawCommand == null || rawCommand.trim().isEmpty()) {
+            return new RoutingResult(false, null, null);
+        }
         String c = rawCommand.toLowerCase().trim();
         Log.i(TAG, "Menganalisis Niat: " + c);
 
         try {
-            // --- FASE 7: PENJADWALAN & KONDISI (SENTINEL) ---
+            // --- 1. PENJADWALAN & KONDISI (SENTINEL) ---
             Matcher timeMatcher = Pattern.compile(".*(dalam|nanti)\\s+(\\d+)\\s+menit\\s+(.*)").matcher(c);
             if (timeMatcher.matches()) {
                 int menit = Integer.parseInt(timeMatcher.group(2));
@@ -65,47 +78,35 @@ public class LocalIntentRouter {
                 return new RoutingResult(true, safeCmd("schedule_battery", action + " " + target, null, level), "Sentinel aktif. Eksekusi saat baterai " + level + " persen.");
             }
 
-            // --- FASE 3: DETEKSI PERINTAH HIBRIDA (BATON PASS) ---
-            Matcher hybridMatcher = Pattern.compile("^(buka|bka|bukka|open)\\s+(.*?)\\s+(dan|lalu|kemudian|terus|buat|untuk)\\s+(.*)").matcher(c);
-            if (hybridMatcher.matches()) {
-                String appName = hybridMatcher.group(2).trim();
-                String nextTask = hybridMatcher.group(4).trim();
-                return new RoutingResult(true, safeCmd("open_app", appName, null, -1), "Membuka " + appName + ", dan melanjutkan tugas...", nextTask);
+            // --- 2. OTORISASI KEAMANAN (SETUJU/TOLAK) ---
+            if (c.matches(".*(setuju|iya|lanjutkan|izinkan|oke|lanjut).*")) {
+                return new RoutingResult(true, safeCmd("approve_action", null, null, -1), null);
+            }
+            if (c.matches(".*(tolak|batal|jangan|cancel|berhenti).*")) {
+                return new RoutingResult(true, safeCmd("reject_action", null, null, -1), null);
             }
 
-        // --- FASE AUDIT 3: OTORISASI KEAMANAN (SETUJU/TOLAK) ---
-        if (c.matches(".*(setuju|iya|lanjutkan|izinkan|oke|lanjut).*")) return new RoutingResult(true, safeCmd("approve_action", null, null, -1), null);
-        if (c.matches(".*(tolak|batal|jangan|cancel|berhenti).*")) return new RoutingResult(true, safeCmd("reject_action", null, null, -1), null);
+            // --- 3. KONTROL MODE PROAKTIF ---
+            if (c.matches(".*(aktifkan|nyalakan).*proaktif.*")) {
+                return new RoutingResult(true, safeCmd("set_proactive", "true", null, -1), "Mode proaktif aktif. Saya akan menyapa jika Anda diam terlalu lama.");
+            }
+            if (c.matches(".*(matikan|nonaktifkan).*proaktif.*") || c.matches(".*mode pasif.*")) {
+                return new RoutingResult(true, safeCmd("set_proactive", "false", null, -1), "Mode pasif aktif. Saya hanya akan bicara jika dipanggil.");
+            }
 
-            // --- FASE 1 & 2: GUDANG SENJATA LURING ---
-            if (c.matches("^(buka|bka|bukka|open)\\s+.*")) return new RoutingResult(true, safeCmd("open_app", c.replaceFirst("^(buka|bka|bukka|open)\\s+", "").trim(), null, -1), "Membuka aplikasi.");
-            if (c.matches(".*(kembali|balik|back|mundur).*")) return new RoutingResult(true, safeCmd("back", null, null, -1), null);
-            if (c.matches(".*(beranda|ke home|keluar dari aplikasi).*") || c.equals("home")) return new RoutingResult(true, safeCmd("home", null, null, -1), null);
-            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?bawah.*") || c.matches(".*turun.*")) return new RoutingResult(true, safeCmd("scroll", null, "down", -1), null);
-            if (c.matches(".*(scroll|skrol|geser|tarik)\\s*(ke\\s*)?atas.*") || c.matches(".*naik.*")) return new RoutingResult(true, safeCmd("scroll", null, "up", -1), null);
-            if (c.matches(".*(notifikasi|pemberitahuan).*")) return new RoutingResult(true, safeCmd("notifications", null, null, -1), null);
-            if (c.matches(".*(recent apps|aplikasi terakhir|multitasking).*")) return new RoutingResult(true, safeCmd("recent_apps", null, null, -1), null);
+            // --- 4. MODULAR SKILL REGISTRY EVALUATION (PHASE 2 & 3) ---
+            NovaSkill skill = skillRegistry.findSkill(c);
+            if (skill != null && skill.isOfflineCapable()) {
+                Log.i(TAG, "Skill Cocok Ditemukan: " + skill.getName());
+                SkillResult res = skill.execute(rawCommand, context);
+                if (res != null && res.success) {
+                    return new RoutingResult(true, res.actionCommand, res.speechResponse, res.nextTask);
+                }
+            }
 
-            if (c.matches(".*(senter|lampu|flashlight).*")) return new RoutingResult(true, safeCmd("toggle_flashlight", null, null, -1), "Siap.");
-            if (c.matches(".*(wifi|internet|data|hotspot|bluetooth).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Membuka panel jaringan.");
-            if (c.matches(".*(kamera|camera|galeri|gallery).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Membuka media.");
-            if (c.matches(".*(volume|suara)\\s*(naik|tambah|besar|turun|kurang|kecil).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), null);
-            if (c.matches(".*(musik|lagu|putar|berhenti|stop|lanjut|sebelumnya).*")) return new RoutingResult(true, safeCmd("local_hardware", c, null, -1), "Memproses media player.");
-
-            if (c.matches(".*(alarm|timer|waktu mundur).*")) return new RoutingResult(true, safeCmd("set_alarm", c, null, -1), "Membuka pengaturan jam.");
-            if (c.matches("^(telepon|hubungi|panggil|call|telpon)\\s+.*")) return new RoutingResult(true, safeCmd("dial_number", c.replaceFirst("^(telepon|hubungi|panggil|call|telpon)\\s+", "").trim(), null, -1), "Menyiapkan panggilan.");
-            if (c.matches(".*(terangkan|redupkan|kecerahan|gelap|terang)\\s*(layar)?.*") && !c.contains("senter")) return new RoutingResult(true, safeCmd("set_brightness", null, null, -1), "Membuka pengaturan layar.");
-            if (c.matches(".*(jangan ganggu|mode senyap|dnd|diam|silent).*")) return new RoutingResult(true, safeCmd("set_dnd", null, null, -1), "Membuka mode jangan ganggu.");
-
-        // --- FASE 8: KONTROL MODE PROAKTIF ---
-        if (c.matches(".*(aktifkan|nyalakan).*proaktif.*")) return new RoutingResult(true, safeCmd("set_proactive", "true", null, -1), "Mode proaktif aktif. Saya akan menyapa jika Anda diam terlalu lama.");
-        if (c.matches(".*(matikan|nonaktifkan).*proaktif.*") || c.matches(".*mode pasif.*")) return new RoutingResult(true, safeCmd("set_proactive", "false", null, -1), "Mode pasif aktif. Saya hanya akan bicara jika dipanggil.");
-
-            if (c.matches(".*(siapa kamu|nama kamu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Saya Nova, asisten AI otonom tingkat dewa Anda.");
-            if (c.matches(".*(jam berapa|waktu).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sekarang jam " + new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date()) + " bos.");
-            if (c.matches(".*(makasih|terima kasih|thank you).*")) return new RoutingResult(true, safeCmd("done", null, null, -1), "Sama-sama bos! Ada lagi?");
-
-        } catch (Exception e) { Log.e(TAG, "Gagal memproses niat lokal", e); }
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal memproses niat lokal", e);
+        }
 
         return new RoutingResult(false, null, null);
     }

@@ -104,6 +104,12 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         setupEngineStart();
     }
 
+    public static boolean isScreenInteractionRequired(String task) {
+        if (task == null || task.trim().isEmpty()) return false;
+        String lower = task.toLowerCase().trim();
+        return lower.matches(".*\\b(layar|screen|klik|tekan|pilih|tap|scroll|skrol|geser|tarik|ketik|isi|tulis|baca ini|lihat ini|cari di layar|tombol)\\b.*");
+    }
+
     private void setupEngineStart() {
         this.isRunning = true;
         this.stepCount = 0;
@@ -116,7 +122,15 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         Log.i(TAG, "Misi Kognitif: " + currentTask);
         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, AgentState.OBSERVING.name()));
         
-        // FASE 4: Buka Mata Visual jika tersedia
+        // ⚡ JARVIS ZERO-LATENCY DISPATCH:
+        // Jika perintah tidak memerlukan interaksi visual pada layar, langsung kirim ke Core (0ms delay)!
+        if (!isScreenInteractionRequired(currentTask)) {
+            Log.i(TAG, "Mode Percakapan Suara Instan (Zero-Latency: 0ms tanpa menunggu layar)");
+            processWithCore(null, null);
+            return;
+        }
+
+        // Buka Mata Visual jika dibutuhkan oleh tugas layar
         try {
             MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
             if (vision != null) vision.resumeVision();
@@ -124,16 +138,14 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         
         requestScreenData();
 
-        // FAIL-SAFE PERCAKAPAN CEPAT:
-        // Jika Accessibility belum aktif atau SCREEN_UPDATED belum tiba dalam 1000ms,
-        // langsung proses suara agar Nova segera menjawab pertanyaan user tanpa hening!
+        // Fail-safe jika A11y belum aktif atau SCREEN_UPDATED terlambat (maks 300ms)
         loopHandler.removeCallbacksAndMessages(null);
         loopHandler.postDelayed(() -> {
             if (isRunning && stepCount == 0) {
-                Log.i(TAG, "Mode Suara Langsung (Respon cepat tanpa menunggu layar)");
+                Log.i(TAG, "Fail-safe: Memproses layar dengan konteks tersedia");
                 processWithCore(lastScreenContext, null);
             }
-        }, 1000);
+        }, 300);
     }
 
     public void stopTask() {
@@ -266,9 +278,8 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
             public void onDecisionMade(ActionCommandDto cmd) {
                 if (!isRunning) return;
                 if ("done".equalsIgnoreCase(cmd.action) && !cognitiveCore.getPlanner().hasActivePlan()) {
-                    if (completionVerifier.verifyCompletion(cognitiveCore.getPlanner().getMainGoal(), ctx)) {
+                    if (ctx == null || completionVerifier.verifyCompletion(cognitiveCore.getPlanner().getMainGoal(), ctx)) {
                         checkpointManager.clearCheckpoint(); // Hapus checkpoint karena sukses
-                        // Suara AI ditangani oleh Streaming Network Client (Fase 4)
                         stopTask();
                     }
                 } else {

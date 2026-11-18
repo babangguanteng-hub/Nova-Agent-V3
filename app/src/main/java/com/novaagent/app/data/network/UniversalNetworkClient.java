@@ -24,6 +24,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.data.network.omni.OmniRouter;
 
 public class UniversalNetworkClient {
     private static final String TAG = "UniversalNetClient";
@@ -223,9 +224,11 @@ public class UniversalNetworkClient {
                         .build();
             }
 
+            final long callStartTime = System.currentTimeMillis();
             activeCall = client.newCall(request);
             activeCall.enqueue(new Callback() {
                 @Override public void onFailure(Call call, IOException e) {
+                    OmniRouter.getInstance().reportFailure(finalProvider, 0);
                     if (!activeCall.isCanceled()) {
                         handleRetry(messages, callback, retryCount, keyRotationCount, "Koneksi tidak stabil: " + e.getMessage());
                     }
@@ -234,6 +237,7 @@ public class UniversalNetworkClient {
                 @Override public void onResponse(Call call, Response response) throws IOException {
                     if (!response.isSuccessful()) {
                         int code = response.code();
+                        OmniRouter.getInstance().reportFailure(finalProvider, code);
 
                         // 1. Fallback jika nama model tidak dikenal/didukung akun atau terjadi konflik (400, 404, 409, 422)
                         if ((code == 400 || code == 404 || code == 409 || code == 422) && !useFallbackModel) {
@@ -244,6 +248,9 @@ public class UniversalNetworkClient {
 
                         // 2. Omni-Rotator: Rotasi kunci jika limit (429), invalid/auth error (401, 403), atau conflict berulang (409)
                         if (code == 429 || code == 401 || code == 403 || code == 409) {
+                            if (code == 429) {
+                                OmniRouter.getInstance().tripProvider(finalProvider, 180_000L);
+                            }
                             if (keyList.size() > 1 && keyRotationCount < keyList.size() - 1) {
                                 int nextKeyIdx = (currentIdx + 1) % keyList.size();
                                 currentKeyIndex.set(nextKeyIdx);
@@ -347,7 +354,11 @@ public class UniversalNetworkClient {
                             if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
                         }
 
-                        if (!activeCall.isCanceled()) callback.onSuccess(fullResponse.toString());
+                        if (!activeCall.isCanceled()) {
+                            long latency = System.currentTimeMillis() - callStartTime;
+                            OmniRouter.getInstance().reportSuccess(finalProvider, latency);
+                            callback.onSuccess(fullResponse.toString());
+                        }
                     } catch (Exception e) {
                         if (!activeCall.isCanceled()) callback.onError("Gagal membaca aliran stream: " + e.getMessage());
                     }

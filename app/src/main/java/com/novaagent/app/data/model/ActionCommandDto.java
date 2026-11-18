@@ -17,6 +17,21 @@ public class ActionCommandDto {
     public final List<String> subTasks = new ArrayList<>();
     public final boolean stepComplete;
 
+    public ActionCommandDto(String action, String textToType, String direction, int x, int y, String speech) {
+        this.action = action != null ? action : "unknown";
+        this.textToType = textToType != null ? textToType : "";
+        this.direction = direction != null ? direction : "";
+        this.x = x;
+        this.y = y;
+        this.thought = "";
+        this.speech = speech != null ? speech : "";
+        this.stepComplete = false;
+    }
+
+    public ActionCommandDto(String action, String textToType) {
+        this(action, textToType, "", -1, -1, "");
+    }
+
     public ActionCommandDto(String jsonResponse) throws JSONException {
         String cleanJson = extractJson(jsonResponse);
         JSONObject json = new JSONObject(cleanJson);

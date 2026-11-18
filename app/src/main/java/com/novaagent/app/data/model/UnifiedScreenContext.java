@@ -27,6 +27,46 @@ public class UnifiedScreenContext {
         return null;
     }
 
+    /**
+     * Mencari elemen layar berdasarkan pencocokan teks (Case-Insensitive substring).
+     */
+    public ScreenElement findElementByText(String targetText) {
+        if (targetText == null || targetText.trim().isEmpty()) return null;
+        String cleanTarget = targetText.toLowerCase().trim();
+        for (ScreenElement el : elements) {
+            if (el.text != null && el.text.toLowerCase().contains(cleanTarget)) {
+                return el;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Mencari elemen interaktif pertama bertipe tertentu (misal: "Button", "Input").
+     */
+    public ScreenElement findFirstActionable(String type) {
+        if (type == null) return null;
+        for (ScreenElement el : elements) {
+            if (type.equalsIgnoreCase(el.type) && el.isActionable) {
+                return el;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Memeriksa apakah layar saat ini memuat kata kunci tertentu baik via A11y tree maupun OCR visual.
+     */
+    public boolean hasText(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) return false;
+        String clean = keyword.toLowerCase().trim();
+        if (ocrText != null && ocrText.toLowerCase().contains(clean)) return true;
+        for (ScreenElement el : elements) {
+            if (el.text != null && el.text.toLowerCase().contains(clean)) return true;
+        }
+        return false;
+    }
+
     public static class ScreenElement {
         public String type; 
         public String text;

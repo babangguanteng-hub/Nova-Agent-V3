@@ -10,12 +10,14 @@ import java.util.List;
 public class TaskPlanner {
     private String mainGoal = "";
     private final List<String> subTasks = new ArrayList<>();
+    private final List<String> completedTasks = new ArrayList<>();
     private int currentStepIndex = 0;
     private int strategyShifts = 0;
 
     public void setMainGoal(String goal) {
         this.mainGoal = goal;
         this.subTasks.clear();
+        this.completedTasks.clear();
         this.currentStepIndex = 0;
         this.strategyShifts = 0;
     }
@@ -23,6 +25,7 @@ public class TaskPlanner {
     public void setNewPlan(List<String> newTasks) {
         if (newTasks != null && !newTasks.isEmpty()) {
             this.subTasks.clear();
+            this.completedTasks.clear();
             this.subTasks.addAll(newTasks);
             this.currentStepIndex = 0;
         }
@@ -38,11 +41,15 @@ public class TaskPlanner {
     }
 
     public void markStepComplete() {
-        if (hasActivePlan()) currentStepIndex++;
+        if (hasActivePlan()) {
+            completedTasks.add(subTasks.get(currentStepIndex));
+            currentStepIndex++;
+        }
     }
 
     public void abortPlan() {
         subTasks.clear();
+        completedTasks.clear();
         currentStepIndex = 0;
         mainGoal = "";
     }
@@ -51,7 +58,17 @@ public class TaskPlanner {
         this.strategyShifts++;
         // Hapus rencana lama, paksa AI berpikir ulang pada siklus berikutnya
         this.subTasks.clear();
+        this.completedTasks.clear();
         this.currentStepIndex = 0;
+    }
+
+    public int getProgressPercentage() {
+        if (subTasks.isEmpty()) return 100;
+        return Math.round((currentStepIndex / (float) subTasks.size()) * 100);
+    }
+
+    public List<String> getCompletedTasks() {
+        return new ArrayList<>(completedTasks);
     }
 
     public String getGoalAndProgress() {

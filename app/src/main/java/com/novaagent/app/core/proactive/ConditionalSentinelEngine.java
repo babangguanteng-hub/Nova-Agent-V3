@@ -29,6 +29,8 @@ public class ConditionalSentinelEngine {
     
     private final List<BatteryTask> batteryTasks = new ArrayList<>();
     private boolean isReceiverRegistered = false;
+    private boolean lowBatteryAlerted = false;
+    private boolean highTempAlerted = false;
 
     private static class BatteryTask {
         int targetLevel;
@@ -78,7 +80,11 @@ public class ConditionalSentinelEngine {
         public void onReceive(Context context, Intent intent) {
             int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
             int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            int temp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
             int currentLevel = Math.round(level * 100 / (float) scale);
+
+            evaluateHealthConditions(currentLevel, status, temp);
 
             Iterator<BatteryTask> iterator = batteryTasks.iterator();
             while (iterator.hasNext()) {
@@ -103,6 +109,39 @@ public class ConditionalSentinelEngine {
             AutonomousLoopEngine engine = ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class);
             if (engine != null) engine.startTask(command);
         } catch (Exception e) {}
+    }
+
+    public void evaluateHealthConditions(int currentLevel, int status, int temperatureTenths) {
+        boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL);
+
+        // Peringatan Baterai Lemah Proaktif (<= 15% dan tidak sedang dicas)
+        if (currentLevel > 0 && currentLevel <= 15 && !isCharging && !lowBatteryAlerted) {
+            lowBatteryAlerted = true;
+            Log.w(TAG, "Sentinel: Baterai kritis (" + currentLevel + "%). Memicu peringatan proaktif.");
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED,
+                "Bos, baterai ponsel tersisa " + currentLevel + " persen dan belum dicas. Sebaiknya segera sambungkan ke charger ya."));
+        } else if (currentLevel > 20) {
+            lowBatteryAlerted = false; // Reset jika sudah terisi
+        }
+
+        // Peringatan Suhu Perangkat (Overheat > 45°C = 450 tenths)
+        if (temperatureTenths > 450 && !highTempAlerted) {
+            highTempAlerted = true;
+            float celsius = temperatureTenths / 10.0f;
+            Log.w(TAG, "Sentinel: Suhu perangkat tinggi (" + celsius + "°C). Memicu peringatan overheat.");
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED,
+                "Bos, suhu baterai ponsel agak panas di " + Math.round(celsius) + " derajat Celsius. Disarankan istirahatkan perangkat sejenak."));
+        } else if (temperatureTenths > 0 && temperatureTenths < 400) {
+            highTempAlerted = false; // Reset jika sudah dingin
+        }
+    }
+
+    public boolean isLowBatteryAlerted() {
+        return lowBatteryAlerted;
+    }
+
+    public boolean isHighTempAlerted() {
+        return highTempAlerted;
     }
 
     public void shutdown() {
