@@ -93,7 +93,8 @@ public class UniversalNetworkClient {
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
         String provider = prefs.getString("ai_provider", "Groq");
         String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKey(context).trim();
-        String savedModel = prefs.getString("ai_model", "openai/gpt-oss-20b").trim();
+        String defaultPreferred = com.novaagent.app.core.config.NovaConfigManager.getPreferredModelForProvider(provider);
+        String savedModel = prefs.getString("ai_model", defaultPreferred).trim();
 
         List<String> keyList = parseKeys(rawKeys);
         if (keyList.isEmpty()) {
@@ -258,6 +259,18 @@ public class UniversalNetworkClient {
                                 retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1, useFallbackModel));
                                 return;
                             } else {
+                                com.novaagent.app.core.config.NovaConfigManager configMgr = com.novaagent.app.core.config.NovaConfigManager.getInstance(context);
+                                if (configMgr.isAutoFallbackEnabled()) {
+                                    String nextProvider = OmniRouter.getInstance().getNextHealthyProvider(finalProvider);
+                                    if (nextProvider != null && !nextProvider.equalsIgnoreCase(finalProvider)) {
+                                        Log.w(TAG, "Omni-Cascade: Provider " + finalProvider + " gagal. Otomatis beralih ke " + nextProvider);
+                                        String nextModel = com.novaagent.app.core.config.NovaConfigManager.getPreferredModelForProvider(nextProvider);
+                                        prefs.edit().putString("ai_provider", nextProvider).putString("ai_model", nextModel).apply();
+                                        retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, 0, false));
+                                        return;
+                                    }
+                                }
+
                                 if (code == 429) {
                                     callback.onError("Omni-Rotator: Kuota habis pada semua " + keyList.size() + " API Key (HTTP 429).");
                                 } else if (code == 409) {

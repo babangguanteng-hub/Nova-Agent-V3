@@ -143,7 +143,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="80dp"
+            android:clipToPadding="false">
 
             <!-- 1. AI REACTOR CORE CENTERPIECE -->
             <LinearLayout
@@ -287,9 +290,10 @@
                         android:textStyle="bold"/>
 
                     <TextView
+                        android:id="@+id/tvSkillsCountBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="8 Keahlian Aktif"
+                        android:text="29 Keahlian Offline Aktif"
                         android:textColor="#00E676"
                         android:textSize="10sp"/>
                 </LinearLayout>
@@ -706,7 +710,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="80dp"
+            android:clipToPadding="false">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -1066,7 +1073,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="80dp"
+            android:clipToPadding="false">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -1258,7 +1268,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="80dp"
+            android:clipToPadding="false">
 
             <TextView
                 android:layout_width="wrap_content"

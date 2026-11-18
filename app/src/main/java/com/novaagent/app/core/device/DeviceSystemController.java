@@ -1,5 +1,6 @@
 package com.novaagent.app.core.device;
 
+import android.accessibilityservice.AccessibilityService;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
@@ -14,11 +15,13 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
+import com.novaagent.app.core.di.ServiceLocator;
+import com.novaagent.app.services.accessibility.NovaAccessibilityService;
 
 /**
- * Pengendali Penuh Sistem & Hardware Android (Phase 4).
+ * PENGENDALI PENUH SISTEM & HARDWARE ANDROID (BAGIAN 4 & 10)
  * Menyediakan kontrol langsung terhadap volume, kecerahan, senter, ringer mode,
- * serta kesadaran kondisi hardware (Wi-Fi, Bluetooth, Baterai) secara real-time.
+ * rotasi layar, kunci layar, Wi-Fi, Bluetooth, Hotspot, serta status baterai & koneksi.
  */
 public class DeviceSystemController {
     private static final String TAG = "DeviceSysController";
@@ -70,6 +73,7 @@ public class DeviceSystemController {
         }
     }
 
+    // --- 2. KONTROL MODE SUARA (RINGER) ---
     public boolean setRingerMode(int ringerMode) {
         if (audioManager == null) return false;
         try {
@@ -80,7 +84,19 @@ public class DeviceSystemController {
         }
     }
 
-    // --- 2. KONTROL SENTER (FLASHLIGHT) ---
+    public int getRingerMode() {
+        if (audioManager == null) return AudioManager.RINGER_MODE_NORMAL;
+        return audioManager.getRingerMode();
+    }
+
+    public String getRingerModeDescription() {
+        int mode = getRingerMode();
+        if (mode == AudioManager.RINGER_MODE_SILENT) return "Mode Hening (Silent)";
+        if (mode == AudioManager.RINGER_MODE_VIBRATE) return "Mode Getar (Vibrate)";
+        return "Mode Dering Normal";
+    }
+
+    // --- 3. KONTROL SENTER (FLASHLIGHT) ---
     public synchronized boolean setFlashlight(boolean enable) {
         try {
             CameraManager cam = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
@@ -104,7 +120,7 @@ public class DeviceSystemController {
         return isTorchActive;
     }
 
-    // --- 3. KONTROL KECERAHAN LAYAR ---
+    // --- 4. KONTROL KECERAHAN LAYAR ---
     public boolean setBrightness(int percent) {
         int targetValue = Math.round((Math.max(0, Math.min(100, percent)) / 100.0f) * 255);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.System.canWrite(context)) {
@@ -115,55 +131,136 @@ public class DeviceSystemController {
                 Log.w(TAG, "Gagal menulis brightness langsung: " + e.getMessage());
             }
         }
-        // Fallback: buka panel display settings
+        return openDisplaySettings();
+    }
+
+    public int getBrightnessPercent() {
         try {
-            Intent intent = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-            return true;
-        } catch (Exception ignored) {
+            int current = Settings.System.getInt(context.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS);
+            return Math.round((current / 255.0f) * 100);
+        } catch (Exception e) {
+            return 50;
+        }
+    }
+
+    // --- 5. KONTROL ROTASI LAYAR ---
+    public boolean isAutoRotateEnabled() {
+        try {
+            return Settings.System.getInt(context.getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0) == 1;
+        } catch (Exception e) {
             return false;
         }
     }
 
-    // --- 4. KESADARAN KONEKTIVITAS & HARDWARE ---
+    public boolean setAutoRotate(boolean enable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.System.canWrite(context)) {
+            try {
+                Settings.System.putInt(context.getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, enable ? 1 : 0);
+                return true;
+            } catch (Exception ignored) {}
+        }
+        return openDisplaySettings();
+    }
+
+    // --- 6. KONTROL KUNCI LAYAR RESMI ---
+    public boolean lockScreen() {
+        try {
+            NovaAccessibilityService service = ServiceLocator.getInstance().resolve(NovaAccessibilityService.class);
+            if (service != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN);
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    // --- 7. INTENTS & PANEL SISTEM RESMI ---
+    public boolean openWifiSettings() {
+        return openSystemSettings(Settings.ACTION_WIFI_SETTINGS);
+    }
+
+    public boolean openBluetoothSettings() {
+        return openSystemSettings(Settings.ACTION_BLUETOOTH_SETTINGS);
+    }
+
+    public boolean openDisplaySettings() {
+        return openSystemSettings(Settings.ACTION_DISPLAY_SETTINGS);
+    }
+
+    public boolean openTetheringSettings() {
+        return openSystemSettings(Settings.ACTION_WIRELESS_SETTINGS);
+    }
+
+    public boolean openAppSettings() {
+        return openSystemSettings(Settings.ACTION_APPLICATION_SETTINGS);
+    }
+
+    public boolean openSoundSettings() {
+        return openSystemSettings(Settings.ACTION_SOUND_SETTINGS);
+    }
+
+    public boolean openSystemSettings(String action) {
+        try {
+            Intent intent = new Intent(action);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            try {
+                Intent fallback = new Intent(Settings.ACTION_SETTINGS);
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(fallback);
+                return true;
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+    }
+
+    // --- 8. STATUS WI-FI & BLUETOOTH ---
+    public String getWifiStatus() {
+        try {
+            WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                boolean isEnabled = wm.isWifiEnabled();
+                if (!isEnabled) return "Wi-Fi saat ini nonaktif.";
+                WifiInfo info = wm.getConnectionInfo();
+                if (info != null && info.getSSID() != null && !info.getSSID().contains("unknown")) {
+                    return "Wi-Fi aktif dan terhubung ke " + info.getSSID().replace("\"", "") + ".";
+                }
+                return "Wi-Fi aktif namun tidak terhubung ke jaringan.";
+            }
+        } catch (Exception ignored) {}
+        return "Informasi Wi-Fi tidak tersedia.";
+    }
+
+    public String getBluetoothStatus() {
+        try {
+            BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
+            if (bt != null) {
+                return bt.isEnabled() ? "Bluetooth saat ini aktif dan siaga." : "Bluetooth saat ini nonaktif.";
+            }
+        } catch (Exception ignored) {}
+        return "Perangkat tidak memiliki sensor Bluetooth.";
+    }
+
+    // --- 9. KESADARAN KONEKTIVITAS & BATERAI ---
     public String getConnectivitySummary() {
         StringBuilder sb = new StringBuilder();
-
-        // Status Wi-Fi & Internet
         if (connectivityManager != null) {
             NetworkCapabilities caps = connectivityManager.getNetworkCapabilities(connectivityManager.getActiveNetwork());
             if (caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
                 if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                    sb.append("Terhubung ke jaringan Wi-Fi");
-                    try {
-                        WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                        if (wm != null) {
-                            WifiInfo info = wm.getConnectionInfo();
-                            if (info != null && info.getSSID() != null && !info.getSSID().contains("unknown")) {
-                                sb.append(" (").append(info.getSSID().replace("\"", "")).append(")");
-                            }
-                        }
-                    } catch (Exception ignored) {}
-                    sb.append(". ");
+                    sb.append("Terhubung ke Wi-Fi. ");
                 } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    sb.append("Menggunakan data seluler. ");
+                    sb.append("Menggunakan Data Seluler. ");
                 } else {
-                    sb.append("Terhubung ke internet. ");
+                    sb.append("Terhubung ke Internet. ");
                 }
             } else {
                 sb.append("Ponsel sedang offline tanpa koneksi internet. ");
             }
         }
-
-        // Status Bluetooth
-        try {
-            BluetoothAdapter bt = BluetoothAdapter.getDefaultAdapter();
-            if (bt != null) {
-                sb.append("Bluetooth saat ini ").append(bt.isEnabled() ? "aktif." : "mati.");
-            }
-        } catch (Exception ignored) {}
-
+        sb.append(getBluetoothStatus());
         return sb.toString().trim();
     }
 
@@ -175,6 +272,7 @@ public class DeviceSystemController {
                 int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
                 int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
                 int plug = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
+                int temp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
 
                 if (level >= 0 && scale > 0) {
                     int pct = Math.round((level / (float) scale) * 100);
@@ -183,7 +281,14 @@ public class DeviceSystemController {
                                        plug == BatteryManager.BATTERY_PLUGGED_USB ? " (USB)" :
                                        plug == BatteryManager.BATTERY_PLUGGED_WIRELESS ? " (Wireless)" : "";
 
-                    return "Baterai ponsel " + pct + " persen" + (charging ? ", sedang mengisi daya" + plugSource : ", tidak mengisi daya") + ".";
+                    StringBuilder sb = new StringBuilder("Baterai ponsel " + pct + " persen");
+                    sb.append(charging ? ", sedang mengisi daya" + plugSource : ", tidak mengisi daya");
+                    if (temp > 0) {
+                        sb.append(", suhu ").append(Math.round(temp / 10.0f)).append(" derajat Celsius.");
+                    } else {
+                        sb.append(".");
+                    }
+                    return sb.toString();
                 }
             }
         } catch (Exception ignored) {}

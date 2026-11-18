@@ -98,7 +98,8 @@ public class LocalIntentRouter {
             NovaSkill skill = skillRegistry.findSkill(c);
             if (skill != null && skill.isOfflineCapable()) {
                 Log.i(TAG, "Skill Cocok Ditemukan: " + skill.getName());
-                SkillResult res = skill.execute(rawCommand, context);
+                Context effectiveContext = this.context != null ? this.context : com.novaagent.app.NovaApplication.getAppContext();
+                SkillResult res = skill.execute(rawCommand, effectiveContext);
                 if (res != null && res.success) {
                     return new RoutingResult(true, res.actionCommand, res.speechResponse, res.nextTask);
                 }

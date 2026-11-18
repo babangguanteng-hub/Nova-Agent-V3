@@ -7,62 +7,65 @@ import static org.junit.Assert.*;
 public class SkillRegistryTest {
 
     @Test
-    public void testRegistryDefaultSkillsLoaded() {
+    public void testRegistryExactly29SkillsLoaded() {
         SkillRegistry registry = new SkillRegistry();
-        assertTrue(registry.getAllSkills().size() >= 8);
+        assertEquals("Harus ada tepat 29 offline skills terdaftar", 29, registry.getAllSkills().size());
+        assertEquals(29, registry.getSkillCount());
     }
 
     @Test
     public void testSkillDiscovery() {
         SkillRegistry registry = new SkillRegistry();
 
-        // 1. Flashlight
-        NovaSkill flash = registry.findSkill("nyalakan senter");
-        assertNotNull(flash);
-        assertEquals("device.flashlight", flash.getSkillId());
+        // 1. Current Time
+        NovaSkill time = registry.findSkill("jam berapa sekarang");
+        assertNotNull(time);
+        assertEquals("time.current", time.getSkillId());
 
-        // 2. Volume
+        // 2. Current Date
+        NovaSkill date = registry.findSkill("tanggal berapa hari ini");
+        assertNotNull(date);
+        assertEquals("time.date", date.getSkillId());
+
+        // 3. Day of Week
+        NovaSkill day = registry.findSkill("hari apa sekarang");
+        assertNotNull(day);
+        assertEquals("time.day_of_week", day.getSkillId());
+
+        // 4. Calculator
+        NovaSkill calc = registry.findSkill("hitung 25 ditambah 15");
+        assertNotNull(calc);
+        assertEquals("intel.calculator", calc.getSkillId());
+
+        // 5. Volume
         NovaSkill vol = registry.findSkill("naikkan volume ke 80 persen");
         assertNotNull(vol);
         assertEquals("device.volume", vol.getSkillId());
 
-        // 3. Time Date
-        NovaSkill time = registry.findSkill("jam berapa sekarang");
-        assertNotNull(time);
-        assertEquals("system.time_date", time.getSkillId());
+        // 6. Flashlight
+        NovaSkill flash = registry.findSkill("nyalakan senter");
+        assertNotNull(flash);
+        assertEquals("device.flashlight", flash.getSkillId());
 
-        // 4. App Launcher
+        // 7. App Launcher
         NovaSkill app = registry.findSkill("buka wa");
         assertNotNull(app);
         assertEquals("app.launcher", app.getSkillId());
 
-        // 5. Navigation
-        NovaSkill nav = registry.findSkill("kembali ke beranda");
-        assertNotNull(nav);
-        assertEquals("system.navigation", nav.getSkillId());
+        // 8. Offline Notes
+        NovaSkill note = registry.findSkill("catat beli beras 5 kilo");
+        assertNotNull(note);
+        assertEquals("productivity.notes", note.getSkillId());
 
-        // 6. Identity
-        NovaSkill id = registry.findSkill("siapa kamu sebenarnya");
-        assertNotNull(id);
-        assertEquals("system.identity", id.getSkillId());
+        // 9. Timer
+        NovaSkill timer = registry.findSkill("pasang timer 5 menit");
+        assertNotNull(timer);
+        assertEquals("productivity.timer", timer.getSkillId());
 
-        // 7. Web Search
-        NovaSkill search = registry.findSkill("cari di google tentang cuaca jakarta");
-        assertNotNull(search);
-        assertEquals("online.web_search", search.getSkillId());
-    }
-
-    @Test
-    public void testWebSearchSkillExecution() {
-        WebSearchSkill skill = new WebSearchSkill();
-        assertTrue(skill.canHandle("googling resep nasi goreng"));
-        assertTrue(skill.canHandle("cari di internet siapa presiden indonesia"));
-        assertTrue(skill.canHandle("browsing berita terkini"));
-
-        SkillResult res = skill.execute("googling resep nasi goreng", null);
-        assertTrue(res.success);
-        assertEquals("done", res.actionCommand.action);
-        assertTrue(res.speechResponse.contains("resep nasi goreng"));
+        // 10. Nova Diagnostics
+        NovaSkill diag = registry.findSkill("diagnostik sistem nova");
+        assertNotNull(diag);
+        assertEquals("system.nova_diagnostics", diag.getSkillId());
     }
 
     @Test

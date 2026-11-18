@@ -6,9 +6,16 @@ import android.content.SharedPreferences;
 import android.util.Log;
 
 public class NovaApplication extends Application {
+    private static NovaApplication instance;
+
+    public static Context getAppContext() {
+        return instance != null ? instance.getApplicationContext() : null;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         
         // Memasang penangkap Crash global (Black Box)
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {

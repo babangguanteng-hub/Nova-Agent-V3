@@ -66,12 +66,12 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private final String[] models = {
-        "llama-3.3-70b-versatile",
-        "gemini-2.0-flash",
-        "llama-3.3-70b",
-        "mistral-small-latest",
-        "command-r-plus",
-        "@cf/meta/llama-3.1-8b-instruct",
+        "openai/gpt-oss-20b",
+        "gemini-3.5-flash",
+        "GPT-OSS / Qwen 3.8 27B",
+        "ministral-3b-latest",
+        "north-mini-code-1.0",
+        "@cf/google/gemma-4-26b-a4b-it",
         "meta/llama-3.1-70b-instruct",
         "meta-llama/llama-3.3-70b-instruct:free"
     };
@@ -261,6 +261,12 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, query));
+                try {
+                    com.novaagent.app.core.engine.AutonomousLoopEngine engine = com.novaagent.app.core.di.ServiceLocator.getInstance().resolve(com.novaagent.app.core.engine.AutonomousLoopEngine.class);
+                    if (engine != null) {
+                        engine.startTask(query);
+                    }
+                } catch (Exception ignored) {}
                 Toast.makeText(this, "Mengirim perintah ke Nova: " + query, Toast.LENGTH_SHORT).show();
                 etQuickPrompt.setText("");
             });
