@@ -29,6 +29,13 @@ public class ContextManager {
                 break;
             }
         }
+
+        if (ctx.ocrText != null && !ctx.ocrText.isEmpty() && compressed.length() < MAX_CONTEXT_LENGTH) {
+            int budget = MAX_CONTEXT_LENGTH - compressed.length();
+            String ocrSnippet = ctx.ocrText.length() > budget ? ctx.ocrText.substring(0, budget) : ctx.ocrText;
+            compressed.append("[VISUAL OCR] ").append(ocrSnippet).append("\n");
+        }
+
         return compressed.toString();
     }
 }

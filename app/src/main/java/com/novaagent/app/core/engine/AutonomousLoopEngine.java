@@ -168,6 +168,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     resolveDependencies();
                     
+                    if (proactiveEngine != null) {
+                        proactiveEngine.evaluateScreen(newContext);
+                    }
+                    
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
                         ActionVerificationResult result = verificationEngine.verify(lastCommandExecuted, lastScreenContext, newContext, true);

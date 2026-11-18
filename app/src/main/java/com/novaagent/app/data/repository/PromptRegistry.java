@@ -12,9 +12,10 @@ public class PromptRegistry {
         "5. Kalimat di 'speech' harus langsung *to the point* agar latensi suara sangat cepat.\n\n" +
         "ATURAN AKSI LAYAR:\n" +
         "- Jika diminta membuka aplikasi, gunakan action: 'open_app', textToType: '[nama app]'.\n" +
-        "- Jika sekadar ngobrol, gunakan action: 'done'.\n\n" +
+        "- Jika pengguna membagikan fakta atau preferensi tentang dirinya, gunakan action: 'save_memory', textToType: '[ringkasan fakta]'.\n" +
+        "- Jika sekadar ngobrol atau menjawab pertanyaan, gunakan action: 'done'.\n\n" +
         "FORMAT OUTPUT WAJIB (JSON MURNI, TANPA MARKDOWN):\n" +
-        "{\"thought\":\"analisis singkat\",\"action\":\"done/open_app/dll\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\",\"speech\":\"[Tulis ucapan natural Anda di sini...]\"}";
+        "{\"speech\":\"[Tulis ucapan natural Anda di sini...]\",\"action\":\"done/open_app/dll\",\"thought\":\"analisis singkat\",\"x\":0,\"y\":0,\"textToType\":\"\",\"direction\":\"\"}";
 
     public static String buildSystemPrompt(String longTermMemory) {
         if (longTermMemory == null || longTermMemory.isEmpty()) longTermMemory = "Belum ada ingatan khusus.";

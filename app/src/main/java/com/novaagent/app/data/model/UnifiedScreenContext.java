@@ -10,6 +10,7 @@ public class UnifiedScreenContext {
     
     // FASE 2: Flag untuk mengetahui apakah layar berubah bermakna dari sebelumnya
     public boolean hasMeaningfulChange = true; 
+    public String ocrText = ""; 
 
     public UnifiedScreenContext(String packageName, long timestampMs, List<ScreenElement> elements) {
         this.packageName = packageName != null ? packageName : "unknown";

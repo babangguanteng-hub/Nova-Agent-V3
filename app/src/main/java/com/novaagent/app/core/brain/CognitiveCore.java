@@ -43,6 +43,9 @@ public class CognitiveCore {
         try {
             if (!taskPlanner.hasActivePlan()) {
                 taskPlanner.setMainGoal(userCommand);
+                if (userCommand != null && !userCommand.trim().isEmpty()) {
+                    memoryCoordinator.addContext("user", userCommand.trim());
+                }
             }
 
             String compressedUI = contextManager.compressContext(rawContext);
@@ -67,7 +70,6 @@ public class CognitiveCore {
             }
 
             finalMessages.put(new JSONObject().put("role", "user").put("content", contextPrompt));
-            memoryCoordinator.addContext("user", activeTask);
 
             networkClient.executeCall(finalMessages, new UniversalNetworkClient.NetworkCallback() {
                 @Override public void onSuccess(String rawJsonContent) {

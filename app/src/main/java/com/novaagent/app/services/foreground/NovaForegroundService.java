@@ -46,7 +46,6 @@ private NovaAudioDirector audioDirector;
 private PerceptionCoordinator perceptionCoordinator;
 private RecoveryManager recoveryManager;
 
-```
 @Override
 public void onCreate() {
     super.onCreate();
@@ -141,7 +140,5 @@ private void createNotificationChannel() {
         if (manager != null) manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW));
     }
 }
-
-```
 
 }

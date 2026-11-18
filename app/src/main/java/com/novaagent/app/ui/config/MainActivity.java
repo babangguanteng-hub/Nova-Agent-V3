@@ -48,7 +48,6 @@ private SharedPreferences prefs;
 private ToneGenerator toneGen;
 private Dialog currentDialog = null;
 
-```
 private final String[] providers = {
     "Groq", "Google AI Studio", "Cerebral", "Mistral AI",
     "Cohere", "Cloudflare Workers AI", "NVIDIA NIM", "Open Router"
@@ -79,7 +78,7 @@ protected void onCreate(Bundle savedInstanceState) {
     TextView tvAutoModel = findViewById(R.id.tvAutoModel);
 
     if (apiKeyInput != null) {
-        apiKeyInput.setText(prefs.getString("api_key", ""));
+        apiKeyInput.setText(com.novaagent.app.data.repository.SecureConfigManager.getApiKey(this));
     }
 
     View btnPaste = findViewById(R.id.btnPasteKey);
@@ -127,8 +126,8 @@ protected void onCreate(Bundle savedInstanceState) {
                 Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            prefs.edit().putString("api_key", key).apply();
-            Toast.makeText(this, "Konfigurasi Tersimpan & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
+            com.novaagent.app.data.repository.SecureConfigManager.saveApiKey(this, key);
+            Toast.makeText(this, "Konfigurasi Tersimpan Aman & Omni-Rotator Aktif!", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -377,9 +376,9 @@ private void checkPermissionsAndStart() {
     EditText apiKeyInput = findViewById(R.id.apiKeyInput);
     if (apiKeyInput != null) {
         String key = apiKeyInput.getText().toString().trim();
-        if (!key.isEmpty()) prefs.edit().putString("api_key", key).apply();
+        if (!key.isEmpty()) com.novaagent.app.data.repository.SecureConfigManager.saveApiKey(this, key);
     }
-    if (prefs.getString("api_key", "").isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
+    if (com.novaagent.app.data.repository.SecureConfigManager.getApiKey(this).isEmpty()) { Toast.makeText(this, "API Key Kosong!", Toast.LENGTH_LONG).show(); return; }
     if (!Settings.canDrawOverlays(this)) { Toast.makeText(this, "Izinkan Jendela Mengambang!", Toast.LENGTH_LONG).show(); return; }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, "Izinkan mikrofon terlebih dahulu!", Toast.LENGTH_LONG).show(); requestBasicPermissions(); return; }
     MediaProjectionManager pm = (MediaProjectionManager) getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -396,7 +395,5 @@ protected void onActivityResult(int requestCode, int resultCode, @Nullable Inten
         finish();
     }
 }
-
-```
 
 }

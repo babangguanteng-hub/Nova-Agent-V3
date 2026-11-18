@@ -29,9 +29,8 @@ private final Context context;
 private final Handler retryHandler;
 private Call activeCall;
 private static final int MAX_RETRIES = 2;
-private static int currentKeyIndex = 0;
+private static final java.util.concurrent.atomic.AtomicInteger currentKeyIndex = new java.util.concurrent.atomic.AtomicInteger(0);
 
-```
 public interface NetworkCallback {
     void onSuccess(String rawJsonContent);
     void onError(String errorReason);
@@ -60,15 +59,15 @@ public void executeCall(JSONArray messages, NetworkCallback callback, int retryC
 private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount, boolean useFallbackModel) {
     SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
     String provider = prefs.getString("ai_provider", "Groq");
-    String rawKeys = prefs.getString("api_key", "").trim();
+    String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKey(context).trim();
     String savedModel = prefs.getString("ai_model", "llama-3.3-70b-versatile").trim();
 
     if (rawKeys.isEmpty()) { callback.onError("API Key Kosong!"); return; }
 
     final String modelName = useFallbackModel ? (provider.equals("Google AI Studio") ? "gemini-2.0-flash" : "llama-3.3-70b-versatile") : savedModel;
     final String[] keys = rawKeys.split(",");
-    if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
-    String apiKey = keys[currentKeyIndex].trim();
+    if (currentKeyIndex.get() >= keys.length) currentKeyIndex.set(0);
+    String apiKey = keys[currentKeyIndex.get()].trim();
     final String finalProvider = provider;
     final boolean isGeminiCore = finalProvider.equals("Google AI Studio");
 
@@ -153,7 +152,7 @@ private void executeCallWithRotation(JSONArray messages, NetworkCallback callbac
                     }
                     if (code == 429) {
                         if (keyRotationCount < keys.length - 1) {
-                            currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+                            currentKeyIndex.updateAndGet(idx -> (idx + 1) % keys.length);
                             retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1, useFallbackModel));
                         } else { callback.onError("Kuota semua API Key habis."); }
                     } else {
@@ -195,36 +194,25 @@ private void executeCallWithRotation(JSONArray messages, NetworkCallback callbac
                                 fullResponse.append(chunk);
                                 String textSoFar = fullResponse.toString();
                                 
-                                // âš¡ LOGIKA STREAMING KLAUSA NATURAL (ANTI TERPUTUS-PUTUS)
-                                int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
-                                if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
-                                
-                                if (speechKeyIdx != -1) {
-                                    int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
-                                    if (valStart != -1) {
-                                        int valEnd = textSoFar.indexOf("\"", valStart + 1);
-                                        String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
-                                        currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
-
-                                        if (currentSpeechRaw.length() > lastSpokenIndex) {
-                                            String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
-                                            
-                                            // Hanya potong pada tanda baca klausa/kalimat agar intonasi TTS menyatu mulus
-                                            int boundary = -1;
-                                            int[] stops = {unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf(","), unqueued.indexOf(";"), unqueued.indexOf("\n")};
-                                            for (int stop : stops) {
-                                                if (stop >= 8 && (boundary == -1 || stop < boundary)) boundary = stop;
-                                            }
-                                            
-                                            if (boundary != -1 || (unqueued.length() > 65 && unqueued.contains(" "))) {
-                                                int cutIndex = boundary != -1 ? boundary + 1 : unqueued.lastIndexOf(" ");
-                                                String sentence = unqueued.substring(0, cutIndex).trim();
-                                                if (!sentence.isEmpty()) {
-                                                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
-                                                }
-                                                lastSpokenIndex += cutIndex;
-                                            }
+                                // LOGIKA STREAMING KLAUSA NATURAL CEPAT
+                                String currentSpeechRaw = extractSpeechFromStream(textSoFar);
+                                if (currentSpeechRaw != null && currentSpeechRaw.length() > lastSpokenIndex) {
+                                    String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
+                                    
+                                    // Potong pada tanda baca klausa/kalimat agar intonasi TTS menyatu mulus
+                                    int boundary = -1;
+                                    int[] stops = {unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf(","), unqueued.indexOf(";"), unqueued.indexOf("\n")};
+                                    for (int stop : stops) {
+                                        if (stop >= 6 && (boundary == -1 || stop < boundary)) boundary = stop;
+                                    }
+                                    
+                                    if (boundary != -1 || (unqueued.length() > 55 && unqueued.contains(" "))) {
+                                        int cutIndex = boundary != -1 ? boundary + 1 : unqueued.lastIndexOf(" ");
+                                        String sentence = unqueued.substring(0, cutIndex).trim();
+                                        if (!sentence.isEmpty()) {
+                                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
                                         }
+                                        lastSpokenIndex += cutIndex;
                                     }
                                 }
                             } catch (Exception ignored) { }
@@ -233,19 +221,10 @@ private void executeCallWithRotation(JSONArray messages, NetworkCallback callbac
                     
                     // Sisa kalimat terakhir saat stream selesai
                     String textSoFar = fullResponse.toString();
-                    int speechKeyIdx = textSoFar.indexOf("\"speech\":\"");
-                    if (speechKeyIdx == -1) speechKeyIdx = textSoFar.indexOf("\"speech\": \"");
-                    if (speechKeyIdx != -1) {
-                        int valStart = textSoFar.indexOf("\"", speechKeyIdx + 9);
-                        if (valStart != -1) {
-                            int valEnd = textSoFar.indexOf("\"", valStart + 1);
-                            String currentSpeechRaw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
-                            currentSpeechRaw = currentSpeechRaw.replace("\\n", " ").replace("\\\"", "\"");
-                            if (currentSpeechRaw.length() > lastSpokenIndex) {
-                                String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
-                                if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                            }
-                        }
+                    String currentSpeechRaw = extractSpeechFromStream(textSoFar);
+                    if (currentSpeechRaw != null && currentSpeechRaw.length() > lastSpokenIndex) {
+                        String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
+                        if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
                     }
                     
                     if (!activeCall.isCanceled()) callback.onSuccess(fullResponse.toString());
@@ -259,6 +238,26 @@ private void executeCallWithRotation(JSONArray messages, NetworkCallback callbac
     }
 }
 
+private String extractSpeechFromStream(String textSoFar) {
+    if (textSoFar == null) return null;
+    int speechKeyIdx = textSoFar.indexOf("\"speech\"");
+    if (speechKeyIdx == -1) return null;
+    int colonIdx = textSoFar.indexOf(":", speechKeyIdx + 8);
+    if (colonIdx == -1) return null;
+    int valStart = textSoFar.indexOf("\"", colonIdx + 1);
+    if (valStart == -1) return null;
+    
+    int valEnd = -1;
+    for (int pos = valStart + 1; pos < textSoFar.length(); pos++) {
+        if (textSoFar.charAt(pos) == '"' && textSoFar.charAt(pos - 1) != '\\') {
+            valEnd = pos;
+            break;
+        }
+    }
+    String raw = (valEnd == -1) ? textSoFar.substring(valStart + 1) : textSoFar.substring(valStart + 1, valEnd);
+    return raw.replace("\\n", " ").replace("\\\"", "\"");
+}
+
 private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, String reason) {
     if (currentRetry < MAX_RETRIES) {
         int nextRetry = currentRetry + 1;
@@ -268,7 +267,5 @@ private void handleRetry(JSONArray messages, NetworkCallback callback, int curre
         callback.onError(reason);
     }
 }
-
-```
 
 }

@@ -36,7 +36,6 @@ private final Handler delayHandler;
 private final Context context;
 private boolean isFlashlightOn = false;
 
-```
 public SystemActionInjector(Context context) {
     this.context = context;
     DisplayMetrics metrics = context.getResources().getDisplayMetrics();
@@ -123,6 +122,45 @@ public void executeAction(ActionCommandDto cmd) {
             } catch(Exception e){}
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             return;
+        case "set_alarm":
+            try {
+                Intent alarmIntent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+                alarmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(alarmIntent);
+            } catch (Exception e) {
+                try {
+                    Intent clockIntent = new Intent(Settings.ACTION_DATE_SETTINGS);
+                    clockIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(clockIntent);
+                } catch (Exception ignored) {}
+            }
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return;
+        case "dial_number":
+            try {
+                String phoneNum = cmd.textToType != null ? cmd.textToType.replaceAll("[^0-9+*#]", "") : "";
+                Intent dialIntent = new Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:" + phoneNum));
+                dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(dialIntent);
+            } catch (Exception e) { Log.e(TAG, "Gagal membuka dialer", e); }
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return;
+        case "set_brightness":
+            try {
+                Intent brightIntent = new Intent(Settings.ACTION_DISPLAY_SETTINGS);
+                brightIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(brightIntent);
+            } catch (Exception e) { Log.e(TAG, "Gagal membuka pengaturan layar", e); }
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return;
+        case "set_dnd":
+            try {
+                Intent dndIntent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                dndIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(dndIntent);
+            } catch (Exception e) { Log.e(TAG, "Gagal membuka DND", e); }
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
+            return;
         case "done":
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "TUGAS SELESAI"));
             return;
@@ -204,7 +242,5 @@ private void handleLocalHardware(Context context, String cmd) {
         }
     } catch (Exception e) { Log.e(TAG, "Gagal Eksekusi Hardware", e); }
 }
-
-```
 
 }
