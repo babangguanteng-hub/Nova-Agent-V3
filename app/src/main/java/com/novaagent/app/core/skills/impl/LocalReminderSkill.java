@@ -42,23 +42,13 @@ public class LocalReminderSkill implements NovaSkill {
     @Override
     public SkillResult execute(String rawCommand, Context context) {
         if (context == null) return SkillResult.failure("Konteks tidak tersedia.");
-        String c = rawCommand.toLowerCase();
 
-        // 1. Ekstrak jam dan menit jika ada: "jam 7", "jam 07:30", "jam 8 lewat 15"
-        int targetHour = -1;
-        int targetMinute = 0;
+        com.novaagent.app.core.device.IndonesianDateTimeParser.ParsedAlarmTime parsed = 
+                com.novaagent.app.core.device.IndonesianDateTimeParser.parseAlarm(rawCommand);
 
-        Matcher timeMatcher = Pattern.compile(".*jam\\s*(\\d{1,2})(?:[:.](\\d{1,2})|\\s*lewat\\s*(\\d{1,2}))?.*").matcher(c);
-        if (timeMatcher.find()) {
-            try {
-                targetHour = Integer.parseInt(timeMatcher.group(1));
-                if (timeMatcher.group(2) != null) {
-                    targetMinute = Integer.parseInt(timeMatcher.group(2));
-                } else if (timeMatcher.group(3) != null) {
-                    targetMinute = Integer.parseInt(timeMatcher.group(3));
-                }
-            } catch (Exception ignored) {}
-        }
+        int targetHour = parsed != null ? parsed.hour24 : -1;
+        int targetMinute = parsed != null ? parsed.minute : 0;
+        String dayLabel = (parsed != null && parsed.dayOffset == 1) ? "besok " : (parsed != null && parsed.dayOffset == 2 ? "lusa " : "");
 
         // Ekstrak pesan pengingat jika ada
         String message = "Pengingat NOVA";
@@ -70,7 +60,7 @@ public class LocalReminderSkill implements NovaSkill {
         try {
             Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
             intent.putExtra(AlarmClock.EXTRA_MESSAGE, message);
-            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
+            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, true);
 
             if (targetHour >= 0 && targetHour < 24) {
                 intent.putExtra(AlarmClock.EXTRA_HOUR, targetHour);
@@ -78,11 +68,12 @@ public class LocalReminderSkill implements NovaSkill {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
 
-                String minStr = targetMinute < 10 ? "0" + targetMinute : String.valueOf(targetMinute);
-                return SkillResult.success("Pengingat untuk " + message + " telah dipasang pada pukul " + targetHour + ":" + minStr + ".",
-                        new ActionCommandDto("set_alarm", targetHour + ":" + minStr));
+                String timeStr = parsed != null ? parsed.getFormattedTime() : (targetHour + ":" + targetMinute);
+                return SkillResult.success("Alarm pengingat telah disetel untuk " + dayLabel + "pukul " + timeStr + " (" + message + ").",
+                        new ActionCommandDto("set_alarm", timeStr));
             } else {
-                // Pasang alarm default atau buka antarmuka alarm
+                // Buka antarmuka alarm jika jam tidak ditentukan
+                intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
                 return SkillResult.success("Membuka setelan alarm dan pengingat.", new ActionCommandDto("set_alarm", ""));

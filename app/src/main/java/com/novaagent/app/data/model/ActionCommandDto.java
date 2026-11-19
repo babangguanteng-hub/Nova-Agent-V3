@@ -32,6 +32,10 @@ public class ActionCommandDto {
         this(action, textToType, "", -1, -1, "");
     }
 
+    public ActionCommandDto(int x, int y) {
+        this("tap", "", "", x, y, "");
+    }
+
     public ActionCommandDto(String jsonResponse) throws JSONException {
         String cleanJson = extractJson(jsonResponse);
         JSONObject json = new JSONObject(cleanJson);

@@ -37,6 +37,8 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                   📁 actions/
                   📁 app/
                     📄 AppDiscoveryEngine.java
+                    📄 WhatsAppMessageAssistant.java
+                    📄 YouTubeControlEngine.java
                   📁 audio/
                     📄 NovaAudioDirector.java
                     📁 fullduplex/
@@ -56,6 +58,7 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                     📄 LongTermMemoryEngine.java
                     📄 MemoryCoordinator.java
                     📄 OfflineBrain.java
+                    📄 StructuredTask.java
                     📄 TaskPlanner.java
                   📁 bus/
                     📄 AgentEvent.java
@@ -64,11 +67,13 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                     📄 NovaConfigManager.java
                   📁 device/
                     📄 DeviceSystemController.java
+                    📄 IndonesianDateTimeParser.java
                   📁 di/
                     📄 ServiceLocator.java
                   📁 engine/
                     📄 ActionVerificationScore.java
                     📄 AutonomousLoopEngine.java
+                    📄 IntelligentCommandClassifier.java
                     📄 LocalIntentRouter.java
                     📄 SafetyPolicyEngine.java
                     📄 TaskCheckpointManager.java
@@ -155,6 +160,8 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                   📁 foreground/
                     📄 MediaProjectionWrapper.java
                     📄 NovaForegroundService.java
+                  📁 notification/
+                    📄 NovaNotificationListenerService.java
                 📁 ui/
                   📁 bubble/
                     📄 BubbleViewModel.java
@@ -250,6 +257,7 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                 📁 core/
                   📁 app/
                     📄 AppDiscoveryEngineTest.java
+                    📄 LiveVoiceAndVisionUpgradeTest.java
                   📁 audio/
                     📁 fullduplex/
                       📄 AdaptiveEnergyVadTest.java
@@ -265,6 +273,7 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                     📄 NovaConfigManagerTest.java
                   📁 engine/
                     📄 AutonomousLoopEngineTest.java
+                    📄 IntelligentCommandClassifierTest.java
                     📄 LocalIntentRouterTest.java
                   📁 proactive/
                     📄 ConditionalSentinelEngineTest.java
@@ -287,7 +296,7 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
 
 ## 2. COMPLETE SOURCE CODE LISTINGS
 
-### File 1/196: `build.gradle`
+### File 1/204: `build.gradle`
 
 ```groovy
 buildscript {
@@ -310,7 +319,7 @@ allprojects {
 
 ---
 
-### File 2/196: `gradle.properties`
+### File 2/204: `gradle.properties`
 
 ```text
 android.useAndroidX=true
@@ -321,7 +330,7 @@ org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 
 ---
 
-### File 3/196: `local.properties`
+### File 3/204: `local.properties`
 
 ```text
 sdk.dir=/opt/android-sdk
@@ -330,7 +339,7 @@ sdk.dir=/opt/android-sdk
 
 ---
 
-### File 4/196: `settings.gradle`
+### File 4/204: `settings.gradle`
 
 ```groovy
 include ':app'
@@ -340,7 +349,7 @@ rootProject.name = "NovaAgent"
 
 ---
 
-### File 5/196: `app/build.gradle`
+### File 5/204: `app/build.gradle`
 
 ```groovy
 plugins {
@@ -399,7 +408,7 @@ dependencies {
 
 ---
 
-### File 6/196: `app/src/main/AndroidManifest.xml`
+### File 6/204: `app/src/main/AndroidManifest.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -462,6 +471,16 @@ dependencies {
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+
+        <service
+            android:name=".services.notification.NovaNotificationListenerService"
+            android:exported="true"
+            android:label="Nova Pembaca Pesan"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
 
@@ -469,7 +488,7 @@ dependencies {
 
 ---
 
-### File 7/196: `app/src/main/java/com/novaagent/app/NovaApplication.java`
+### File 7/204: `app/src/main/java/com/novaagent/app/NovaApplication.java`
 
 ```java
 package com.novaagent.app;
@@ -517,7 +536,7 @@ public class NovaApplication extends Application {
 
 ---
 
-### File 8/196: `app/src/main/java/com/novaagent/app/core/app/AppDiscoveryEngine.java`
+### File 8/204: `app/src/main/java/com/novaagent/app/core/app/AppDiscoveryEngine.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -721,7 +740,336 @@ public class AppDiscoveryEngine {
 
 ---
 
-### File 9/196: `app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java`
+### File 9/204: `app/src/main/java/com/novaagent/app/core/app/WhatsAppMessageAssistant.java`
+
+```java
+package com.novaagent.app.core.app;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+
+import com.novaagent.app.core.di.ServiceLocator;
+import com.novaagent.app.core.skills.SkillResult;
+import com.novaagent.app.data.model.ActionCommandDto;
+import com.novaagent.app.services.notification.NovaNotificationListenerService;
+
+import java.net.URLEncoder;
+import java.util.List;
+
+/**
+ * ASISTEN PESAN WHATSAPP (BAGIAN 7)
+ * Membaca pesan masuk WhatsApp, membacakan secara aman,
+ * dan menyiapkan draft pesan tanpa mengirim otomatis tanpa persetujuan.
+ */
+public class WhatsAppMessageAssistant {
+    private final Context context;
+
+    public static class DraftReply {
+        public final String recipient;
+        public final String replyText;
+        public boolean isApproved = false;
+
+        public DraftReply(String recipient, String replyText) {
+            this.recipient = recipient;
+            this.replyText = replyText;
+        }
+    }
+
+    private static DraftReply pendingDraft = null;
+
+    public WhatsAppMessageAssistant(Context context) {
+        this.context = context != null ? context.getApplicationContext() : null;
+    }
+
+    public SkillResult checkAndReadMessages(String specificSender) {
+        if (context == null) return SkillResult.failure("Konteks sistem tidak tersedia.");
+
+        if (!NovaNotificationListenerService.isNotificationAccessEnabled(context)) {
+            Intent settingsIntent = NovaNotificationListenerService.getNotificationAccessSettingsIntent();
+            settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { context.startActivity(settingsIntent); } catch (Exception ignored) {}
+            return SkillResult.failure("Izin akses notifikasi belum aktif. Silakan aktifkan NOVA di menu Akses Notifikasi agar saya bisa membacakan pesan WhatsApp.");
+        }
+
+        NovaNotificationListenerService service = null;
+        try {
+            service = ServiceLocator.getInstance().resolve(NovaNotificationListenerService.class);
+        } catch (Exception ignored) {}
+
+        if (service == null) {
+            return SkillResult.success("Layanan pembaca notifikasi sedang memulai. Belum ada pesan WhatsApp baru yang terekam.");
+        }
+
+        List<NovaNotificationListenerService.ChatMessage> messages = service.getUnreadWhatsAppMessages();
+        if (messages.isEmpty()) {
+            return SkillResult.success("Tidak ada pesan WhatsApp baru yang belum dibaca, bos.");
+        }
+
+        if (specificSender != null && !specificSender.trim().isEmpty()) {
+            String lowerSender = specificSender.toLowerCase().trim();
+            for (NovaNotificationListenerService.ChatMessage msg : messages) {
+                if (msg.sender.toLowerCase().contains(lowerSender)) {
+                    msg.isRead = true;
+                    return SkillResult.success("Pesan dari " + msg.sender + ": \"" + msg.text + "\".");
+                }
+            }
+            return SkillResult.success("Tidak ditemukan pesan baru dari " + specificSender + ".");
+        }
+
+        // Bacakan pesan terbaru
+        NovaNotificationListenerService.ChatMessage latest = messages.get(0);
+        latest.isRead = true;
+        if (messages.size() == 1) {
+            return SkillResult.success("Ada 1 pesan baru dari " + latest.sender + ": \"" + latest.text + "\".");
+        } else {
+            return SkillResult.success("Ada " + messages.size() + " pesan baru. Pesan terbaru dari " + latest.sender + ": \"" + latest.text + "\".");
+        }
+    }
+
+    public SkillResult prepareReplyDraft(String replyText) {
+        if (replyText == null || replyText.trim().isEmpty()) {
+            return SkillResult.failure("Isi pesan balasan tidak boleh kosong.");
+        }
+
+        NovaNotificationListenerService service = null;
+        try {
+            service = ServiceLocator.getInstance().resolve(NovaNotificationListenerService.class);
+        } catch (Exception ignored) {}
+
+        String targetRecipient = "Penerima Terakhir";
+        if (service != null && service.getLatestUnreadMessage() != null) {
+            targetRecipient = service.getLatestUnreadMessage().sender;
+        }
+
+        pendingDraft = new DraftReply(targetRecipient, replyText.trim());
+
+        return SkillResult.success("Draft balasan untuk " + targetRecipient + ": \"" + replyText.trim() + "\". Apakah Anda setuju untuk mengirim pesan ini?",
+                new ActionCommandDto("approve_action", replyText.trim()));
+    }
+
+    public void clearPendingReply() {
+        this.pendingDraft = null;
+    }
+
+    public boolean hasPendingReply() {
+        return this.pendingDraft != null;
+    }
+
+    public SkillResult executeApprovedReply() {
+        if (pendingDraft == null) {
+            return SkillResult.failure("Tidak ada draft pesan yang menunggu persetujuan.");
+        }
+
+        String recipient = pendingDraft.recipient;
+        String text = pendingDraft.replyText;
+        pendingDraft = null;
+
+        try {
+            String url = "https://api.whatsapp.com/send?text=" + URLEncoder.encode(text, "UTF-8");
+            Intent sendIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            sendIntent.setPackage("com.whatsapp");
+            sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(sendIntent);
+            return SkillResult.success("Membuka WhatsApp untuk mengirim pesan ke " + recipient + ".");
+        } catch (Exception e) {
+            return SkillResult.failure("Gagal membuka WhatsApp: " + e.getMessage());
+        }
+    }
+}
+
+```
+
+---
+
+### File 10/204: `app/src/main/java/com/novaagent/app/core/app/YouTubeControlEngine.java`
+
+```java
+package com.novaagent.app.core.app;
+
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.util.Log;
+
+import com.novaagent.app.core.skills.SkillResult;
+import com.novaagent.app.data.model.ActionCommandDto;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * MESIN KONTROL YOUTUBE RESMI (BAGIAN 6)
+ * Mendukung pembukaan aplikasi, pencarian deep-link, observasi hasil pencarian,
+ * pemilihan video ordinal ("putar yang kedua"), dan kontrol playback.
+ */
+public class YouTubeControlEngine {
+    private static final String TAG = "YouTubeControlEngine";
+    public static final String PACKAGE_YOUTUBE = "com.google.android.youtube";
+
+    public static class YouTubeVideoItem {
+        public final int index;
+        public final String title;
+        public final String channel;
+        public final int centerX;
+        public final int centerY;
+
+        public YouTubeVideoItem(int index, String title, String channel, int centerX, int centerY) {
+            this.index = index;
+            this.title = title;
+            this.channel = channel;
+            this.centerX = centerX;
+            this.centerY = centerY;
+        }
+
+        @Override
+        public String toString() {
+            return index + ". " + title + (channel != null ? " (" + channel + ")" : "");
+        }
+    }
+
+    private final Context context;
+    private final List<YouTubeVideoItem> lastObservedVideos = new ArrayList<>();
+
+    public YouTubeControlEngine(Context context) {
+        this.context = context != null ? context.getApplicationContext() : null;
+    }
+
+    public boolean isYouTubeInstalled() {
+        if (context == null) return false;
+        try {
+            context.getPackageManager().getPackageInfo(PACKAGE_YOUTUBE, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Membuka aplikasi YouTube langsung ke halaman utama.
+     */
+    public SkillResult openYouTube() {
+        if (context == null) {
+            return SkillResult.success("Membuka aplikasi YouTube...", new ActionCommandDto("open_app", "youtube"));
+        }
+        try {
+            Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(PACKAGE_YOUTUBE);
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(launchIntent);
+                return SkillResult.success("Membuka aplikasi YouTube...", new ActionCommandDto("open_app", "youtube"));
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback browser
+        Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://m.youtube.com"));
+        webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(webIntent);
+        return SkillResult.success("Membuka YouTube di peramban web...", new ActionCommandDto("open_app", "youtube"));
+    }
+
+    /**
+     * Mengeksekusi pencarian di YouTube secara resmi via Deep Link / Action View.
+     */
+    public SkillResult searchYouTube(String searchQuery) {
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            return openYouTube();
+        }
+
+        String query = cleanSearchQuery(searchQuery);
+        if (context == null) {
+            return SkillResult.success("Mencari \"" + query + "\" di YouTube...", new ActionCommandDto("open_app", "youtube"));
+        }
+        try {
+            String encodedQuery = URLEncoder.encode(query, "UTF-8");
+            Intent appIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:results?search_query=" + encodedQuery));
+            appIntent.setPackage(PACKAGE_YOUTUBE);
+            appIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            if (isYouTubeInstalled()) {
+                context.startActivity(appIntent);
+                return SkillResult.success("Mencari \"" + query + "\" di YouTube...",
+                        new ActionCommandDto("open_app", "youtube"));
+            } else {
+                Intent webIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=" + encodedQuery));
+                webIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(webIntent);
+                return SkillResult.success("Mencari \"" + query + "\" di YouTube peramban...",
+                        new ActionCommandDto("open_app", "youtube"));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal meluncurkan pencarian YouTube: " + e.getMessage());
+            return SkillResult.failure("Gagal membuka pencarian YouTube: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Mengamati dan mengekstrak daftar video dari konteks layar Accessibility YouTube.
+     */
+    public List<YouTubeVideoItem> observeSearchResults(UnifiedScreenContext screenContext) {
+        lastObservedVideos.clear();
+        if (screenContext == null || screenContext.elements == null) return lastObservedVideos;
+
+        int videoIndex = 1;
+        for (UnifiedScreenContext.ScreenElement el : screenContext.elements) {
+            if (el.text != null && el.text.length() > 6) {
+                // Saring judul yang tidak relevan (seperti tombol "Search", "Home", "Shorts")
+                String t = el.text.trim();
+                if (isProbableVideoTitle(t)) {
+                    lastObservedVideos.add(new YouTubeVideoItem(videoIndex++, t, null, el.centerX, el.centerY));
+                    if (videoIndex > 5) break; // Ambil maksimal 5 teratas
+                }
+            }
+        }
+        return lastObservedVideos;
+    }
+
+    public List<YouTubeVideoItem> getLastObservedVideos() {
+        return new ArrayList<>(lastObservedVideos);
+    }
+
+    /**
+     * Memilih dan memutar video berdasarkan nomor urut (1-based: "putar yang kedua" -> index 2).
+     */
+    public ActionCommandDto selectVideoByIndex(int oneBasedIndex) {
+        if (lastObservedVideos.isEmpty()) {
+            return null;
+        }
+        int targetIdx = Math.max(1, Math.min(oneBasedIndex, lastObservedVideos.size())) - 1;
+        YouTubeVideoItem item = lastObservedVideos.get(targetIdx);
+        return new ActionCommandDto(item.centerX, item.centerY);
+    }
+
+    private boolean isProbableVideoTitle(String text) {
+        String lower = text.toLowerCase();
+        if (lower.equals("youtube") || lower.equals("search") || lower.equals("cari") ||
+            lower.equals("shorts") || lower.equals("subscriptions") || lower.equals("library") ||
+            lower.equals("beranda") || lower.equals("eksplorasi") || lower.equals("koleksi") ||
+            lower.equals("notifikasi") || lower.contains("skip ad") || lower.length() < 5) {
+            return false;
+        }
+        return true;
+    }
+
+    public static String cleanSearchQuery(String rawCommand) {
+        if (rawCommand == null) return "";
+        return rawCommand.replaceAll("(?i)^(?:tolong\\s+)?(?:buka\\s+youtube\\s+)?(?:cari|carikan|putar|putarkan|cari\\s+lagu|cari\\s+video)\\s+", "")
+                         .replaceAll("(?i)\\s+(?:di\\s+youtube|lewat\\s+youtube)$", "")
+                         .replaceAll("(?i)^(?:video|lagu)\\s+", "")
+                         .trim();
+    }
+}
+
+```
+
+---
+
+### File 11/204: `app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java`
 
 ```java
 package com.novaagent.app.core.audio;
@@ -1247,7 +1595,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
 ---
 
-### File 10/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVad.java`
+### File 12/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVad.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1370,7 +1718,7 @@ public class AdaptiveEnergyVad {
 
 ---
 
-### File 11/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioConfig.java`
+### File 13/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioConfig.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1405,7 +1753,7 @@ public final class AudioConfig {
 
 ---
 
-### File 12/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioEffectsProcessor.java`
+### File 14/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioEffectsProcessor.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1569,7 +1917,7 @@ public class AudioEffectsProcessor {
 
 ---
 
-### File 13/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioRingBuffer.java`
+### File 15/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioRingBuffer.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1676,7 +2024,7 @@ public class AudioRingBuffer {
 
 ---
 
-### File 14/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinator.java`
+### File 16/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinator.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1824,7 +2172,7 @@ public class BargeInCoordinator {
 
 ---
 
-### File 15/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/ContinuousListeningEngine.java`
+### File 17/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/ContinuousListeningEngine.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1929,7 +2277,7 @@ public class ContinuousListeningEngine {
 
 ---
 
-### File 16/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/FullDuplexVoiceCoordinator.java`
+### File 18/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/FullDuplexVoiceCoordinator.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2097,7 +2445,7 @@ public class FullDuplexVoiceCoordinator implements ContinuousListeningEngine.Fra
 
 ---
 
-### File 17/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngine.java`
+### File 19/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngine.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2409,7 +2757,7 @@ public class PcmAudioEngine {
 
 ---
 
-### File 18/196: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunker.java`
+### File 20/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunker.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2540,7 +2888,7 @@ public class StreamingSentenceChunker {
 
 ---
 
-### File 19/196: `app/src/main/java/com/novaagent/app/core/brain/CognitiveCore.java`
+### File 21/204: `app/src/main/java/com/novaagent/app/core/brain/CognitiveCore.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -2653,7 +3001,7 @@ public class CognitiveCore {
 
 ---
 
-### File 20/196: `app/src/main/java/com/novaagent/app/core/brain/ContextManager.java`
+### File 22/204: `app/src/main/java/com/novaagent/app/core/brain/ContextManager.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -2702,7 +3050,7 @@ public class ContextManager {
 
 ---
 
-### File 21/196: `app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java`
+### File 23/204: `app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -2798,7 +3146,7 @@ public class ConversationMemory {
 
 ---
 
-### File 22/196: `app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java`
+### File 24/204: `app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3017,7 +3365,7 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
 
 ---
 
-### File 23/196: `app/src/main/java/com/novaagent/app/core/brain/MemoryCoordinator.java`
+### File 25/204: `app/src/main/java/com/novaagent/app/core/brain/MemoryCoordinator.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3102,7 +3450,7 @@ public class MemoryCoordinator {
 
 ---
 
-### File 24/196: `app/src/main/java/com/novaagent/app/core/brain/OfflineBrain.java`
+### File 26/204: `app/src/main/java/com/novaagent/app/core/brain/OfflineBrain.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3307,92 +3655,146 @@ public class OfflineBrain {
 
 ---
 
-### File 25/196: `app/src/main/java/com/novaagent/app/core/brain/TaskPlanner.java`
+### File 27/204: `app/src/main/java/com/novaagent/app/core/brain/StructuredTask.java`
 
 ```java
 package com.novaagent.app.core.brain;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * FASE 3: AUTONOMOUS PLANNING (Diperbarui)
- * Menambahkan kemampuan melacak limit dan merubah strategi.
+ * STRUKTUR TUGAS OTONOM MULTI-LANGKAH (BAGIAN 5)
+ * Menyimpan hierarki langkah terurut, dependensi, status verifikasi nyata,
+ * dan token pembatalan instan.
  */
-public class TaskPlanner {
-    private String mainGoal = "";
-    private final List<String> subTasks = new ArrayList<>();
-    private final List<String> completedTasks = new ArrayList<>();
-    private int currentStepIndex = 0;
-    private int strategyShifts = 0;
+public class StructuredTask {
 
-    public void setMainGoal(String goal) {
-        this.mainGoal = goal;
-        this.subTasks.clear();
-        this.completedTasks.clear();
-        this.currentStepIndex = 0;
-        this.strategyShifts = 0;
+    public enum TaskStatus {
+        CREATED,
+        UNDERSTANDING,
+        PLANNING,
+        WAITING_PERMISSION,
+        WAITING_CONFIRMATION,
+        EXECUTING,
+        VERIFYING,
+        COMPLETED,
+        PARTIALLY_COMPLETED,
+        FAILED,
+        CANCELLED
     }
 
-    public void setNewPlan(List<String> newTasks) {
-        if (newTasks != null && !newTasks.isEmpty()) {
-            this.subTasks.clear();
-            this.completedTasks.clear();
-            this.subTasks.addAll(newTasks);
-            this.currentStepIndex = 0;
+    public static class Step {
+        public final int stepIndex;
+        public final String instruction;
+        public TaskStatus status = TaskStatus.CREATED;
+        public String expectedResult;
+        public String actualResult;
+        public boolean isVerified = false;
+        public String failureReason;
+
+        public Step(int stepIndex, String instruction) {
+            this.stepIndex = stepIndex;
+            this.instruction = instruction;
+        }
+
+        public void markExecuting() {
+            this.status = TaskStatus.EXECUTING;
+        }
+
+        public void markCompleted(String actualResult, boolean verified) {
+            this.status = TaskStatus.COMPLETED;
+            this.actualResult = actualResult;
+            this.isVerified = verified;
+        }
+
+        public void markFailed(String reason) {
+            this.status = TaskStatus.FAILED;
+            this.failureReason = reason;
+        }
+
+        public void markCancelled() {
+            this.status = TaskStatus.CANCELLED;
         }
     }
 
-    public boolean hasActivePlan() {
-        return !subTasks.isEmpty() && currentStepIndex < subTasks.size();
-    }
+    public final String taskId;
+    public final String originalRequest;
+    public final List<Step> steps = new ArrayList<>();
+    public int currentStepIndex = 0;
+    public TaskStatus overallStatus = TaskStatus.CREATED;
+    public final AtomicBoolean isCancelled = new AtomicBoolean(false);
+    public String cancellationReason;
 
-    public String getCurrentStep() {
-        if (hasActivePlan()) return subTasks.get(currentStepIndex);
-        return mainGoal;
-    }
+    public StructuredTask(String originalRequest, List<String> rawSteps) {
+        this.taskId = UUID.randomUUID().toString().substring(0, 8);
+        this.originalRequest = originalRequest != null ? originalRequest : "";
 
-    public void markStepComplete() {
-        if (hasActivePlan()) {
-            completedTasks.add(subTasks.get(currentStepIndex));
-            currentStepIndex++;
+        if (rawSteps != null && !rawSteps.isEmpty()) {
+            for (int i = 0; i < rawSteps.size(); i++) {
+                this.steps.add(new Step(i + 1, rawSteps.get(i).trim()));
+            }
+        } else if (!this.originalRequest.isEmpty()) {
+            this.steps.add(new Step(1, this.originalRequest));
         }
     }
 
-    public void abortPlan() {
-        subTasks.clear();
-        completedTasks.clear();
-        currentStepIndex = 0;
-        mainGoal = "";
+    public boolean hasMoreSteps() {
+        return !isCancelled.get() && currentStepIndex < steps.size();
     }
 
-    public void shiftStrategy() {
-        this.strategyShifts++;
-        // Hapus rencana lama, paksa AI berpikir ulang pada siklus berikutnya
-        this.subTasks.clear();
-        this.completedTasks.clear();
-        this.currentStepIndex = 0;
+    public Step getCurrentStep() {
+        if (currentStepIndex >= 0 && currentStepIndex < steps.size()) {
+            return steps.get(currentStepIndex);
+        }
+        return null;
     }
 
-    public int getProgressPercentage() {
-        if (subTasks.isEmpty()) return 100;
-        return Math.round((currentStepIndex / (float) subTasks.size()) * 100);
+    public void advanceToNextStep() {
+        currentStepIndex++;
+        if (currentStepIndex >= steps.size()) {
+            boolean allSucceeded = true;
+            boolean anySucceeded = false;
+            for (Step s : steps) {
+                if (s.status == TaskStatus.COMPLETED) anySucceeded = true;
+                else allSucceeded = false;
+            }
+            if (allSucceeded) {
+                overallStatus = TaskStatus.COMPLETED;
+            } else if (anySucceeded) {
+                overallStatus = TaskStatus.PARTIALLY_COMPLETED;
+            } else {
+                overallStatus = TaskStatus.FAILED;
+            }
+        }
     }
 
-    public List<String> getCompletedTasks() {
-        return new ArrayList<>(completedTasks);
+    public void cancel(String reason) {
+        this.isCancelled.set(true);
+        this.cancellationReason = reason;
+        this.overallStatus = TaskStatus.CANCELLED;
+        for (Step s : steps) {
+            if (s.status == TaskStatus.CREATED || s.status == TaskStatus.EXECUTING) {
+                s.markCancelled();
+            }
+        }
     }
 
-    public String getGoalAndProgress() {
-        if (!hasActivePlan()) return "TUJUAN: " + mainGoal;
-        return "TUJUAN: " + mainGoal + "\nLANGKAH SAAT INI (" + (currentStepIndex + 1) + "/" + subTasks.size() + "): " + getCurrentStep();
+    public List<String> getPendingStepInstructions() {
+        List<String> list = new ArrayList<>();
+        for (int i = currentStepIndex; i < steps.size(); i++) {
+            list.add(steps.get(i).instruction);
+        }
+        return list;
     }
 
-    public String getMainGoal() { return mainGoal; }
-    
-    public List<String> getPendingTasks() {
-        if (currentStepIndex >= subTasks.size()) return new ArrayList<>();
-        return new ArrayList<>(subTasks.subList(currentStepIndex, subTasks.size()));
+    public List<String> getAllStepInstructions() {
+        List<String> list = new ArrayList<>();
+        for (Step s : steps) list.add(s.instruction);
+        return list;
     }
 }
 
@@ -3400,7 +3802,129 @@ public class TaskPlanner {
 
 ---
 
-### File 26/196: `app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java`
+### File 28/204: `app/src/main/java/com/novaagent/app/core/brain/TaskPlanner.java`
+
+```java
+package com.novaagent.app.core.brain;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * FASE 3: AUTONOMOUS PLANNING (BAGIAN 5)
+ * Mengelola StructuredTask dengan pelacakan langkah, dependensi,
+ * pembatalan instan, dan pelaporan hasil bertahap.
+ */
+public class TaskPlanner {
+    private String mainGoal = "";
+    private StructuredTask activeTask = null;
+    private int strategyShifts = 0;
+
+    public void setMainGoal(String goal) {
+        this.mainGoal = goal != null ? goal : "";
+        this.activeTask = new StructuredTask(this.mainGoal, Collections.singletonList(this.mainGoal));
+        this.strategyShifts = 0;
+    }
+
+    public void setStructuredPlan(String originalRequest, List<String> steps) {
+        this.mainGoal = originalRequest != null ? originalRequest : "";
+        this.activeTask = new StructuredTask(this.mainGoal, steps);
+        this.strategyShifts = 0;
+    }
+
+    public void setNewPlan(List<String> newTasks) {
+        if (newTasks != null && !newTasks.isEmpty()) {
+            this.activeTask = new StructuredTask(this.mainGoal, newTasks);
+        }
+    }
+
+    public StructuredTask getActiveTask() {
+        return activeTask;
+    }
+
+    public boolean hasActivePlan() {
+        return activeTask != null && activeTask.hasMoreSteps();
+    }
+
+    public String getCurrentStep() {
+        if (activeTask != null && activeTask.getCurrentStep() != null) {
+            return activeTask.getCurrentStep().instruction;
+        }
+        return mainGoal;
+    }
+
+    public StructuredTask.Step getCurrentStepObject() {
+        return activeTask != null ? activeTask.getCurrentStep() : null;
+    }
+
+    public void markStepComplete() {
+        if (activeTask != null && activeTask.getCurrentStep() != null) {
+            activeTask.getCurrentStep().markCompleted("Selesai", true);
+            activeTask.advanceToNextStep();
+        }
+    }
+
+    public void markStepFailed(String reason) {
+        if (activeTask != null && activeTask.getCurrentStep() != null) {
+            activeTask.getCurrentStep().markFailed(reason);
+            activeTask.advanceToNextStep();
+        }
+    }
+
+    public void abortPlan() {
+        if (activeTask != null) {
+            activeTask.cancel("Dibatalkan pengguna");
+        }
+        mainGoal = "";
+    }
+
+    public void shiftStrategy() {
+        this.strategyShifts++;
+        if (activeTask != null) {
+            activeTask.cancel("Perubahan strategi otonom");
+        }
+    }
+
+    public int getProgressPercentage() {
+        if (activeTask == null || activeTask.steps.isEmpty()) return 100;
+        return Math.round((activeTask.currentStepIndex / (float) activeTask.steps.size()) * 100);
+    }
+
+    public List<String> getCompletedTasks() {
+        List<String> list = new ArrayList<>();
+        if (activeTask != null) {
+            for (StructuredTask.Step s : activeTask.steps) {
+                if (s.status == StructuredTask.TaskStatus.COMPLETED) {
+                    list.add(s.instruction);
+                }
+            }
+        }
+        return list;
+    }
+
+    public String getGoalAndProgress() {
+        if (!hasActivePlan()) return "TUJUAN: " + mainGoal;
+        return "TUJUAN: " + mainGoal + "\nLANGKAH SAAT INI (" + (activeTask.currentStepIndex + 1) + "/" + activeTask.steps.size() + "): " + getCurrentStep();
+    }
+
+    public String getMainGoal() {
+        return mainGoal;
+    }
+
+    public List<String> getPendingTasks() {
+        if (activeTask != null) {
+            return activeTask.getPendingStepInstructions();
+        }
+        return new ArrayList<>();
+    }
+}
+
+```
+
+---
+
+### File 29/204: `app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java`
 
 ```java
 package com.novaagent.app.core.bus;
@@ -3441,7 +3965,7 @@ public class AgentEvent {
 
 ---
 
-### File 27/196: `app/src/main/java/com/novaagent/app/core/bus/EventBus.java`
+### File 30/204: `app/src/main/java/com/novaagent/app/core/bus/EventBus.java`
 
 ```java
 package com.novaagent.app.core.bus;
@@ -3541,7 +4065,7 @@ public class EventBus {
 
 ---
 
-### File 28/196: `app/src/main/java/com/novaagent/app/core/config/NovaConfigManager.java`
+### File 31/204: `app/src/main/java/com/novaagent/app/core/config/NovaConfigManager.java`
 
 ```java
 package com.novaagent.app.core.config;
@@ -3760,7 +4284,7 @@ public class NovaConfigManager {
 
 ---
 
-### File 29/196: `app/src/main/java/com/novaagent/app/core/device/DeviceSystemController.java`
+### File 32/204: `app/src/main/java/com/novaagent/app/core/device/DeviceSystemController.java`
 
 ```java
 package com.novaagent.app.core.device;
@@ -4065,7 +4589,190 @@ public class DeviceSystemController {
 
 ---
 
-### File 30/196: `app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java`
+### File 33/204: `app/src/main/java/com/novaagent/app/core/device/IndonesianDateTimeParser.java`
+
+```java
+package com.novaagent.app.core.device;
+
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * PARSER TANGGAL & WAKTU BAHASA INDONESIA (BAGIAN 8)
+ * Memahami variasi bahasa sehari-hari: angka lisan ("lima", "sepuluh"),
+ * waktu relatif ("pagi", "sore", "malam", "besok", "lusa"), dan durasi timer.
+ */
+public class IndonesianDateTimeParser {
+
+    private static final Map<String, Integer> NUMBER_WORDS = new HashMap<>();
+
+    static {
+        NUMBER_WORDS.put("nol", 0);
+        NUMBER_WORDS.put("setengah", 30);
+        NUMBER_WORDS.put("satu", 1);
+        NUMBER_WORDS.put("se", 1);
+        NUMBER_WORDS.put("dua", 2);
+        NUMBER_WORDS.put("tiga", 3);
+        NUMBER_WORDS.put("empat", 4);
+        NUMBER_WORDS.put("lima", 5);
+        NUMBER_WORDS.put("enam", 6);
+        NUMBER_WORDS.put("tujuh", 7);
+        NUMBER_WORDS.put("delapan", 8);
+        NUMBER_WORDS.put("sembilan", 9);
+        NUMBER_WORDS.put("sepuluh", 10);
+        NUMBER_WORDS.put("sebelas", 11);
+        NUMBER_WORDS.put("dua belas", 12);
+        NUMBER_WORDS.put("lima belas", 15);
+        NUMBER_WORDS.put("dua puluh", 20);
+        NUMBER_WORDS.put("dua puluh lima", 25);
+        NUMBER_WORDS.put("tiga puluh", 30);
+        NUMBER_WORDS.put("empat puluh lima", 45);
+    }
+
+    public static class ParsedAlarmTime {
+        public final int hour24;
+        public final int minute;
+        public final int dayOffset; // 0 = hari ini, 1 = besok, 2 = lusa
+        public final String originalText;
+
+        public ParsedAlarmTime(int hour24, int minute, int dayOffset, String originalText) {
+            this.hour24 = hour24;
+            this.minute = minute;
+            this.dayOffset = dayOffset;
+            this.originalText = originalText;
+        }
+
+        public String getFormattedTime() {
+            String h = hour24 < 10 ? "0" + hour24 : String.valueOf(hour24);
+            String m = minute < 10 ? "0" + minute : String.valueOf(minute);
+            return h + ":" + m;
+        }
+    }
+
+    /**
+     * Mem-parsing target waktu alarm dari kalimat bahasa Indonesia.
+     * Contoh: "jam lima sore", "bangunkan jam enam pagi besok", "alarm jam 07:30".
+     */
+    public static ParsedAlarmTime parseAlarm(String text) {
+        if (text == null || text.trim().isEmpty()) return null;
+        String c = text.toLowerCase().trim();
+
+        int dayOffset = 0;
+        if (c.contains("lusa")) dayOffset = 2;
+        else if (c.contains("besok")) dayOffset = 1;
+
+        int hour = -1;
+        int minute = 0;
+
+        // 1. Format digit angka: "jam 05:30", "jam 5.30", "jam 7 lewat 15", "jam 7"
+        Matcher digitMatcher = Pattern.compile(".*jam\\s*(\\d{1,2})(?:[:.](\\d{1,2})|\\s*lewat\\s*(\\d{1,2}))?.*").matcher(c);
+        if (digitMatcher.find()) {
+            hour = Integer.parseInt(digitMatcher.group(1));
+            if (digitMatcher.group(2) != null) {
+                minute = Integer.parseInt(digitMatcher.group(2));
+            } else if (digitMatcher.group(3) != null) {
+                minute = Integer.parseInt(digitMatcher.group(3));
+            }
+        } else {
+            // 2. Format kata bilangan: "jam lima", "jam enam", "jam sepuluh"
+            for (Map.Entry<String, Integer> entry : NUMBER_WORDS.entrySet()) {
+                if (c.matches(".*\\bjam\\s+" + Pattern.quote(entry.getKey()) + "\\b.*")) {
+                    hour = entry.getValue();
+                    break;
+                }
+            }
+        }
+
+        if (hour == -1) {
+            // Cek jika ada angka langsung setelah "bangunkan" atau "alarm": "bangunkan jam 6"
+            Matcher directNum = Pattern.compile(".*\\b(?:bangunkan|alarm|setel|jam)\\s+(\\d{1,2})\\b.*").matcher(c);
+            if (directNum.find()) {
+                hour = Integer.parseInt(directNum.group(1));
+            }
+        }
+
+        if (hour == -1) return null;
+
+        // Konversi PM jika ada kata "sore" atau "malam"
+        if (c.contains("sore") || c.contains("malam")) {
+            if (hour >= 1 && hour <= 11) {
+                hour += 12;
+            }
+        } else if (c.contains("siang")) {
+            if (hour >= 1 && hour <= 3) {
+                hour += 12;
+            }
+        } else if (c.contains("pagi")) {
+            if (hour == 12) hour = 0;
+        }
+
+        return new ParsedAlarmTime(hour, minute, dayOffset, text);
+    }
+
+    /**
+     * Mem-parsing durasi timer mundur dalam detik dari ucapan lisan.
+     * Contoh: "5 menit", "sepuluh menit", "setengah jam", "30 detik".
+     */
+    public static int parseTimerSeconds(String text) {
+        if (text == null || text.trim().isEmpty()) return 0;
+        String c = text.toLowerCase().trim();
+
+        int totalSeconds = 0;
+
+        // 1. Cek jam: "1 jam", "satu jam", "setengah jam"
+        if (c.contains("setengah jam")) {
+            totalSeconds += 30 * 60;
+        } else {
+            Matcher hourDigit = Pattern.compile(".*(\\d+)\\s*jam.*").matcher(c);
+            if (hourDigit.find()) {
+                totalSeconds += Integer.parseInt(hourDigit.group(1)) * 3600;
+            } else if (c.contains("satu jam")) {
+                totalSeconds += 3600;
+            } else if (c.contains("dua jam")) {
+                totalSeconds += 7200;
+            }
+        }
+
+        // 2. Cek menit digit: "10 menit", "5 menit"
+        Matcher minDigit = Pattern.compile(".*(\\d+)\\s*menit.*").matcher(c);
+        if (minDigit.find()) {
+            totalSeconds += Integer.parseInt(minDigit.group(1)) * 60;
+        } else {
+            // Cek kata bilangan menit: "lima menit", "sepuluh menit"
+            for (Map.Entry<String, Integer> entry : NUMBER_WORDS.entrySet()) {
+                if (c.matches(".*\\b" + Pattern.quote(entry.getKey()) + "\\s+menit\\b.*")) {
+                    totalSeconds += entry.getValue() * 60;
+                    break;
+                }
+            }
+        }
+
+        // 3. Cek detik digit
+        Matcher secDigit = Pattern.compile(".*(\\d+)\\s*detik.*").matcher(c);
+        if (secDigit.find()) {
+            totalSeconds += Integer.parseInt(secDigit.group(1));
+        } else {
+            // Cek kata bilangan detik
+            for (Map.Entry<String, Integer> entry : NUMBER_WORDS.entrySet()) {
+                if (c.matches(".*\\b" + Pattern.quote(entry.getKey()) + "\\s+detik\\b.*")) {
+                    totalSeconds += entry.getValue();
+                    break;
+                }
+            }
+        }
+
+        return totalSeconds;
+    }
+}
+
+```
+
+---
+
+### File 34/204: `app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java`
 
 ```java
 package com.novaagent.app.core.di;
@@ -4125,7 +4832,7 @@ public class ServiceLocator {
 
 ---
 
-### File 31/196: `app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java`
+### File 35/204: `app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4260,7 +4967,7 @@ public class ActionVerificationScore {
 
 ---
 
-### File 32/196: `app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java`
+### File 36/204: `app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4356,7 +5063,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         if (route.isOfflineAction) {
             if (route.speechResponse != null) speak(route.speechResponse);
             if (route.command != null) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, route.command));
-            if (route.nextTask != null) {
+            if (route.hasMultiSteps()) {
+                this.currentTask = task;
+                cognitiveCore.getPlanner().setStructuredPlan(task, route.multiSteps);
+                setupEngineStart();
+            } else if (route.nextTask != null) {
                 this.currentTask = route.nextTask;
                 setupEngineStart();
             } else {
@@ -4466,6 +5177,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     if (proactiveEngine != null) {
                         proactiveEngine.evaluateScreen(newContext);
                     }
+
+                    if (intentRouter != null && newContext != null && newContext.packageName != null && newContext.packageName.contains("youtube")) {
+                        intentRouter.getYouTubeEngine().observeSearchResults(newContext);
+                    }
                     
                     String failedActionToReport = null;
                     if (lastCommandExecuted != null && lastScreenContext != null) {
@@ -4574,45 +5289,337 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
 ---
 
-### File 33/196: `app/src/main/java/com/novaagent/app/core/engine/LocalIntentRouter.java`
+### File 37/204: `app/src/main/java/com/novaagent/app/core/engine/IntelligentCommandClassifier.java`
+
+```java
+package com.novaagent.app.core.engine;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * PENGKLASIFIKASI PERINTAH CERDAS (BAGIAN 4)
+ * Mengklasifikasikan interaksi pengguna ke dalam 5 mode:
+ * - MODE A: Percakapan Santai (Casual Conversation)
+ * - MODE B: Perintah Cepat Tunggal (Quick Command)
+ * - MODE C: Perintah Multi-Langkah (Multi-Step Command)
+ * - MODE D: Perintah Lanjutan Kontekstual (Follow-Up Command)
+ * - MODE E: Perintah Ambigu / Berdampak Tinggi (Ambiguous / High-Impact)
+ */
+public class IntelligentCommandClassifier {
+
+    public enum InteractionMode {
+        CASUAL_CONVERSATION,   // Mode A
+        QUICK_COMMAND,         // Mode B
+        MULTI_STEP_COMMAND,    // Mode C
+        FOLLOW_UP_COMMAND,     // Mode D
+        AMBIGUOUS_HIGH_IMPACT  // Mode E
+    }
+
+    public static class ClassificationResult {
+        public final InteractionMode mode;
+        public final float confidence;
+        public final List<String> extractedSteps;
+        public final String primaryIntent;
+        public final String targetEntity;
+        public final String clarificationPrompt;
+
+        public ClassificationResult(InteractionMode mode, float confidence, List<String> extractedSteps,
+                                    String primaryIntent, String targetEntity, String clarificationPrompt) {
+            this.mode = mode;
+            this.confidence = confidence;
+            this.extractedSteps = extractedSteps != null ? extractedSteps : new ArrayList<>();
+            this.primaryIntent = primaryIntent;
+            this.targetEntity = targetEntity;
+            this.clarificationPrompt = clarificationPrompt;
+        }
+
+        public static ClassificationResult casual(String intent) {
+            return new ClassificationResult(InteractionMode.CASUAL_CONVERSATION, 0.95f,
+                    Collections.emptyList(), intent, null, null);
+        }
+
+        public static ClassificationResult quick(String intent, String target) {
+            return new ClassificationResult(InteractionMode.QUICK_COMMAND, 0.95f,
+                    Collections.singletonList(intent), intent, target, null);
+        }
+
+        public static ClassificationResult multiStep(List<String> steps) {
+            return new ClassificationResult(InteractionMode.MULTI_STEP_COMMAND, 0.90f,
+                    steps, "multi_step", null, null);
+        }
+
+        public static ClassificationResult followUp(String referenceType, String targetIndexOrAction) {
+            return new ClassificationResult(InteractionMode.FOLLOW_UP_COMMAND, 0.90f,
+                    Collections.emptyList(), referenceType, targetIndexOrAction, null);
+        }
+
+        public static ClassificationResult ambiguous(String reason, String clarificationPrompt) {
+            return new ClassificationResult(InteractionMode.AMBIGUOUS_HIGH_IMPACT, 0.85f,
+                    Collections.emptyList(), reason, null, clarificationPrompt);
+        }
+    }
+
+    // Pola pembagi perintah multi-langkah bahasa Indonesia
+    private static final Pattern MULTI_STEP_CONJUNCTION_PATTERN = Pattern.compile(
+            "\\s*(?:,\\s*|\\s+)(?:lalu|kemudian|terus|setelah itu|habis itu|berikutnya|lalu tolong|kemudian tolong)\\s+",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    // Kata sambung hibrida "dan": "buka youtube dan cari lagu dangdut"
+    private static final Pattern AND_ACTION_PATTERN = Pattern.compile(
+            "\\s+dan\\s+(?=(?:buka|cari|carikan|putar|putarkan|setel|pasang|matikan|nyalakan|hidupkan|bacakan|kirim|balas)\\b)",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    /**
+     * Menganalisis ucapan pengguna dan menentukan mode interaksi secara cerdas.
+     */
+    public ClassificationResult classify(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return ClassificationResult.casual("empty_input");
+        }
+
+        String raw = input.trim();
+        String c = raw.toLowerCase();
+
+        // 1. EVALUASI MODE E: PERINTAH AMBIGU / BERDAMPAK TINGGI (High-Impact / Ambiguous)
+        ClassificationResult ambiguousCheck = evaluateAmbiguity(c, raw);
+        if (ambiguousCheck != null) {
+            return ambiguousCheck;
+        }
+
+        // 2. EVALUASI MODE D: PERINTAH LANJUTAN KONTEKSTUAL (Follow-Up Command)
+        ClassificationResult followUpCheck = evaluateFollowUp(c, raw);
+        if (followUpCheck != null) {
+            return followUpCheck;
+        }
+
+        // 3. EVALUASI MODE C: PERINTAH MULTI-LANGKAH (Multi-Step Command)
+        ClassificationResult multiStepCheck = evaluateMultiStep(raw, c);
+        if (multiStepCheck != null) {
+            return multiStepCheck;
+        }
+
+        // 4. EVALUASI MODE A: PERCAKAPAN SANTAI & SAPAAN (Casual Conversation)
+        if (isCasualConversation(c)) {
+            return ClassificationResult.casual(c);
+        }
+
+        // 5. EVALUASI MODE B: PERINTAH CEPAT TUNGGAL (Quick Command)
+        return ClassificationResult.quick(c, null);
+    }
+
+    /**
+     * Memeriksa perintah ambigu atau berisiko tinggi tanpa objek/penerima yang jelas.
+     */
+    private ClassificationResult evaluateAmbiguity(String c, String raw) {
+        // "Kirim itu", "Kirim ke dia"
+        if (c.matches("^(kirim|kirimkan)\\s+(itu|ini|ke dia|dong)\\??$")) {
+            return ClassificationResult.ambiguous("ambiguous_send", "Apa pesan yang ingin Anda kirim dan kepada siapa?");
+        }
+        // "Hapus semuanya", "Hapus itu"
+        if (c.matches("^(hapus|bersihkan)\\s+(semuanya|semua|itu|ini)\\??$")) {
+            return ClassificationResult.ambiguous("high_impact_delete", "Apakah Anda yakin ingin menghapus data tersebut?");
+        }
+        // "Balas pesannya", "Balas dia"
+        if (c.matches("^(balas|balaskan)\\s+(pesannya|dia|itu)\\??$")) {
+            return ClassificationResult.ambiguous("ambiguous_reply", "Apa isi pesan balasan yang ingin Anda sampaikan?");
+        }
+        // "Matikan semua"
+        if (c.matches("^(matikan|nonaktifkan)\\s+(semua|semuanya)\\??$")) {
+            return ClassificationResult.ambiguous("ambiguous_shutdown", "Fungsi apa saja yang ingin Anda matikan?");
+        }
+        return null;
+    }
+
+    /**
+     * Memeriksa referensi konteks lanjutan ("putar yang kedua", "ganti yang lain", "jangan yang itu").
+     */
+    private ClassificationResult evaluateFollowUp(String c, String raw) {
+        // Referensi ordinal: "yang pertama", "yang kedua", "nomor 3", "hasil pertama"
+        Matcher ordinalMatcher = Pattern.compile(".*\\b(?:putar|buka|pilih|ambil)?\\s*(?:yang|hasil|video|nomor)?\\s*(pertama|kedua|ketiga|keempat|kelima|kesatu|ke-1|ke-2|ke-3|1|2|3|4|5)\\b.*").matcher(c);
+        if (c.matches(".*\\b(putar|buka|pilih)\\s+(yang|nomor|hasil|ke)\\b.*") || 
+            c.matches("^(yang\\s+(pertama|kedua|ketiga|ke-1|ke-2|ke-3|1|2|3)|nomor\\s+\\d+|hasil\\s+(pertama|kedua))\\??$")) {
+            String target = extractOrdinalOrIndex(c);
+            return ClassificationResult.followUp("select_result_item", target);
+        }
+
+        // Referensi pergantian: "ganti yang lain", "cari yang lain", "lebih lucu", "bukan yang itu", "jangan yang itu"
+        if (c.matches(".*\\b(ganti\\s+(yang\\s+)?lain|cari\\s+(yang\\s+)?lain|video\\s+lain|jangan\\s+yang\\s+itu|bukan\\s+yang\\s+itu|yang\\s+lain\\s+saja)\\b.*")) {
+            return ClassificationResult.followUp("alternative_item", "other");
+        }
+
+        // Modifikasi kriteria: "yang lebih lucu", "yang lebih baru", "yang lebih panjang"
+        if (c.matches(".*\\b(lebih\\s+(lucu|baru|panjang|populer|bagus|seru))\\b.*")) {
+            return ClassificationResult.followUp("refine_criteria", c);
+        }
+
+        // Perintah playback kontrol lanjutan: "jeda", "pause", "lanjutkan", "putar lagi", "ulangi"
+        if (c.matches("^(jeda|pause|lanjutkan|resume|putar lagi|stop|berhenti|next|video berikutnya)\\??$")) {
+            return ClassificationResult.followUp("playback_control", c);
+        }
+
+        return null;
+    }
+
+    /**
+     * Memeriksa apakah ucapan memiliki lebih dari satu aksi yang dihubungkan kata sambung.
+     */
+    private ClassificationResult evaluateMultiStep(String raw, String c) {
+        // Cek pemisah utama: lalu, kemudian, terus, setelah itu
+        String[] parts = MULTI_STEP_CONJUNCTION_PATTERN.split(raw);
+        if (parts.length > 1) {
+            List<String> steps = new ArrayList<>();
+            for (String p : parts) {
+                String trimmed = p.trim();
+                if (!trimmed.isEmpty()) {
+                    steps.add(trimmed);
+                }
+            }
+            if (steps.size() > 1) {
+                return ClassificationResult.multiStep(steps);
+            }
+        }
+
+        // Cek kata sambung "dan [aksi]": "buka youtube dan cari lagu dangdut"
+        String[] andParts = AND_ACTION_PATTERN.split(raw);
+        if (andParts.length > 1) {
+            List<String> steps = new ArrayList<>();
+            for (String p : andParts) {
+                String trimmed = p.trim();
+                if (!trimmed.isEmpty()) {
+                    steps.add(trimmed);
+                }
+            }
+            if (steps.size() > 1) {
+                return ClassificationResult.multiStep(steps);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Memeriksa apakah ucapan adalah obrolan santai murni tanpa tendensi kontrol sistem.
+     */
+    public static boolean isCasualConversation(String c) {
+        if (c == null) return false;
+        String lower = c.trim().toLowerCase();
+
+        // 1. Sapaan & basa-basi
+        if (lower.matches(".*\\b(halo|hai|hey|assalamualaikum|selamat\\s+(pagi|siang|sore|malam)|terima\\s*kasih|makasih)\\b.*")) {
+            // Kecuali jika ada kata aksi sistem eksplisit
+            if (!lower.matches(".*\\b(buka|setel|nyalakan|matikan|putar|kirim|alarm|timer)\\b.*")) {
+                return true;
+            }
+        }
+
+        // 2. Pertanyaan kabar & personal
+        if (lower.matches(".*\\b(apa\\s+kabar|lagi\\s+apa|sedang\\s+apa|kamu\\s+siapa|siapa\\s+kamu|kamu\\s+bisa\\s+apa|kamu\\s+pintar)\\b.*")) {
+            return true;
+        }
+
+        // 3. Keluhan emosional / curhat
+        if (lower.matches(".*\\b(aku\\s+bosan|lagi\\s+bosan|temani\\s+(aku\\s+)?ngobrol|aku\\s+capek|hari\\s+ini\\s+lelah|sedih\\s+banget)\\b.*")) {
+            return true;
+        }
+
+        // 4. Opini & chitchat umum
+        if (lower.matches(".*\\b(hari\\s+ini\\s+panas\\s+ya|menurut\\s+(kamu|mu)|bagaimana\\s+menurutmu|ceritakan\\s+(sesuatu|dongeng|lelucon)|tahu\\s+lagu\\s+dangdut)\\b.*")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private String extractOrdinalOrIndex(String c) {
+        if (c.contains("pertama") || c.contains("kesatu") || c.contains("1") || c.contains("ke-1")) return "1";
+        if (c.contains("kedua") || c.contains("2") || c.contains("ke-2")) return "2";
+        if (c.contains("ketiga") || c.contains("3") || c.contains("ke-3")) return "3";
+        if (c.contains("keempat") || c.contains("4") || c.contains("ke-4")) return "4";
+        if (c.contains("kelima") || c.contains("5") || c.contains("ke-5")) return "5";
+        return "1";
+    }
+}
+
+```
+
+---
+
+### File 38/204: `app/src/main/java/com/novaagent/app/core/engine/LocalIntentRouter.java`
 
 ```java
 package com.novaagent.app.core.engine;
 
 import android.content.Context;
 import android.util.Log;
+import com.novaagent.app.core.app.WhatsAppMessageAssistant;
+import com.novaagent.app.core.app.YouTubeControlEngine;
+import com.novaagent.app.core.brain.OfflineBrain;
+import com.novaagent.app.core.engine.IntelligentCommandClassifier.InteractionMode;
 import com.novaagent.app.core.skills.NovaSkill;
 import com.novaagent.app.core.skills.SkillRegistry;
 import com.novaagent.app.core.skills.SkillResult;
 import com.novaagent.app.data.model.ActionCommandDto;
-import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * PENJAGA GERBANG NIAT (NOVA JARVIS PHASE 2 & 3)
- * Mengintegrasikan Modular Skill Registry untuk mengeksekusi keahlian luring (Zero-Internet).
+ * PENJAGA GERBANG NIAT TERPADU (NOVA JARVIS UPGRADE)
+ * Mengintegrasikan IntelligentCommandClassifier, OfflineBrain,
+ * YouTubeControlEngine, WhatsAppMessageAssistant, dan SkillRegistry 29 Keahlian.
  */
 public class LocalIntentRouter {
     private static final String TAG = "LocalIntentRouter";
     private final SkillRegistry skillRegistry;
     private final Context context;
+    private final IntelligentCommandClassifier classifier;
+    private final OfflineBrain offlineBrain;
+    private final YouTubeControlEngine youTubeEngine;
+    private final WhatsAppMessageAssistant whatsAppAssistant;
 
     public static class RoutingResult {
         public final boolean isOfflineAction;
         public final ActionCommandDto command;
         public final String speechResponse;
         public final String nextTask;
+        public final List<String> multiSteps;
 
-        public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse, String nextTask) {
+        public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse, String nextTask, List<String> multiSteps) {
             this.isOfflineAction = isOfflineAction;
             this.command = command;
             this.speechResponse = speechResponse;
             this.nextTask = nextTask;
+            this.multiSteps = multiSteps != null ? multiSteps : new ArrayList<>();
+        }
+
+        public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse, String nextTask) {
+            this(isOfflineAction, command, speechResponse, nextTask, null);
         }
 
         public RoutingResult(boolean isOfflineAction, ActionCommandDto command, String speechResponse) {
-            this(isOfflineAction, command, speechResponse, null);
+            this(isOfflineAction, command, speechResponse, null, null);
+        }
+
+        public boolean hasMultiSteps() {
+            return multiSteps != null && multiSteps.size() > 1;
+        }
+
+        public static RoutingResult speechOnly(String speech) {
+            return new RoutingResult(true, null, speech, null, null);
+        }
+
+        public static RoutingResult multiStep(List<String> steps, String speech) {
+            return new RoutingResult(true, null, speech, null, steps);
         }
     }
 
@@ -4621,12 +5628,24 @@ public class LocalIntentRouter {
     }
 
     public LocalIntentRouter(Context context) {
-        this.context = context;
+        this.context = context != null ? context.getApplicationContext() : null;
         this.skillRegistry = new SkillRegistry();
+        this.classifier = new IntelligentCommandClassifier();
+        this.offlineBrain = new OfflineBrain(this.context, this.skillRegistry);
+        this.youTubeEngine = new YouTubeControlEngine(this.context);
+        this.whatsAppAssistant = new WhatsAppMessageAssistant(this.context);
     }
 
     public SkillRegistry getSkillRegistry() {
         return skillRegistry;
+    }
+
+    public YouTubeControlEngine getYouTubeEngine() {
+        return youTubeEngine;
+    }
+
+    public WhatsAppMessageAssistant getWhatsAppAssistant() {
+        return whatsAppAssistant;
     }
 
     private ActionCommandDto safeCmd(String action, String text, String dir, int x) {
@@ -4641,7 +5660,84 @@ public class LocalIntentRouter {
         Log.i(TAG, "Menganalisis Niat: " + c);
 
         try {
-            // --- 1. PENJADWALAN & KONDISI (SENTINEL) ---
+            // 0. KLASIFIKASI INTERAKSI (BAGIAN 4)
+            IntelligentCommandClassifier.ClassificationResult classRes = classifier.classify(rawCommand);
+
+            // --- MODE E: AMBIGU / BERDAMPAK TINGGI ---
+            if (classRes.mode == InteractionMode.AMBIGUOUS_HIGH_IMPACT) {
+                return RoutingResult.speechOnly(classRes.clarificationPrompt);
+            }
+
+            // --- MODE C: MULTI-STEP COMMAND ---
+            if (classRes.mode == InteractionMode.MULTI_STEP_COMMAND) {
+                String firstStep = classRes.extractedSteps.get(0);
+                Log.i(TAG, "Terdeteksi " + classRes.extractedSteps.size() + " langkah tugas.");
+                return RoutingResult.multiStep(classRes.extractedSteps,
+                        "Baik, saya susun rencana " + classRes.extractedSteps.size() + " langkah untuk menyelesaikan tugas ini.");
+            }
+
+            // --- 1. OTORISASI PERSETUJUAN / PEMBATALAN DRAFT (WHATSAPP / SAFETY) ---
+            // Evaluasi penolakan / pembatalan terlebih dahulu agar "jangan dilanjutkan" tidak dianggap "lanjutkan"
+            if (c.matches(".*\\b(tolak|batal|jangan|cancel|berhenti|hentikan|stop)\\b.*")) {
+                if (whatsAppAssistant != null) {
+                    whatsAppAssistant.clearPendingReply();
+                }
+                return new RoutingResult(true, safeCmd("reject_action", null, null, -1), "Tugas dibatalkan, bos.");
+            }
+            if (c.matches(".*\\b(setuju|iya|kirimkan|lanjutkan|izinkan|oke|lanjut)\\b.*")) {
+                SkillResult waReply = whatsAppAssistant != null ? whatsAppAssistant.executeApprovedReply() : null;
+                if (waReply != null && waReply.success) {
+                    return new RoutingResult(true, null, waReply.speechResponse);
+                }
+                return new RoutingResult(true, safeCmd("approve_action", null, null, -1), null);
+            }
+
+            // --- 2. PERINTAH WHATSAPP ASSISTANT (BAGIAN 7) ---
+            if (c.matches(".*\\b(pesan\\s+whatsapp|chat\\s+wa|pesan\\s+wa|bacakan\\s+pesan|baca\\s+wa|cek\\s+wa|ada\\s+pesan\\s+baru)\\b.*")) {
+                String specificSender = null;
+                Matcher senderMatcher = Pattern.compile(".*(?:dari|pesan)\\s+([a-zA-Z0-9]+).*").matcher(c);
+                if (senderMatcher.find()) {
+                    String found = senderMatcher.group(1).trim();
+                    if (!found.equals("whatsapp") && !found.equals("wa") && !found.equals("baru")) {
+                        specificSender = found;
+                    }
+                }
+                SkillResult waRes = whatsAppAssistant.checkAndReadMessages(specificSender);
+                return new RoutingResult(true, null, waRes.speechResponse);
+            }
+
+            if (c.matches(".*\\b(balas\\s+pesan|balas\\s+chat|balas\\s+wa)\\b.*")) {
+                String replyContent = c.replaceAll(".*(?:dengan|bilang|katakan)\\s+", "").trim();
+                SkillResult draftRes = whatsAppAssistant.prepareReplyDraft(replyContent);
+                return new RoutingResult(true, draftRes.actionCommand, draftRes.speechResponse);
+            }
+
+            // --- 3. PERINTAH YOUTUBE CONTROL ENGINE (BAGIAN 6) ---
+            if (c.matches(".*\\b(buka\\s+youtube|putar\\s+video|cari\\s+video|cari\\s+lagu|video\\s+dangdut|putar\\s+lagu|youtube)\\b.*") &&
+                !c.matches(".*\\bdan\\b.*") && !c.matches(".*\\b(lalu|kemudian|terus)\\b.*")) {
+                if (c.matches("^(buka|jalankan)\\s+youtube\\??$")) {
+                    SkillResult ytOpen = youTubeEngine.openYouTube();
+                    return new RoutingResult(true, ytOpen.actionCommand, ytOpen.speechResponse);
+                } else {
+                    String query = YouTubeControlEngine.cleanSearchQuery(rawCommand);
+                    SkillResult ytSearch = youTubeEngine.searchYouTube(query);
+                    return new RoutingResult(true, ytSearch.actionCommand, ytSearch.speechResponse);
+                }
+            }
+
+            // --- MODE D: FOLLOW-UP (PILIH HASIL YOUTUBE: "putar yang kedua") ---
+            if (classRes.mode == InteractionMode.FOLLOW_UP_COMMAND) {
+                if ("select_result_item".equals(classRes.primaryIntent)) {
+                    int targetIdx = 1;
+                    try { targetIdx = Integer.parseInt(classRes.targetEntity); } catch (Exception ignored) {}
+                    ActionCommandDto tapCmd = youTubeEngine.selectVideoByIndex(targetIdx);
+                    if (tapCmd != null) {
+                        return new RoutingResult(true, tapCmd, "Memutar video pilihan ke-" + targetIdx + "...");
+                    }
+                }
+            }
+
+            // --- 4. SENTINEL & JADWAL WAKTU ---
             Matcher timeMatcher = Pattern.compile(".*(dalam|nanti)\\s+(\\d+)\\s+menit\\s+(.*)").matcher(c);
             if (timeMatcher.matches()) {
                 int menit = Integer.parseInt(timeMatcher.group(2));
@@ -4657,15 +5753,7 @@ public class LocalIntentRouter {
                 return new RoutingResult(true, safeCmd("schedule_battery", action + " " + target, null, level), "Sentinel aktif. Eksekusi saat baterai " + level + " persen.");
             }
 
-            // --- 2. OTORISASI KEAMANAN (SETUJU/TOLAK) ---
-            if (c.matches(".*(setuju|iya|lanjutkan|izinkan|oke|lanjut).*")) {
-                return new RoutingResult(true, safeCmd("approve_action", null, null, -1), null);
-            }
-            if (c.matches(".*(tolak|batal|jangan|cancel|berhenti).*")) {
-                return new RoutingResult(true, safeCmd("reject_action", null, null, -1), null);
-            }
-
-            // --- 3. KONTROL MODE PROAKTIF ---
+            // --- 5. KONTROL MODE PROAKTIF ---
             if (c.matches(".*(aktifkan|nyalakan).*proaktif.*")) {
                 return new RoutingResult(true, safeCmd("set_proactive", "true", null, -1), "Mode proaktif aktif. Saya akan menyapa jika Anda diam terlalu lama.");
             }
@@ -4673,7 +5761,19 @@ public class LocalIntentRouter {
                 return new RoutingResult(true, safeCmd("set_proactive", "false", null, -1), "Mode pasif aktif. Saya hanya akan bicara jika dipanggil.");
             }
 
-            // --- 4. MODULAR SKILL REGISTRY EVALUATION (PHASE 2 & 3) ---
+            // --- 6. PERCAKAPAN SANTAI OFFLINE (MODE A) ---
+            if (classRes.mode == InteractionMode.CASUAL_CONVERSATION) {
+                SkillResult offlineTalk = offlineBrain.processOfflineCommand(rawCommand);
+                if (offlineTalk != null) {
+                    return RoutingResult.speechOnly(offlineTalk.speechResponse);
+                }
+                // Jika offline total dan tidak ada koneksi internet
+                if (!offlineBrain.isNetworkAvailable()) {
+                    return RoutingResult.speechOnly("Saya sedang luring (offline) bos. Namun Anda tetap bisa meminta saya menyetel alarm, timer, menyalakan senter, atau membuka aplikasi.");
+                }
+            }
+
+            // --- 7. EVALUASI 29 SKILL OFFLINE TERDAFTAR (MODE B) ---
             NovaSkill skill = skillRegistry.findSkill(c);
             if (skill != null && skill.isOfflineCapable()) {
                 Log.i(TAG, "Skill Cocok Ditemukan: " + skill.getName());
@@ -4681,6 +5781,8 @@ public class LocalIntentRouter {
                 SkillResult res = skill.execute(rawCommand, effectiveContext);
                 if (res != null && res.success) {
                     return new RoutingResult(true, res.actionCommand, res.speechResponse, res.nextTask);
+                } else if (res != null && !res.success) {
+                    return RoutingResult.speechOnly(res.speechResponse != null ? res.speechResponse : "Gagal mengeksekusi perintah.");
                 }
             }
 
@@ -4696,7 +5798,7 @@ public class LocalIntentRouter {
 
 ---
 
-### File 34/196: `app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java`
+### File 39/204: `app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4794,7 +5896,7 @@ public class SafetyPolicyEngine {
 
 ---
 
-### File 35/196: `app/src/main/java/com/novaagent/app/core/engine/TaskCheckpointManager.java`
+### File 40/204: `app/src/main/java/com/novaagent/app/core/engine/TaskCheckpointManager.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4853,7 +5955,7 @@ public class TaskCheckpointManager {
 
 ---
 
-### File 36/196: `app/src/main/java/com/novaagent/app/core/engine/TaskCompletionVerifier.java`
+### File 41/204: `app/src/main/java/com/novaagent/app/core/engine/TaskCompletionVerifier.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4934,7 +6036,7 @@ public class TaskCompletionVerifier {
 
 ---
 
-### File 37/196: `app/src/main/java/com/novaagent/app/core/proactive/ConditionalSentinelEngine.java`
+### File 42/204: `app/src/main/java/com/novaagent/app/core/proactive/ConditionalSentinelEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -5110,7 +6212,7 @@ public class ConditionalSentinelEngine {
 
 ---
 
-### File 38/196: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveConversationEngine.java`
+### File 43/204: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveConversationEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -5201,7 +6303,7 @@ public class ProactiveConversationEngine implements EventBus.EventListener {
 
 ---
 
-### File 39/196: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java`
+### File 44/204: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -5249,7 +6351,7 @@ public class ProactiveTriggerEngine {
 
 ---
 
-### File 40/196: `app/src/main/java/com/novaagent/app/core/skills/NovaSkill.java`
+### File 45/204: `app/src/main/java/com/novaagent/app/core/skills/NovaSkill.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -5295,7 +6397,7 @@ public interface NovaSkill {
 
 ---
 
-### File 41/196: `app/src/main/java/com/novaagent/app/core/skills/SkillRegistry.java`
+### File 46/204: `app/src/main/java/com/novaagent/app/core/skills/SkillRegistry.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -5401,7 +6503,7 @@ public class SkillRegistry {
 
 ---
 
-### File 42/196: `app/src/main/java/com/novaagent/app/core/skills/SkillResult.java`
+### File 47/204: `app/src/main/java/com/novaagent/app/core/skills/SkillResult.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -5453,7 +6555,7 @@ public class SkillResult {
 
 ---
 
-### File 43/196: `app/src/main/java/com/novaagent/app/core/skills/impl/AppLauncherSkill.java`
+### File 48/204: `app/src/main/java/com/novaagent/app/core/skills/impl/AppLauncherSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5550,7 +6652,7 @@ public class AppLauncherSkill implements NovaSkill {
 
 ---
 
-### File 44/196: `app/src/main/java/com/novaagent/app/core/skills/impl/BatterySkill.java`
+### File 49/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BatterySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5617,7 +6719,7 @@ public class BatterySkill implements NovaSkill {
 
 ---
 
-### File 45/196: `app/src/main/java/com/novaagent/app/core/skills/impl/BluetoothControlSkill.java`
+### File 50/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BluetoothControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5682,7 +6784,7 @@ public class BluetoothControlSkill implements NovaSkill {
 
 ---
 
-### File 46/196: `app/src/main/java/com/novaagent/app/core/skills/impl/BrightnessControlSkill.java`
+### File 51/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BrightnessControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5756,7 +6858,7 @@ public class BrightnessControlSkill implements NovaSkill {
 
 ---
 
-### File 47/196: `app/src/main/java/com/novaagent/app/core/skills/impl/CalculatorSkill.java`
+### File 52/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CalculatorSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5875,7 +6977,7 @@ public class CalculatorSkill implements NovaSkill {
 
 ---
 
-### File 48/196: `app/src/main/java/com/novaagent/app/core/skills/impl/ConnectionInfoSkill.java`
+### File 53/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ConnectionInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5933,7 +7035,7 @@ public class ConnectionInfoSkill implements NovaSkill {
 
 ---
 
-### File 49/196: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentDateSkill.java`
+### File 54/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentDateSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -5993,7 +7095,7 @@ public class CurrentDateSkill implements NovaSkill {
 
 ---
 
-### File 50/196: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentTimeSkill.java`
+### File 55/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentTimeSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6054,7 +7156,7 @@ public class CurrentTimeSkill implements NovaSkill {
 
 ---
 
-### File 51/196: `app/src/main/java/com/novaagent/app/core/skills/impl/DayOfWeekSkill.java`
+### File 56/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DayOfWeekSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6115,7 +7217,7 @@ public class DayOfWeekSkill implements NovaSkill {
 
 ---
 
-### File 52/196: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceInfoSkill.java`
+### File 57/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6181,7 +7283,7 @@ public class DeviceInfoSkill implements NovaSkill {
 
 ---
 
-### File 53/196: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceSettingsSkill.java`
+### File 58/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceSettingsSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6244,7 +7346,7 @@ public class DeviceSettingsSkill implements NovaSkill {
 
 ---
 
-### File 54/196: `app/src/main/java/com/novaagent/app/core/skills/impl/FlashlightSkill.java`
+### File 59/204: `app/src/main/java/com/novaagent/app/core/skills/impl/FlashlightSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6290,15 +7392,19 @@ public class FlashlightSkill implements NovaSkill {
                     String cameraId = camManager.getCameraIdList()[0];
                     camManager.setTorchMode(cameraId, turnOn);
                     isFlashlightOn = turnOn;
-                    String speech = turnOn ? "Senter sudah dinyalakan, bos." : "Senter sudah dimatikan.";
+                    String speech = turnOn ? "Baik, senter sudah saya nyalakan." : "Senter sudah dimatikan.";
                     return SkillResult.success(speech);
+                } else {
+                    return SkillResult.failure("Perangkat ini tidak memiliki lampu senter (flash kamera).");
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                return SkillResult.failure("Gagal mengontrol senter: " + e.getMessage());
+            }
         }
 
-        // Fallback melalui ActionCommandDto jika context background membutuhkan injeksi service
+        // Delegasikan melalui ActionCommandDto jika context background membutuhkan SystemActionInjector / unit test
         ActionCommandDto cmd = new ActionCommandDto("toggle_flashlight", "");
-        return SkillResult.success(turnOn ? "Menyalakan senter." : "Mematikan senter.", cmd);
+        return SkillResult.success(turnOn ? "Baik, senter dinyalakan." : "Senter dimatikan.", cmd);
     }
 
     @Override
@@ -6309,7 +7415,7 @@ public class FlashlightSkill implements NovaSkill {
 
 ---
 
-### File 55/196: `app/src/main/java/com/novaagent/app/core/skills/impl/GreetingChitchatSkill.java`
+### File 60/204: `app/src/main/java/com/novaagent/app/core/skills/impl/GreetingChitchatSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6388,7 +7494,7 @@ public class GreetingChitchatSkill implements NovaSkill {
 
 ---
 
-### File 56/196: `app/src/main/java/com/novaagent/app/core/skills/impl/HotspotControlSkill.java`
+### File 61/204: `app/src/main/java/com/novaagent/app/core/skills/impl/HotspotControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6450,7 +7556,7 @@ public class HotspotControlSkill implements NovaSkill {
 
 ---
 
-### File 57/196: `app/src/main/java/com/novaagent/app/core/skills/impl/IdentitySkill.java`
+### File 62/204: `app/src/main/java/com/novaagent/app/core/skills/impl/IdentitySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6506,7 +7612,7 @@ public class IdentitySkill implements NovaSkill {
 
 ---
 
-### File 58/196: `app/src/main/java/com/novaagent/app/core/skills/impl/InstalledAppsSearchSkill.java`
+### File 63/204: `app/src/main/java/com/novaagent/app/core/skills/impl/InstalledAppsSearchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6613,7 +7719,7 @@ public class InstalledAppsSearchSkill implements NovaSkill {
 
 ---
 
-### File 59/196: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalChatHistorySkill.java`
+### File 64/204: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalChatHistorySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6695,7 +7801,7 @@ public class LocalChatHistorySkill implements NovaSkill {
 
 ---
 
-### File 60/196: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalReminderSkill.java`
+### File 65/204: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalReminderSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6742,23 +7848,13 @@ public class LocalReminderSkill implements NovaSkill {
     @Override
     public SkillResult execute(String rawCommand, Context context) {
         if (context == null) return SkillResult.failure("Konteks tidak tersedia.");
-        String c = rawCommand.toLowerCase();
 
-        // 1. Ekstrak jam dan menit jika ada: "jam 7", "jam 07:30", "jam 8 lewat 15"
-        int targetHour = -1;
-        int targetMinute = 0;
+        com.novaagent.app.core.device.IndonesianDateTimeParser.ParsedAlarmTime parsed = 
+                com.novaagent.app.core.device.IndonesianDateTimeParser.parseAlarm(rawCommand);
 
-        Matcher timeMatcher = Pattern.compile(".*jam\\s*(\\d{1,2})(?:[:.](\\d{1,2})|\\s*lewat\\s*(\\d{1,2}))?.*").matcher(c);
-        if (timeMatcher.find()) {
-            try {
-                targetHour = Integer.parseInt(timeMatcher.group(1));
-                if (timeMatcher.group(2) != null) {
-                    targetMinute = Integer.parseInt(timeMatcher.group(2));
-                } else if (timeMatcher.group(3) != null) {
-                    targetMinute = Integer.parseInt(timeMatcher.group(3));
-                }
-            } catch (Exception ignored) {}
-        }
+        int targetHour = parsed != null ? parsed.hour24 : -1;
+        int targetMinute = parsed != null ? parsed.minute : 0;
+        String dayLabel = (parsed != null && parsed.dayOffset == 1) ? "besok " : (parsed != null && parsed.dayOffset == 2 ? "lusa " : "");
 
         // Ekstrak pesan pengingat jika ada
         String message = "Pengingat NOVA";
@@ -6770,7 +7866,7 @@ public class LocalReminderSkill implements NovaSkill {
         try {
             Intent intent = new Intent(AlarmClock.ACTION_SET_ALARM);
             intent.putExtra(AlarmClock.EXTRA_MESSAGE, message);
-            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
+            intent.putExtra(AlarmClock.EXTRA_SKIP_UI, true);
 
             if (targetHour >= 0 && targetHour < 24) {
                 intent.putExtra(AlarmClock.EXTRA_HOUR, targetHour);
@@ -6778,11 +7874,12 @@ public class LocalReminderSkill implements NovaSkill {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
 
-                String minStr = targetMinute < 10 ? "0" + targetMinute : String.valueOf(targetMinute);
-                return SkillResult.success("Pengingat untuk " + message + " telah dipasang pada pukul " + targetHour + ":" + minStr + ".",
-                        new ActionCommandDto("set_alarm", targetHour + ":" + minStr));
+                String timeStr = parsed != null ? parsed.getFormattedTime() : (targetHour + ":" + targetMinute);
+                return SkillResult.success("Alarm pengingat telah disetel untuk " + dayLabel + "pukul " + timeStr + " (" + message + ").",
+                        new ActionCommandDto("set_alarm", timeStr));
             } else {
-                // Pasang alarm default atau buka antarmuka alarm
+                // Buka antarmuka alarm jika jam tidak ditentukan
+                intent.putExtra(AlarmClock.EXTRA_SKIP_UI, false);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(intent);
                 return SkillResult.success("Membuka setelan alarm dan pengingat.", new ActionCommandDto("set_alarm", ""));
@@ -6802,7 +7899,7 @@ public class LocalReminderSkill implements NovaSkill {
 
 ---
 
-### File 61/196: `app/src/main/java/com/novaagent/app/core/skills/impl/NovaStatusDiagnosticSkill.java`
+### File 66/204: `app/src/main/java/com/novaagent/app/core/skills/impl/NovaStatusDiagnosticSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6871,7 +7968,7 @@ public class NovaStatusDiagnosticSkill implements NovaSkill {
 
 ---
 
-### File 62/196: `app/src/main/java/com/novaagent/app/core/skills/impl/OfflineNotesSkill.java`
+### File 67/204: `app/src/main/java/com/novaagent/app/core/skills/impl/OfflineNotesSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6988,7 +8085,7 @@ public class OfflineNotesSkill implements NovaSkill {
 
 ---
 
-### File 63/196: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenLockSkill.java`
+### File 68/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenLockSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7051,7 +8148,7 @@ public class ScreenLockSkill implements NovaSkill {
 
 ---
 
-### File 64/196: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenRotationSkill.java`
+### File 69/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenRotationSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7126,7 +8223,7 @@ public class ScreenRotationSkill implements NovaSkill {
 
 ---
 
-### File 65/196: `app/src/main/java/com/novaagent/app/core/skills/impl/SimpleCalendarSkill.java`
+### File 70/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SimpleCalendarSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7205,7 +8302,7 @@ public class SimpleCalendarSkill implements NovaSkill {
 
 ---
 
-### File 66/196: `app/src/main/java/com/novaagent/app/core/skills/impl/SoundModeControlSkill.java`
+### File 71/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SoundModeControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7286,7 +8383,7 @@ public class SoundModeControlSkill implements NovaSkill {
 
 ---
 
-### File 67/196: `app/src/main/java/com/novaagent/app/core/skills/impl/SpeakInfoSkill.java`
+### File 72/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SpeakInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7347,7 +8444,7 @@ public class SpeakInfoSkill implements NovaSkill {
 
 ---
 
-### File 68/196: `app/src/main/java/com/novaagent/app/core/skills/impl/StopwatchSkill.java`
+### File 73/204: `app/src/main/java/com/novaagent/app/core/skills/impl/StopwatchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7441,7 +8538,7 @@ public class StopwatchSkill implements NovaSkill {
 
 ---
 
-### File 69/196: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemNavigationSkill.java`
+### File 74/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemNavigationSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7515,7 +8612,7 @@ public class SystemNavigationSkill implements NovaSkill {
 
 ---
 
-### File 70/196: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemSettingsSkill.java`
+### File 75/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemSettingsSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7588,7 +8685,7 @@ public class SystemSettingsSkill implements NovaSkill {
 
 ---
 
-### File 71/196: `app/src/main/java/com/novaagent/app/core/skills/impl/TimeDateSkill.java`
+### File 76/204: `app/src/main/java/com/novaagent/app/core/skills/impl/TimeDateSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7644,7 +8741,7 @@ public class TimeDateSkill implements NovaSkill {
 
 ---
 
-### File 72/196: `app/src/main/java/com/novaagent/app/core/skills/impl/TimerSkill.java`
+### File 77/204: `app/src/main/java/com/novaagent/app/core/skills/impl/TimerSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7691,30 +8788,21 @@ public class TimerSkill implements NovaSkill {
         if (context == null) return SkillResult.failure("Konteks tidak tersedia.");
         String c = rawCommand.toLowerCase();
 
-        int seconds = 0;
-        // Cek menit
-        Matcher minMatcher = Pattern.compile(".*(\\d+)\\s*menit.*").matcher(c);
-        if (minMatcher.find()) {
-            try {
-                seconds += Integer.parseInt(minMatcher.group(1)) * 60;
-            } catch (Exception ignored) {}
-        }
+        int seconds = com.novaagent.app.core.device.IndonesianDateTimeParser.parseTimerSeconds(rawCommand);
 
-        // Cek detik
-        Matcher secMatcher = Pattern.compile(".*(\\d+)\\s*detik.*").matcher(c);
-        if (secMatcher.find()) {
-            try {
-                seconds += Integer.parseInt(secMatcher.group(1));
-            } catch (Exception ignored) {}
+        if (seconds <= 0) {
+            // Cek menit angka
+            Matcher minMatcher = Pattern.compile(".*(\\d+)\\s*menit.*").matcher(c);
+            if (minMatcher.find()) {
+                try { seconds = Integer.parseInt(minMatcher.group(1)) * 60; } catch (Exception ignored) {}
+            }
         }
 
         // Default jika hanya angka tanpa satuan: "timer 10" -> 10 menit
-        if (seconds == 0) {
+        if (seconds <= 0) {
             Matcher numMatcher = Pattern.compile(".*timer\\s*(\\d+).*").matcher(c);
             if (numMatcher.find()) {
-                try {
-                    seconds = Integer.parseInt(numMatcher.group(1)) * 60;
-                } catch (Exception ignored) {}
+                try { seconds = Integer.parseInt(numMatcher.group(1)) * 60; } catch (Exception ignored) {}
             }
         }
 
@@ -7748,7 +8836,7 @@ public class TimerSkill implements NovaSkill {
 
 ---
 
-### File 73/196: `app/src/main/java/com/novaagent/app/core/skills/impl/UnitConversionSkill.java`
+### File 78/204: `app/src/main/java/com/novaagent/app/core/skills/impl/UnitConversionSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7868,7 +8956,7 @@ public class UnitConversionSkill implements NovaSkill {
 
 ---
 
-### File 74/196: `app/src/main/java/com/novaagent/app/core/skills/impl/VolumeSkill.java`
+### File 79/204: `app/src/main/java/com/novaagent/app/core/skills/impl/VolumeSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7967,7 +9055,7 @@ public class VolumeSkill implements NovaSkill {
 
 ---
 
-### File 75/196: `app/src/main/java/com/novaagent/app/core/skills/impl/WebSearchSkill.java`
+### File 80/204: `app/src/main/java/com/novaagent/app/core/skills/impl/WebSearchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8089,7 +9177,7 @@ public class WebSearchSkill implements NovaSkill {
 
 ---
 
-### File 76/196: `app/src/main/java/com/novaagent/app/core/skills/impl/WifiControlSkill.java`
+### File 81/204: `app/src/main/java/com/novaagent/app/core/skills/impl/WifiControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8154,7 +9242,7 @@ public class WifiControlSkill implements NovaSkill {
 
 ---
 
-### File 77/196: `app/src/main/java/com/novaagent/app/core/state/AgentState.java`
+### File 82/204: `app/src/main/java/com/novaagent/app/core/state/AgentState.java`
 
 ```java
 package com.novaagent.app.core.state;
@@ -8180,7 +9268,7 @@ public enum AgentState {
 
 ---
 
-### File 78/196: `app/src/main/java/com/novaagent/app/core/vision/PerceptionCoordinator.java`
+### File 83/204: `app/src/main/java/com/novaagent/app/core/vision/PerceptionCoordinator.java`
 
 ```java
 package com.novaagent.app.core.vision;
@@ -8265,19 +9353,148 @@ public class PerceptionCoordinator implements EventBus.EventListener {
 
 ---
 
-### File 79/196: `app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java`
+### File 84/204: `app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java`
 
 ```java
 package com.novaagent.app.core.vision;
 
 import com.novaagent.app.data.model.UnifiedScreenContext;
+import com.novaagent.app.data.model.UnifiedScreenContext.ScreenElement;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * 10x KOMPLEKSITAS: SEMANTIC VISION.
- * Tidak sekadar membaca teks, tapi memahami KONTEKS aplikasi yang sedang dibuka.
+ * SEMANTIC VISION & SCREEN UNDERSTANDING ENGINE (BAGIAN 9)
+ * Memahami makna kontekstual layar Android, mengidentifikasi tombol aksi,
+ * kolom pencarian, video item, dan menghasilkan ringkasan visual yang jujur.
  */
 public class SemanticVisionEngine {
-    
+
+    public enum ElementRole {
+        SEARCH_BAR,
+        PLAY_BUTTON,
+        PAUSE_BUTTON,
+        ITEM_CARD,
+        TEXT_INPUT,
+        BACK_BUTTON,
+        ERROR_DIALOG,
+        GENERIC_BUTTON
+    }
+
+    public static class SemanticElement {
+        public final ElementRole role;
+        public final ScreenElement element;
+        public final String description;
+
+        public SemanticElement(ElementRole role, ScreenElement element, String description) {
+            this.role = role;
+            this.element = element;
+            this.description = description;
+        }
+    }
+
+    /**
+     * Menghasilkan penjelasan manusiawi tentang apa yang sedang terbuka di layar.
+     */
+    public String describeScreen(UnifiedScreenContext ctx) {
+        if (ctx == null) return "Tidak ada data layar yang tersedia.";
+
+        String pkg = ctx.packageName != null ? ctx.packageName.toLowerCase() : "unknown";
+        StringBuilder sb = new StringBuilder();
+
+        // 1. Deteksi aplikasi
+        if (pkg.contains("youtube")) {
+            sb.append("Sedang membuka aplikasi YouTube. ");
+        } else if (pkg.contains("whatsapp")) {
+            sb.append("Sedang membuka aplikasi WhatsApp. ");
+        } else if (pkg.contains("chrome") || pkg.contains("browser")) {
+            sb.append("Sedang membuka peramban web. ");
+        } else if (pkg.contains("launcher") || pkg.contains("home")) {
+            sb.append("Sedang berada di Layar Utama (Home Screen). ");
+        } else if (pkg.contains("settings")) {
+            sb.append("Sedang membuka menu Pengaturan Sistem. ");
+        } else {
+            sb.append("Sedang membuka aplikasi: ").append(pkg).append(". ");
+        }
+
+        // 2. Deteksi dialog error/crash jika ada
+        if (ctx.hasText("has stopped") || ctx.hasText("telah berhenti") || ctx.hasText("force close")) {
+            return sb.append("Perhatian: Terdeteksi dialog galat atau aplikasi terhenti di layar.").toString();
+        }
+
+        // 3. Ekstrak elemen penting yang tampak
+        List<String> visibleHeadlines = new ArrayList<>();
+        if (ctx.elements != null) {
+            for (ScreenElement el : ctx.elements) {
+                if (el.text != null && el.text.trim().length() > 3) {
+                    String t = el.text.trim();
+                    if (!visibleHeadlines.contains(t) && visibleHeadlines.size() < 4) {
+                        visibleHeadlines.add(t);
+                    }
+                }
+            }
+        }
+
+        if (!visibleHeadlines.isEmpty()) {
+            sb.append("Teks yang terlihat antara lain: ");
+            for (int i = 0; i < visibleHeadlines.size(); i++) {
+                sb.append("\"").append(visibleHeadlines.get(i)).append("\"");
+                if (i < visibleHeadlines.size() - 1) sb.append(", ");
+            }
+            sb.append(".");
+        } else if (ctx.ocrText != null && !ctx.ocrText.isEmpty()) {
+            String snippet = ctx.ocrText.length() > 100 ? ctx.ocrText.substring(0, 100) + "..." : ctx.ocrText;
+            sb.append("Teks terdeteksi via OCR: \"").append(snippet).append("\".");
+        } else {
+            sb.append("Tidak ada teks penting yang terdeteksi.");
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Mencari elemen layar yang cocok dengan tujuan semantik pengguna.
+     * Contoh: "cari tombol pencarian", "tekan tombol play", "kolom pencarian".
+     */
+    public ScreenElement findElementBySemanticGoal(UnifiedScreenContext ctx, String goal) {
+        if (ctx == null || ctx.elements == null || goal == null) return null;
+        String lowerGoal = goal.toLowerCase().trim();
+
+        // 1. Pencarian kolom cari / tombol cari
+        if (lowerGoal.contains("cari") || lowerGoal.contains("pencarian") || lowerGoal.contains("search")) {
+            for (ScreenElement el : ctx.elements) {
+                if (el.text != null && el.text.toLowerCase().matches(".*(search|cari|telusuri|pencarian).*")) {
+                    return el;
+                }
+                if ("Input".equalsIgnoreCase(el.type) || "EditText".equalsIgnoreCase(el.type)) {
+                    return el;
+                }
+            }
+        }
+
+        // 2. Tombol play / putar
+        if (lowerGoal.contains("play") || lowerGoal.contains("putar") || lowerGoal.contains("mainkan")) {
+            for (ScreenElement el : ctx.elements) {
+                if (el.text != null && el.text.toLowerCase().matches(".*(play|putar|tonton).*")) {
+                    return el;
+                }
+            }
+        }
+
+        // 3. Tombol kirim / submit
+        if (lowerGoal.contains("kirim") || lowerGoal.contains("send")) {
+            for (ScreenElement el : ctx.elements) {
+                if (el.text != null && el.text.toLowerCase().matches(".*(kirim|send|submit).*")) {
+                    return el;
+                }
+            }
+        }
+
+        // 4. Fallback: pencocokan teks substring
+        return ctx.findElementByText(goal);
+    }
+
     public String extractSemantics(UnifiedScreenContext ctx) {
         if (ctx == null) return "Layar kosong.";
         
@@ -8285,17 +9502,8 @@ public class SemanticVisionEngine {
         String pkg = ctx.packageName != null ? ctx.packageName.toLowerCase() : "unknown";
         
         semantics.append("[Konteks OS]: Aplikasi Aktif '").append(pkg).append("'.\n");
-        
-        // Injeksi Pengetahuan Khusus (Insight)
-        if (pkg.contains("whatsapp")) {
-            semantics.append("[Insight Semantik]: Ini adalah WhatsApp. Kolom ketik pesan biasanya ada di bawah, dan ikon kirim muncul setelah teks diketik.\n");
-        } else if (pkg.contains("youtube")) {
-            semantics.append("[Insight Semantik]: Ini adalah YouTube. Bisa mencari video (ikon kaca pembesar di atas) atau memutar video.\n");
-        } else if (pkg.contains("launcher") || pkg.contains("home")) {
-            semantics.append("[Insight Semantik]: Berada di Beranda (Home Screen). Anda bisa membuka aplikasi dari sini.\n");
-        }
-
-        semantics.append("[Teks Mentah di Layar]:\n").append(ctx.toString());
+        semantics.append("[Deskripsi Visual]: ").append(describeScreen(ctx)).append("\n");
+        semantics.append("[Teks Lengkap]:\n").append(ctx.toString());
         return semantics.toString();
     }
 }
@@ -8304,7 +9512,7 @@ public class SemanticVisionEngine {
 
 ---
 
-### File 80/196: `app/src/main/java/com/novaagent/app/core/vision/VisualChangeTracker.java`
+### File 85/204: `app/src/main/java/com/novaagent/app/core/vision/VisualChangeTracker.java`
 
 ```java
 package com.novaagent.app.core.vision;
@@ -8371,7 +9579,7 @@ public class VisualChangeTracker {
 
 ---
 
-### File 81/196: `app/src/main/java/com/novaagent/app/data/cache/NodeCache.java`
+### File 86/204: `app/src/main/java/com/novaagent/app/data/cache/NodeCache.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -8415,7 +9623,7 @@ public class NodeCache {
 
 ---
 
-### File 82/196: `app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java`
+### File 87/204: `app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -8472,7 +9680,7 @@ public class ObjectPool<T> {
 
 ---
 
-### File 83/196: `app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java`
+### File 88/204: `app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -8548,7 +9756,7 @@ public class ScreenCache {
 
 ---
 
-### File 84/196: `app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java`
+### File 89/204: `app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -8585,6 +9793,10 @@ public class ActionCommandDto {
         this(action, textToType, "", -1, -1, "");
     }
 
+    public ActionCommandDto(int x, int y) {
+        this("tap", "", "", x, y, "");
+    }
+
     public ActionCommandDto(String jsonResponse) throws JSONException {
         String cleanJson = extractJson(jsonResponse);
         JSONObject json = new JSONObject(cleanJson);
@@ -8618,7 +9830,7 @@ public class ActionCommandDto {
 
 ---
 
-### File 85/196: `app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java`
+### File 90/204: `app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -8648,7 +9860,7 @@ public class ActionVerificationResult {
 
 ---
 
-### File 86/196: `app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java`
+### File 91/204: `app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -8754,7 +9966,7 @@ public class UnifiedScreenContext {
 
 ---
 
-### File 87/196: `app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java`
+### File 92/204: `app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java`
 
 ```java
 package com.novaagent.app.data.network;
@@ -9181,7 +10393,7 @@ public class UniversalNetworkClient {
 
 ---
 
-### File 88/196: `app/src/main/java/com/novaagent/app/data/network/omni/OmniRouter.java`
+### File 93/204: `app/src/main/java/com/novaagent/app/data/network/omni/OmniRouter.java`
 
 ```java
 package com.novaagent.app.data.network.omni;
@@ -9406,7 +10618,7 @@ public class OmniRouter {
 
 ---
 
-### File 89/196: `app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java`
+### File 94/204: `app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java`
 
 ```java
 package com.novaagent.app.data.repository;
@@ -9442,7 +10654,7 @@ public class PromptRegistry {
 
 ---
 
-### File 90/196: `app/src/main/java/com/novaagent/app/data/repository/SecureConfigManager.java`
+### File 95/204: `app/src/main/java/com/novaagent/app/data/repository/SecureConfigManager.java`
 
 ```java
 package com.novaagent.app.data.repository;
@@ -9511,7 +10723,7 @@ public class SecureConfigManager {
 
 ---
 
-### File 91/196: `app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java`
+### File 96/204: `app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java`
 
 ```java
 package com.novaagent.app.infrastructure.injector;
@@ -9749,7 +10961,7 @@ private void handleLocalHardware(Context context, String cmd) {
 
 ---
 
-### File 92/196: `app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java`
+### File 97/204: `app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java`
 
 ```java
 package com.novaagent.app.infrastructure.ocr;
@@ -9871,7 +11083,7 @@ public class MlKitOcrEngine {
 
 ---
 
-### File 93/196: `app/src/main/java/com/novaagent/app/infrastructure/system/FailureDiagnosisEngine.java`
+### File 98/204: `app/src/main/java/com/novaagent/app/infrastructure/system/FailureDiagnosisEngine.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -9911,7 +11123,7 @@ public class FailureDiagnosisEngine {
 
 ---
 
-### File 94/196: `app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java`
+### File 99/204: `app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -10025,7 +11237,7 @@ public class NovaWatchdog implements EventBus.EventListener {
 
 ---
 
-### File 95/196: `app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java`
+### File 100/204: `app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -10124,7 +11336,7 @@ public class RecoveryManager implements EventBus.EventListener {
 
 ---
 
-### File 96/196: `app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java`
+### File 101/204: `app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -10187,7 +11399,7 @@ public class NodeCompactor {
 
 ---
 
-### File 97/196: `app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java`
+### File 102/204: `app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -10250,7 +11462,7 @@ public class NodeScanner {
 
 ---
 
-### File 98/196: `app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java`
+### File 103/204: `app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -10378,7 +11590,7 @@ public class NovaAccessibilityService extends AccessibilityService {
 
 ---
 
-### File 99/196: `app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java`
+### File 104/204: `app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java`
 
 ```java
 package com.novaagent.app.services.foreground;
@@ -10550,7 +11762,7 @@ public class MediaProjectionWrapper {
 
 ---
 
-### File 100/196: `app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java`
+### File 105/204: `app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java`
 
 ```java
 package com.novaagent.app.services.foreground;
@@ -10558,6 +11770,7 @@ package com.novaagent.app.services.foreground;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -10569,7 +11782,10 @@ import android.os.IBinder;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.Person;
 
+import com.novaagent.app.core.bus.AgentEvent;
+import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.ActionVerificationScore;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
@@ -10591,16 +11807,25 @@ import com.novaagent.app.infrastructure.system.NovaWatchdog;
 import com.novaagent.app.infrastructure.system.RecoveryManager;
 import com.novaagent.app.ui.bubble.FloatingBubbleView;
 import com.novaagent.app.ui.bubble.HologramAuraManager;
+import com.novaagent.app.ui.config.MainActivity;
 
-public class NovaForegroundService extends Service {
-private static final String CHANNEL_ID = "NovaAgentChannel";
-private FloatingBubbleView floatingBubbleView;
-private MediaProjectionWrapper mediaProjectionWrapper;
-private NovaWatchdog watchdog;
-private AutonomousLoopEngine loopEngine;
-private NovaAudioDirector audioDirector;
-private PerceptionCoordinator perceptionCoordinator;
-private RecoveryManager recoveryManager;
+public class NovaForegroundService extends Service implements EventBus.EventListener {
+    public static final String ACTION_STOP_VOICE = "com.novaagent.app.ACTION_STOP_VOICE";
+    public static final String ACTION_TOGGLE_MUTE = "com.novaagent.app.ACTION_TOGGLE_MUTE";
+    private static final String CHANNEL_ID = "nova_live_voice_channel";
+    private static final int NOTIFICATION_ID = 1001;
+
+    private FloatingBubbleView floatingBubbleView;
+    private MediaProjectionWrapper mediaProjectionWrapper;
+    private NovaWatchdog watchdog;
+    private AutonomousLoopEngine loopEngine;
+    private NovaAudioDirector audioDirector;
+    private PerceptionCoordinator perceptionCoordinator;
+    private RecoveryManager recoveryManager;
+
+    private long sessionStartTime = System.currentTimeMillis();
+    private boolean isMuted = false;
+    private String currentVoiceStatus = "Mendengarkan ucapan Anda...";
 
 @Override
 public void onCreate() {
@@ -10643,25 +11868,42 @@ public void onCreate() {
     watchdog = new NovaWatchdog();
     watchdog.start();
     locator.register(NovaWatchdog.class, watchdog);
+
+    EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
 }
 
 @Override
 public int onStartCommand(Intent intent, int flags, int startId) {
-    Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Nova Agent")
-            .setContentText("Korteks Visual & Kognitif Aktif")
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build();
+    if (intent != null) {
+        String action = intent.getAction();
+        if (ACTION_STOP_VOICE.equals(action)) {
+            if (audioDirector != null) {
+                audioDirector.setListeningMode(false);
+            }
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        } else if (ACTION_TOGGLE_MUTE.equals(action)) {
+            isMuted = !isMuted;
+            if (audioDirector != null) {
+                audioDirector.setListeningMode(!isMuted);
+            }
+            currentVoiceStatus = isMuted ? "Mikrofon di-mute (Hening)" : "Mendengarkan ucapan Anda...";
+            updateNotification();
+            return START_STICKY;
+        }
+    }
+
+    Notification notification = buildCallStyleNotification(currentVoiceStatus);
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         int serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && intent != null && intent.getIntExtra("code", 0) != 0) {
             serviceType |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
         }
-        startForeground(1, notification, serviceType);
+        startForeground(NOTIFICATION_ID, notification, serviceType);
     } else {
-        startForeground(1, notification);
+        startForeground(NOTIFICATION_ID, notification);
     }
 
     if (intent != null && intent.getIntExtra("code", 0) != 0) {
@@ -10681,9 +11923,104 @@ public int onStartCommand(Intent intent, int flags, int startId) {
     return START_STICKY;
 }
 
+private Notification buildCallStyleNotification(String statusText) {
+    Intent contentIntent = new Intent(this, MainActivity.class);
+    contentIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    PendingIntent pendingContent = PendingIntent.getActivity(
+            this, 0, contentIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+    Intent endCallIntent = new Intent(this, NovaForegroundService.class);
+    endCallIntent.setAction(ACTION_STOP_VOICE);
+    PendingIntent pendingEnd = PendingIntent.getService(
+            this, 1, endCallIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+    Intent muteIntent = new Intent(this, NovaForegroundService.class);
+    muteIntent.setAction(ACTION_TOGGLE_MUTE);
+    PendingIntent pendingMute = PendingIntent.getService(
+            this, 2, muteIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+    String displayText = statusText != null ? statusText : currentVoiceStatus;
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        android.app.Person caller = new android.app.Person.Builder()
+                .setName("NOVA Live Voice")
+                .setImportant(true)
+                .build();
+
+        Notification.CallStyle callStyle = Notification.CallStyle.forOngoingCall(caller, pendingEnd);
+
+        Notification.Action muteAction = new Notification.Action.Builder(
+                android.graphics.drawable.Icon.createWithResource(this, isMuted ? android.R.drawable.ic_lock_silent_mode_off : android.R.drawable.ic_lock_silent_mode),
+                isMuted ? "Unmute" : "Mute",
+                pendingMute
+        ).build();
+
+        Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
+                .setStyle(callStyle)
+                .setSmallIcon(android.R.drawable.stat_sys_speakerphone)
+                .setContentTitle("NOVA Voice Assistant")
+                .setContentText(displayText)
+                .setContentIntent(pendingContent)
+                .setCategory(Notification.CATEGORY_CALL)
+                .setOngoing(true)
+                .setWhen(sessionStartTime)
+                .setUsesChronometer(true)
+                .addAction(muteAction);
+
+        return builder.build();
+    } else {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_speakerphone)
+                .setContentTitle("NOVA Live Voice")
+                .setContentText(displayText)
+                .setContentIntent(pendingContent)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .setWhen(sessionStartTime)
+                .setUsesChronometer(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .addAction(isMuted ? android.R.drawable.ic_lock_silent_mode_off : android.R.drawable.ic_lock_silent_mode,
+                        isMuted ? "Unmute" : "Mute", pendingMute)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Akhiri", pendingEnd);
+
+        return builder.build();
+    }
+}
+
+private void updateNotification() {
+    try {
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager != null) {
+            manager.notify(NOTIFICATION_ID, buildCallStyleNotification(currentVoiceStatus));
+        }
+    } catch (Exception ignored) {}
+}
+
+@Override
+public void onEvent(AgentEvent event) {
+    if (event.type == AgentEvent.EventType.STATE_CHANGED) {
+        String st = String.valueOf(event.payload);
+        String label = null;
+        if ("LISTENING_READY".equals(st) || "RESUME_LISTENING".equals(st)) {
+            label = isMuted ? "Mikrofon di-mute (Hening)" : "Mendengarkan ucapan Anda...";
+        } else if ("USER_SPEAKING".equals(st)) {
+            label = "Mendengar suara Anda...";
+        } else if ("PROCESSING_AUDIO".equals(st) || "THINKING".equals(st)) {
+            label = "Memproses ucapan...";
+        } else if ("NOVA_SPEAKING_START".equals(st)) {
+            label = "Nova sedang berbicara...";
+        }
+        if (label != null && !label.equals(currentVoiceStatus)) {
+            currentVoiceStatus = label;
+            updateNotification();
+        }
+    }
+}
+
 @Override
 public void onDestroy() {
     super.onDestroy();
+    EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     ServiceLocator locator = ServiceLocator.getInstance();
     try { ProactiveConversationEngine p = locator.find(ProactiveConversationEngine.class); if (p != null) p.shutdown(); } catch (Exception e) {}
     try { ConditionalSentinelEngine c = locator.find(ConditionalSentinelEngine.class); if (c != null) c.shutdown(); } catch (Exception e) {}
@@ -10707,7 +12044,16 @@ public IBinder onBind(Intent intent) { return null; }
 private void createNotificationChannel() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         NotificationManager manager = getSystemService(NotificationManager.class);
-        if (manager != null) manager.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "Nova Agent", NotificationManager.IMPORTANCE_LOW));
+        if (manager != null) {
+            NotificationChannel voiceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Sesi Suara Langsung NOVA",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+            voiceChannel.setDescription("Menampilkan status sesi suara live ChatGPT-style di status bar.");
+            voiceChannel.setSound(null, null);
+            voiceChannel.enableVibration(false);
+            manager.createNotificationChannel(voiceChannel);
+        }
     }
 }
 
@@ -10717,7 +12063,152 @@ private void createNotificationChannel() {
 
 ---
 
-### File 101/196: `app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java`
+### File 106/204: `app/src/main/java/com/novaagent/app/services/notification/NovaNotificationListenerService.java`
+
+```java
+package com.novaagent.app.services.notification;
+
+import android.app.Notification;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.provider.Settings;
+import android.service.notification.NotificationListenerService;
+import android.service.notification.StatusBarNotification;
+import android.util.Log;
+
+import com.novaagent.app.core.di.ServiceLocator;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * PENDENGAR NOTIFIKASI RESMI (BAGIAN 7)
+ * Membaca pesan masuk WhatsApp secara sah dengan izin pengguna,
+ * memfilter pesan yang belum dibaca, dan menyiapkan draft balasan aman.
+ */
+public class NovaNotificationListenerService extends NotificationListenerService {
+    private static final String TAG = "NovaNotificationService";
+    public static final String PACKAGE_WHATSAPP = "com.whatsapp";
+
+    public static class ChatMessage {
+        public final String sender;
+        public final String text;
+        public final long timestamp;
+        public final String packageName;
+        public boolean isRead = false;
+
+        public ChatMessage(String sender, String text, long timestamp, String packageName) {
+            this.sender = sender != null ? sender : "Pengirim Tidak Dikenal";
+            this.text = text != null ? text : "";
+            this.timestamp = timestamp;
+            this.packageName = packageName;
+        }
+
+        @Override
+        public String toString() {
+            return sender + ": \"" + text + "\"";
+        }
+    }
+
+    private static final List<ChatMessage> unreadMessages = new CopyOnWriteArrayList<>();
+    private static volatile boolean isServiceConnected = false;
+
+    @Override
+    public void onListenerConnected() {
+        super.onListenerConnected();
+        isServiceConnected = true;
+        ServiceLocator.getInstance().register(NovaNotificationListenerService.class, this);
+        Log.i(TAG, "Nova Notification Listener Service Terhubung.");
+    }
+
+    @Override
+    public void onListenerDisconnected() {
+        super.onListenerDisconnected();
+        isServiceConnected = false;
+        try {
+            ServiceLocator.getInstance().register(NovaNotificationListenerService.class, null);
+        } catch (Exception ignored) {}
+        Log.w(TAG, "Nova Notification Listener Service Terputus.");
+    }
+
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn) {
+        if (sbn == null || sbn.getNotification() == null) return;
+        String pkg = sbn.getPackageName();
+
+        // Fokus pada pesan WhatsApp
+        if (PACKAGE_WHATSAPP.equals(pkg)) {
+            Notification notification = sbn.getNotification();
+            Bundle extras = notification.extras;
+            if (extras == null) return;
+
+            CharSequence titleSeq = extras.getCharSequence(Notification.EXTRA_TITLE);
+            CharSequence textSeq = extras.getCharSequence(Notification.EXTRA_TEXT);
+
+            if (titleSeq != null && textSeq != null) {
+                String sender = titleSeq.toString().trim();
+                String content = textSeq.toString().trim();
+
+                // Abaikan notifikasi sistem umum atau status syncing WhatsApp
+                if (!content.isEmpty() && !content.toLowerCase().contains("memeriksa pesan baru") &&
+                    !content.toLowerCase().contains("checking for new messages")) {
+                    ChatMessage msg = new ChatMessage(sender, content, sbn.getPostTime(), pkg);
+                    unreadMessages.add(0, msg); // Simpan pesan terbaru di depan
+                    // Batasi maksimal 20 pesan terakhir
+                    while (unreadMessages.size() > 20) {
+                        unreadMessages.remove(unreadMessages.size() - 1);
+                    }
+                    Log.i(TAG, "Pesan WhatsApp baru ditangkap dari: " + sender);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onNotificationRemoved(StatusBarNotification sbn) {
+        // Notifikasi dibersihkan dari drawer
+    }
+
+    public static boolean isNotificationAccessEnabled(Context context) {
+        if (context == null) return false;
+        String enabledListeners = Settings.Secure.getString(context.getContentResolver(), "enabled_notification_listeners");
+        return enabledListeners != null && enabledListeners.contains(context.getPackageName());
+    }
+
+    public static Intent getNotificationAccessSettingsIntent() {
+        return new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+    }
+
+    public List<ChatMessage> getUnreadWhatsAppMessages() {
+        List<ChatMessage> list = new ArrayList<>();
+        for (ChatMessage m : unreadMessages) {
+            if (!m.isRead) list.add(m);
+        }
+        return list;
+    }
+
+    public ChatMessage getLatestUnreadMessage() {
+        for (ChatMessage m : unreadMessages) {
+            if (!m.isRead) return m;
+        }
+        return null;
+    }
+
+    public void markAllAsRead() {
+        for (ChatMessage m : unreadMessages) {
+            m.isRead = true;
+        }
+    }
+}
+
+```
+
+---
+
+### File 107/204: `app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -10792,7 +12283,7 @@ public class BubbleViewModel implements EventBus.EventListener {
 
 ---
 
-### File 102/196: `app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java`
+### File 108/204: `app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -11268,7 +12759,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
 ---
 
-### File 103/196: `app/src/main/java/com/novaagent/app/ui/bubble/HologramAuraManager.java`
+### File 109/204: `app/src/main/java/com/novaagent/app/ui/bubble/HologramAuraManager.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -11369,7 +12860,7 @@ public class HologramAuraManager {
 
 ---
 
-### File 104/196: `app/src/main/java/com/novaagent/app/ui/config/MainActivity.java`
+### File 110/204: `app/src/main/java/com/novaagent/app/ui/config/MainActivity.java`
 
 ```java
 package com.novaagent.app.ui.config;
@@ -12128,7 +13619,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 105/196: `app/src/main/res/drawable/bg_badge_active.xml`
+### File 111/204: `app/src/main/res/drawable/bg_badge_active.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12142,7 +13633,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 106/196: `app/src/main/res/drawable/bg_badge_green.xml`
+### File 112/204: `app/src/main/res/drawable/bg_badge_green.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12156,7 +13647,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 107/196: `app/src/main/res/drawable/bg_badge_green_solid.xml`
+### File 113/204: `app/src/main/res/drawable/bg_badge_green_solid.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12169,7 +13660,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 108/196: `app/src/main/res/drawable/bg_badge_inactive.xml`
+### File 114/204: `app/src/main/res/drawable/bg_badge_inactive.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12183,7 +13674,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 109/196: `app/src/main/res/drawable/bg_banner_glow.xml`
+### File 115/204: `app/src/main/res/drawable/bg_banner_glow.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12197,7 +13688,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 110/196: `app/src/main/res/drawable/bg_box_selected.xml`
+### File 116/204: `app/src/main/res/drawable/bg_box_selected.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12211,7 +13702,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 111/196: `app/src/main/res/drawable/bg_box_unselected.xml`
+### File 117/204: `app/src/main/res/drawable/bg_box_unselected.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12225,7 +13716,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 112/196: `app/src/main/res/drawable/bg_btn_gradient.xml`
+### File 118/204: `app/src/main/res/drawable/bg_btn_gradient.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12242,7 +13733,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 113/196: `app/src/main/res/drawable/bg_bubble_cyber.xml`
+### File 119/204: `app/src/main/res/drawable/bg_bubble_cyber.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12257,7 +13748,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 114/196: `app/src/main/res/drawable/bg_card_cyber.xml`
+### File 120/204: `app/src/main/res/drawable/bg_card_cyber.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12271,7 +13762,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 115/196: `app/src/main/res/drawable/bg_circle_btn.xml`
+### File 121/204: `app/src/main/res/drawable/bg_circle_btn.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12284,7 +13775,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 116/196: `app/src/main/res/drawable/bg_close_btn.xml`
+### File 122/204: `app/src/main/res/drawable/bg_close_btn.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12297,7 +13788,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 117/196: `app/src/main/res/drawable/bg_color_cyan.xml`
+### File 123/204: `app/src/main/res/drawable/bg_color_cyan.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12310,7 +13801,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 118/196: `app/src/main/res/drawable/bg_color_green.xml`
+### File 124/204: `app/src/main/res/drawable/bg_color_green.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12322,7 +13813,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 119/196: `app/src/main/res/drawable/bg_color_orange.xml`
+### File 125/204: `app/src/main/res/drawable/bg_color_orange.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12334,7 +13825,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 120/196: `app/src/main/res/drawable/bg_color_pink.xml`
+### File 126/204: `app/src/main/res/drawable/bg_color_pink.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12346,7 +13837,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 121/196: `app/src/main/res/drawable/bg_color_purple.xml`
+### File 127/204: `app/src/main/res/drawable/bg_color_purple.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12358,7 +13849,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 122/196: `app/src/main/res/drawable/bg_dropdown_pill.xml`
+### File 128/204: `app/src/main/res/drawable/bg_dropdown_pill.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12372,7 +13863,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 123/196: `app/src/main/res/drawable/bg_edit_text.xml`
+### File 129/204: `app/src/main/res/drawable/bg_edit_text.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12386,7 +13877,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 124/196: `app/src/main/res/drawable/bg_hologram_aura.xml`
+### File 130/204: `app/src/main/res/drawable/bg_hologram_aura.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12401,7 +13892,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 125/196: `app/src/main/res/drawable/bg_jarvis_badge_active.xml`
+### File 131/204: `app/src/main/res/drawable/bg_jarvis_badge_active.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12418,7 +13909,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 126/196: `app/src/main/res/drawable/bg_jarvis_badge_cyan.xml`
+### File 132/204: `app/src/main/res/drawable/bg_jarvis_badge_cyan.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12435,7 +13926,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 127/196: `app/src/main/res/drawable/bg_jarvis_badge_purple.xml`
+### File 133/204: `app/src/main/res/drawable/bg_jarvis_badge_purple.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12452,7 +13943,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 128/196: `app/src/main/res/drawable/bg_jarvis_badge_warning.xml`
+### File 134/204: `app/src/main/res/drawable/bg_jarvis_badge_warning.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12469,7 +13960,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 129/196: `app/src/main/res/drawable/bg_jarvis_btn_primary.xml`
+### File 135/204: `app/src/main/res/drawable/bg_jarvis_btn_primary.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12492,7 +13983,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 130/196: `app/src/main/res/drawable/bg_jarvis_btn_secondary.xml`
+### File 136/204: `app/src/main/res/drawable/bg_jarvis_btn_secondary.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12513,7 +14004,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 131/196: `app/src/main/res/drawable/bg_jarvis_card.xml`
+### File 137/204: `app/src/main/res/drawable/bg_jarvis_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12530,7 +14021,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 132/196: `app/src/main/res/drawable/bg_jarvis_card_interactive.xml`
+### File 138/204: `app/src/main/res/drawable/bg_jarvis_card_interactive.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12551,7 +14042,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 133/196: `app/src/main/res/drawable/bg_jarvis_chip.xml`
+### File 139/204: `app/src/main/res/drawable/bg_jarvis_chip.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12568,7 +14059,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 134/196: `app/src/main/res/drawable/bg_jarvis_input.xml`
+### File 140/204: `app/src/main/res/drawable/bg_jarvis_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12585,7 +14076,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 135/196: `app/src/main/res/drawable/bg_jarvis_main.xml`
+### File 141/204: `app/src/main/res/drawable/bg_jarvis_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12603,7 +14094,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 136/196: `app/src/main/res/drawable/bg_jarvis_mic_trigger.xml`
+### File 142/204: `app/src/main/res/drawable/bg_jarvis_mic_trigger.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12627,7 +14118,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 137/196: `app/src/main/res/drawable/bg_jarvis_reactor_inner.xml`
+### File 143/204: `app/src/main/res/drawable/bg_jarvis_reactor_inner.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12645,7 +14136,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 138/196: `app/src/main/res/drawable/bg_jarvis_reactor_outer.xml`
+### File 144/204: `app/src/main/res/drawable/bg_jarvis_reactor_outer.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12661,7 +14152,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 139/196: `app/src/main/res/drawable/bg_jelly_bubble.xml`
+### File 145/204: `app/src/main/res/drawable/bg_jelly_bubble.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12674,7 +14165,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 140/196: `app/src/main/res/drawable/bg_main_dark.xml`
+### File 146/204: `app/src/main/res/drawable/bg_main_dark.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12686,7 +14177,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 141/196: `app/src/main/res/drawable/bg_premium_badge.xml`
+### File 147/204: `app/src/main/res/drawable/bg_premium_badge.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12700,7 +14191,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 142/196: `app/src/main/res/drawable/bg_premium_button.xml`
+### File 148/204: `app/src/main/res/drawable/bg_premium_button.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12717,7 +14208,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 143/196: `app/src/main/res/drawable/bg_premium_card.xml`
+### File 149/204: `app/src/main/res/drawable/bg_premium_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12731,7 +14222,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 144/196: `app/src/main/res/drawable/bg_premium_input.xml`
+### File 150/204: `app/src/main/res/drawable/bg_premium_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12745,7 +14236,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 145/196: `app/src/main/res/drawable/bg_premium_main.xml`
+### File 151/204: `app/src/main/res/drawable/bg_premium_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12757,7 +14248,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 146/196: `app/src/main/res/drawable/bg_start_glow.xml`
+### File 152/204: `app/src/main/res/drawable/bg_start_glow.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12770,7 +14261,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 147/196: `app/src/main/res/drawable/bg_ultra_badge.xml`
+### File 153/204: `app/src/main/res/drawable/bg_ultra_badge.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12784,7 +14275,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 148/196: `app/src/main/res/drawable/bg_ultra_button.xml`
+### File 154/204: `app/src/main/res/drawable/bg_ultra_button.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12802,7 +14293,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 149/196: `app/src/main/res/drawable/bg_ultra_card.xml`
+### File 155/204: `app/src/main/res/drawable/bg_ultra_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12816,7 +14307,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 150/196: `app/src/main/res/drawable/bg_ultra_input.xml`
+### File 156/204: `app/src/main/res/drawable/bg_ultra_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12830,7 +14321,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 151/196: `app/src/main/res/drawable/bg_ultra_main.xml`
+### File 157/204: `app/src/main/res/drawable/bg_ultra_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12842,7 +14333,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 152/196: `app/src/main/res/drawable/ic_jarvis_bolt.xml`
+### File 158/204: `app/src/main/res/drawable/ic_jarvis_bolt.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12860,7 +14351,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 153/196: `app/src/main/res/drawable/ic_jarvis_chip.xml`
+### File 159/204: `app/src/main/res/drawable/ic_jarvis_chip.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12881,7 +14372,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 154/196: `app/src/main/res/drawable/ic_jarvis_mic.xml`
+### File 160/204: `app/src/main/res/drawable/ic_jarvis_mic.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12902,7 +14393,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 155/196: `app/src/main/res/drawable/ic_jarvis_shield.xml`
+### File 161/204: `app/src/main/res/drawable/ic_jarvis_shield.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12920,7 +14411,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 156/196: `app/src/main/res/drawable/ic_jarvis_sparkle.xml`
+### File 162/204: `app/src/main/res/drawable/ic_jarvis_sparkle.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12941,7 +14432,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 157/196: `app/src/main/res/drawable/ic_jelly_face.xml`
+### File 163/204: `app/src/main/res/drawable/ic_jelly_face.xml`
 
 ```xml
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -12964,7 +14455,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 158/196: `app/src/main/res/drawable/ic_launcher_background.xml`
+### File 164/204: `app/src/main/res/drawable/ic_launcher_background.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12978,7 +14469,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 159/196: `app/src/main/res/drawable/ic_launcher_foreground.xml`
+### File 165/204: `app/src/main/res/drawable/ic_launcher_foreground.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -12997,7 +14488,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 160/196: `app/src/main/res/drawable/ic_launcher_nova.xml`
+### File 166/204: `app/src/main/res/drawable/ic_launcher_nova.xml`
 
 ```xml
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -13030,7 +14521,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 161/196: `app/src/main/res/drawable/ic_nova_n_logo.xml`
+### File 167/204: `app/src/main/res/drawable/ic_nova_n_logo.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13051,7 +14542,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 162/196: `app/src/main/res/drawable/ic_shape_circle.xml`
+### File 168/204: `app/src/main/res/drawable/ic_shape_circle.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13064,7 +14555,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 163/196: `app/src/main/res/drawable/ic_shape_heart.xml`
+### File 169/204: `app/src/main/res/drawable/ic_shape_heart.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13077,7 +14568,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 164/196: `app/src/main/res/drawable/ic_shape_square.xml`
+### File 170/204: `app/src/main/res/drawable/ic_shape_square.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13090,7 +14581,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 165/196: `app/src/main/res/drawable/ic_shape_star.xml`
+### File 171/204: `app/src/main/res/drawable/ic_shape_star.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13103,7 +14594,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 166/196: `app/src/main/res/drawable/ic_soundwave.xml`
+### File 172/204: `app/src/main/res/drawable/ic_soundwave.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13121,7 +14612,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 167/196: `app/src/main/res/layout/activity_main.xml`
+### File 173/204: `app/src/main/res/layout/activity_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14854,7 +16345,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 168/196: `app/src/main/res/layout/dialog_about.xml`
+### File 174/204: `app/src/main/res/layout/dialog_about.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15014,7 +16505,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 169/196: `app/src/main/res/layout/dialog_settings.xml`
+### File 175/204: `app/src/main/res/layout/dialog_settings.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15345,7 +16836,7 @@ android:elevation="24dp">
 
 ---
 
-### File 170/196: `app/src/main/res/layout/dialog_status.xml`
+### File 176/204: `app/src/main/res/layout/dialog_status.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15629,7 +17120,7 @@ android:elevation="24dp">
 
 ---
 
-### File 171/196: `app/src/main/res/layout/layout_close_target.xml`
+### File 177/204: `app/src/main/res/layout/layout_close_target.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15650,7 +17141,7 @@ android:elevation="24dp">
 
 ---
 
-### File 172/196: `app/src/main/res/layout/layout_floating_bubble.xml`
+### File 178/204: `app/src/main/res/layout/layout_floating_bubble.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15712,7 +17203,7 @@ android:elevation="24dp">
 
 ---
 
-### File 173/196: `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`
+### File 179/204: `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15725,7 +17216,7 @@ android:elevation="24dp">
 
 ---
 
-### File 174/196: `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml`
+### File 180/204: `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15738,7 +17229,7 @@ android:elevation="24dp">
 
 ---
 
-### File 175/196: `app/src/main/res/values/colors.xml`
+### File 181/204: `app/src/main/res/values/colors.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15776,7 +17267,7 @@ android:elevation="24dp">
 
 ---
 
-### File 176/196: `app/src/main/res/values/styles.xml`
+### File 182/204: `app/src/main/res/values/styles.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15795,7 +17286,7 @@ android:elevation="24dp">
 
 ---
 
-### File 177/196: `app/src/main/res/xml/accessibility_service_config.xml`
+### File 183/204: `app/src/main/res/xml/accessibility_service_config.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15811,7 +17302,7 @@ android:elevation="24dp">
 
 ---
 
-### File 178/196: `app/src/main/res/xml/device_admin_receiver.xml`
+### File 184/204: `app/src/main/res/xml/device_admin_receiver.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -15825,7 +17316,7 @@ android:elevation="24dp">
 
 ---
 
-### File 179/196: `app/src/test/java/com/novaagent/app/core/app/AppDiscoveryEngineTest.java`
+### File 185/204: `app/src/test/java/com/novaagent/app/core/app/AppDiscoveryEngineTest.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -15857,7 +17348,211 @@ public class AppDiscoveryEngineTest {
 
 ---
 
-### File 180/196: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVadTest.java`
+### File 186/204: `app/src/test/java/com/novaagent/app/core/app/LiveVoiceAndVisionUpgradeTest.java`
+
+```java
+package com.novaagent.app.core.app;
+
+import com.novaagent.app.core.audio.fullduplex.BargeInCoordinator;
+import com.novaagent.app.core.brain.StructuredTask;
+import com.novaagent.app.core.brain.TaskPlanner;
+import com.novaagent.app.core.device.IndonesianDateTimeParser;
+import com.novaagent.app.core.engine.IntelligentCommandClassifier;
+import com.novaagent.app.core.engine.LocalIntentRouter;
+import com.novaagent.app.core.skills.SkillResult;
+import com.novaagent.app.core.vision.SemanticVisionEngine;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
+/**
+ * PENGUJIAN SKENARIO WAJIB UPGRADE (BAGIAN 16: SKENARIO A s.d. J)
+ */
+public class LiveVoiceAndVisionUpgradeTest {
+    private LocalIntentRouter router;
+    private IntelligentCommandClassifier classifier;
+    private SemanticVisionEngine visionEngine;
+    private BargeInCoordinator bargeInCoordinator;
+
+    @Before
+    public void setUp() {
+        router = new LocalIntentRouter(null);
+        classifier = new IntelligentCommandClassifier();
+        visionEngine = new SemanticVisionEngine();
+        bargeInCoordinator = new BargeInCoordinator();
+    }
+
+    // --- SKENARIO A: CASUAL CONVERSATION ---
+    @Test
+    public void testScenarioA_CasualConversation() {
+        // "Halo Nova", "Apa kabar?", "Aku bosan, temani ngobrol"
+        assertTrue(IntelligentCommandClassifier.isCasualConversation("Halo Nova apa kabar?"));
+        assertTrue(IntelligentCommandClassifier.isCasualConversation("Aku bosan, temani ngobrol"));
+        assertTrue(IntelligentCommandClassifier.isCasualConversation("Menurut kamu musik dangdut bagus tidak?"));
+
+        // Menjawab natural tanpa membuka aplikasi
+        LocalIntentRouter.RoutingResult res = router.route("Halo Nova apa kabar?");
+        assertTrue(res.isOfflineAction);
+        assertNull(res.command); // Tidak ada perintah membuka app atau senter
+        assertNotNull(res.speechResponse);
+    }
+
+    // --- SKENARIO B: QUICK COMMANDS ---
+    @Test
+    public void testScenarioB_QuickCommands() {
+        LocalIntentRouter.RoutingResult yt = router.route("Buka YouTube");
+        assertTrue(yt.isOfflineAction);
+        assertEquals("open_app", yt.command.action);
+        assertEquals("youtube", yt.command.textToType);
+
+        LocalIntentRouter.RoutingResult wa = router.route("Buka WhatsApp");
+        assertTrue(wa.isOfflineAction);
+        assertEquals("open_app", wa.command.action);
+        assertEquals("whatsapp", wa.command.textToType);
+
+        LocalIntentRouter.RoutingResult time = router.route("Jam berapa sekarang");
+        assertTrue(time.isOfflineAction);
+        assertTrue(time.speechResponse.contains("Sekarang pukul"));
+    }
+
+    // --- SKENARIO C: YOUTUBE MULTI-TASK ---
+    @Test
+    public void testScenarioC_YouTubeMultiTask() {
+        String cmd = "Buka YouTube, cari video lucu, lalu putar salah satunya";
+        IntelligentCommandClassifier.ClassificationResult res = classifier.classify(cmd);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.MULTI_STEP_COMMAND, res.mode);
+        assertTrue(res.extractedSteps.size() >= 2);
+
+        TaskPlanner planner = new TaskPlanner();
+        planner.setStructuredPlan(cmd, res.extractedSteps);
+        assertTrue(planner.hasActivePlan());
+        assertEquals(res.extractedSteps.get(0), planner.getCurrentStep());
+
+        // Verifikasi langkah pertama
+        planner.markStepComplete();
+        assertEquals(res.extractedSteps.get(1), planner.getCurrentStep());
+    }
+
+    // --- SKENARIO D: DANGDUT SEARCH ---
+    @Test
+    public void testScenarioD_DangdutSearch() {
+        LocalIntentRouter.RoutingResult res = router.route("Carikan video dangdut di YouTube");
+        assertTrue(res.isOfflineAction);
+        assertNotNull(res.speechResponse);
+        assertTrue(res.speechResponse.contains("dangdut"));
+    }
+
+    // --- SKENARIO E: WHATSAPP ASSISTANT ---
+    @Test
+    public void testScenarioE_WhatsAppAssistant() {
+        // Cek draft balasan tidak langsung mengirim tanpa persetujuan
+        WhatsAppMessageAssistant assistant = new WhatsAppMessageAssistant(null);
+        SkillResult draft = assistant.prepareReplyDraft("Nanti aku hubungi ya");
+        assertTrue(draft.success);
+        assertTrue(draft.speechResponse.contains("Apakah Anda setuju"));
+        assertEquals("approve_action", draft.actionCommand.action);
+    }
+
+    // --- SKENARIO F: ALARM & INDONESIAN DATE-TIME PARSER ---
+    @Test
+    public void testScenarioF_AlarmAndDateTimeParser() {
+        // "Setel alarm besok jam lima pagi"
+        IndonesianDateTimeParser.ParsedAlarmTime alarm1 =
+                IndonesianDateTimeParser.parseAlarm("Setel alarm besok jam lima pagi");
+        assertNotNull(alarm1);
+        assertEquals(5, alarm1.hour24);
+        assertEquals(0, alarm1.minute);
+        assertEquals(1, alarm1.dayOffset); // besok
+
+        // "Bangunkan aku jam lima sore"
+        IndonesianDateTimeParser.ParsedAlarmTime alarm2 =
+                IndonesianDateTimeParser.parseAlarm("Bangunkan aku jam lima sore");
+        assertNotNull(alarm2);
+        assertEquals(17, alarm2.hour24); // 17:00
+
+        // "Timer sepuluh menit"
+        int timerSecs = IndonesianDateTimeParser.parseTimerSeconds("Timer sepuluh menit");
+        assertEquals(600, timerSecs);
+
+        // "Timer lima menit"
+        int timer5Min = IndonesianDateTimeParser.parseTimerSeconds("Setel timer lima menit");
+        assertEquals(300, timer5Min);
+    }
+
+    // --- SKENARIO G: FOLLOW-UP COMMAND ---
+    @Test
+    public void testScenarioG_FollowUpCommand() {
+        IntelligentCommandClassifier.ClassificationResult res = classifier.classify("Putar yang kedua");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.FOLLOW_UP_COMMAND, res.mode);
+        assertEquals("2", res.targetEntity);
+
+        IntelligentCommandClassifier.ClassificationResult res2 = classifier.classify("Ganti yang lain");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.FOLLOW_UP_COMMAND, res2.mode);
+        assertEquals("other", res2.targetEntity);
+    }
+
+    // --- SKENARIO H: BARGE-IN INTERRUPTION ---
+    @Test
+    public void testScenarioH_BargeInInterruption() {
+        final boolean[] speechStopped = {false};
+        bargeInCoordinator.setSpeechStopper(() -> speechStopped[0] = true);
+
+        // Pengguna menyela ucapan Nova
+        bargeInCoordinator.triggerBargeIn("Pengguna memotong ucapan");
+        assertTrue(speechStopped[0]);
+
+        // Echo filter
+        String novaSpeech = "Saya sedang mencari video dangdut untuk Anda.";
+        assertFalse(bargeInCoordinator.isGenuineUserSpeech("video dangdut", novaSpeech)); // Pantulan suara Nova
+        assertTrue(bargeInCoordinator.isGenuineUserSpeech("Stop jangan yang itu", novaSpeech)); // Interupsi asli
+    }
+
+    // --- SKENARIO I: SCREEN VISION ---
+    @Test
+    public void testScenarioI_ScreenVision() {
+        List<UnifiedScreenContext.ScreenElement> elements = new ArrayList<>();
+        UnifiedScreenContext.ScreenElement searchBtn = new UnifiedScreenContext.ScreenElement();
+        searchBtn.text = "Cari di YouTube";
+        searchBtn.type = "Button";
+        searchBtn.centerX = 500;
+        searchBtn.centerY = 100;
+        elements.add(searchBtn);
+
+        UnifiedScreenContext ctx = new UnifiedScreenContext("com.google.android.youtube", System.currentTimeMillis(), elements);
+        String desc = visionEngine.describeScreen(ctx);
+        assertTrue(desc.contains("YouTube"));
+        assertTrue(desc.contains("Cari di YouTube"));
+
+        UnifiedScreenContext.ScreenElement found = visionEngine.findElementBySemanticGoal(ctx, "tombol pencarian");
+        assertNotNull(found);
+        assertEquals(500, found.centerX);
+    }
+
+    // --- SKENARIO J: FAILURE HANDLING & AMBIGUITY ---
+    @Test
+    public void testScenarioJ_AmbiguityAndFailure() {
+        // Perintah ambigu
+        LocalIntentRouter.RoutingResult amb = router.route("Kirim itu");
+        assertTrue(amb.isOfflineAction);
+        assertTrue(amb.speechResponse.contains("Apa pesan yang ingin Anda kirim"));
+
+        // Pembatalan tugas
+        LocalIntentRouter.RoutingResult cancel = router.route("Batal jangan dilanjutkan");
+        assertTrue(cancel.isOfflineAction);
+        assertEquals("reject_action", cancel.command.action);
+    }
+}
+
+```
+
+---
+
+### File 187/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVadTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -15949,7 +17644,7 @@ public class AdaptiveEnergyVadTest {
 
 ---
 
-### File 181/196: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AudioRingBufferTest.java`
+### File 188/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AudioRingBufferTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -16016,7 +17711,7 @@ public class AudioRingBufferTest {
 
 ---
 
-### File 182/196: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinatorTest.java`
+### File 189/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinatorTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -16053,7 +17748,7 @@ public class BargeInCoordinatorTest {
 
 ---
 
-### File 183/196: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngineTest.java`
+### File 190/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngineTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -16097,7 +17792,7 @@ public class PcmAudioEngineTest {
 
 ---
 
-### File 184/196: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunkerTest.java`
+### File 191/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunkerTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -16150,7 +17845,7 @@ public class StreamingSentenceChunkerTest {
 
 ---
 
-### File 185/196: `app/src/test/java/com/novaagent/app/core/brain/ConversationMemoryTest.java`
+### File 192/204: `app/src/test/java/com/novaagent/app/core/brain/ConversationMemoryTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -16184,7 +17879,7 @@ public class ConversationMemoryTest {
 
 ---
 
-### File 186/196: `app/src/test/java/com/novaagent/app/core/brain/LongTermMemoryEngineTest.java`
+### File 193/204: `app/src/test/java/com/novaagent/app/core/brain/LongTermMemoryEngineTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -16225,7 +17920,7 @@ public class LongTermMemoryEngineTest {
 
 ---
 
-### File 187/196: `app/src/test/java/com/novaagent/app/core/brain/OfflineBrainTest.java`
+### File 194/204: `app/src/test/java/com/novaagent/app/core/brain/OfflineBrainTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -16298,7 +17993,7 @@ public class OfflineBrainTest {
 
 ---
 
-### File 188/196: `app/src/test/java/com/novaagent/app/core/config/NovaConfigManagerTest.java`
+### File 195/204: `app/src/test/java/com/novaagent/app/core/config/NovaConfigManagerTest.java`
 
 ```java
 package com.novaagent.app.core.config;
@@ -16333,7 +18028,7 @@ public class NovaConfigManagerTest {
 
 ---
 
-### File 189/196: `app/src/test/java/com/novaagent/app/core/engine/AutonomousLoopEngineTest.java`
+### File 196/204: `app/src/test/java/com/novaagent/app/core/engine/AutonomousLoopEngineTest.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -16389,7 +18084,85 @@ public class AutonomousLoopEngineTest {
 
 ---
 
-### File 190/196: `app/src/test/java/com/novaagent/app/core/engine/LocalIntentRouterTest.java`
+### File 197/204: `app/src/test/java/com/novaagent/app/core/engine/IntelligentCommandClassifierTest.java`
+
+```java
+package com.novaagent.app.core.engine;
+
+import org.junit.Before;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class IntelligentCommandClassifierTest {
+    private IntelligentCommandClassifier classifier;
+
+    @Before
+    public void setUp() {
+        classifier = new IntelligentCommandClassifier();
+    }
+
+    @Test
+    public void testModeA_CasualConversation() {
+        assertEquals(IntelligentCommandClassifier.InteractionMode.CASUAL_CONVERSATION,
+                classifier.classify("Halo Nova apa kabar?").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.CASUAL_CONVERSATION,
+                classifier.classify("Aku bosan, temani ngobrol.").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.CASUAL_CONVERSATION,
+                classifier.classify("Hari ini panas ya.").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.CASUAL_CONVERSATION,
+                classifier.classify("Menurut kamu musik dangdut bagus tidak?").mode);
+    }
+
+    @Test
+    public void testModeB_QuickCommands() {
+        assertEquals(IntelligentCommandClassifier.InteractionMode.QUICK_COMMAND,
+                classifier.classify("Buka YouTube").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.QUICK_COMMAND,
+                classifier.classify("Nyalakan senter").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.QUICK_COMMAND,
+                classifier.classify("Jam berapa sekarang").mode);
+    }
+
+    @Test
+    public void testModeC_MultiStepCommands() {
+        IntelligentCommandClassifier.ClassificationResult res =
+                classifier.classify("Buka YouTube, carikan video lucu, lalu putar salah satunya");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.MULTI_STEP_COMMAND, res.mode);
+        assertTrue(res.extractedSteps.size() >= 2);
+
+        IntelligentCommandClassifier.ClassificationResult res2 =
+                classifier.classify("Matikan Wi-Fi dan buka musik");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.MULTI_STEP_COMMAND, res2.mode);
+        assertEquals(2, res2.extractedSteps.size());
+    }
+
+    @Test
+    public void testModeD_FollowUpCommands() {
+        assertEquals(IntelligentCommandClassifier.InteractionMode.FOLLOW_UP_COMMAND,
+                classifier.classify("Putar yang kedua").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.FOLLOW_UP_COMMAND,
+                classifier.classify("Ganti yang lain").mode);
+        assertEquals(IntelligentCommandClassifier.InteractionMode.FOLLOW_UP_COMMAND,
+                classifier.classify("Jangan yang itu").mode);
+    }
+
+    @Test
+    public void testModeE_AmbiguousCommands() {
+        IntelligentCommandClassifier.ClassificationResult res1 = classifier.classify("Kirim itu");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.AMBIGUOUS_HIGH_IMPACT, res1.mode);
+        assertNotNull(res1.clarificationPrompt);
+
+        IntelligentCommandClassifier.ClassificationResult res2 = classifier.classify("Hapus semuanya");
+        assertEquals(IntelligentCommandClassifier.InteractionMode.AMBIGUOUS_HIGH_IMPACT, res2.mode);
+        assertNotNull(res2.clarificationPrompt);
+    }
+}
+
+```
+
+---
+
+### File 198/204: `app/src/test/java/com/novaagent/app/core/engine/LocalIntentRouterTest.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -16427,6 +18200,23 @@ public class LocalIntentRouterTest {
         LocalIntentRouter.RoutingResult r5 = router.route("Jelaskan mengapa langit berwarna biru");
         assertFalse(r5.isOfflineAction);
         assertNull(r5.command);
+
+        // 6. Perintah Multi-Step
+        LocalIntentRouter.RoutingResult r6 = router.route("Buka YouTube, carikan video lucu, lalu putar salah satunya");
+        assertTrue(r6.isOfflineAction);
+        assertTrue(r6.hasMultiSteps());
+        assertTrue(r6.multiSteps.size() >= 2);
+
+        // 7. Perintah Ambigu / Klarifikasi
+        LocalIntentRouter.RoutingResult r7 = router.route("Kirim itu");
+        assertTrue(r7.isOfflineAction);
+        assertNotNull(r7.speechResponse);
+        assertTrue(r7.speechResponse.contains("Apa pesan yang ingin Anda kirim"));
+
+        // 8. Perintah YouTube
+        LocalIntentRouter.RoutingResult r8 = router.route("Cari video dangdut di YouTube");
+        assertTrue(r8.isOfflineAction);
+        assertNotNull(r8.speechResponse);
     }
 }
 
@@ -16434,7 +18224,7 @@ public class LocalIntentRouterTest {
 
 ---
 
-### File 191/196: `app/src/test/java/com/novaagent/app/core/proactive/ConditionalSentinelEngineTest.java`
+### File 199/204: `app/src/test/java/com/novaagent/app/core/proactive/ConditionalSentinelEngineTest.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -16482,7 +18272,7 @@ public class ConditionalSentinelEngineTest {
 
 ---
 
-### File 192/196: `app/src/test/java/com/novaagent/app/core/skills/SkillRegistryTest.java`
+### File 200/204: `app/src/test/java/com/novaagent/app/core/skills/SkillRegistryTest.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -16579,7 +18369,7 @@ public class SkillRegistryTest {
 
 ---
 
-### File 193/196: `app/src/test/java/com/novaagent/app/core/skills/TwentyNineOfflineSkillsTest.java`
+### File 201/204: `app/src/test/java/com/novaagent/app/core/skills/TwentyNineOfflineSkillsTest.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -16896,7 +18686,7 @@ public class TwentyNineOfflineSkillsTest {
 
 ---
 
-### File 194/196: `app/src/test/java/com/novaagent/app/data/model/UnifiedScreenContextTest.java`
+### File 202/204: `app/src/test/java/com/novaagent/app/data/model/UnifiedScreenContextTest.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -16953,7 +18743,7 @@ public class UnifiedScreenContextTest {
 
 ---
 
-### File 195/196: `app/src/test/java/com/novaagent/app/data/network/omni/OmniRouterTest.java`
+### File 203/204: `app/src/test/java/com/novaagent/app/data/network/omni/OmniRouterTest.java`
 
 ```java
 package com.novaagent.app.data.network.omni;
@@ -17027,7 +18817,7 @@ public class OmniRouterTest {
 
 ---
 
-### File 196/196: `gradle/wrapper/gradle-wrapper.properties`
+### File 204/204: `gradle/wrapper/gradle-wrapper.properties`
 
 ```text
 distributionBase=GRADLE_USER_HOME

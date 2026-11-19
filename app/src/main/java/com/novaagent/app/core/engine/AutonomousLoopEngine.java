@@ -91,7 +91,11 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         if (route.isOfflineAction) {
             if (route.speechResponse != null) speak(route.speechResponse);
             if (route.command != null) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_VALIDATED, route.command));
-            if (route.nextTask != null) {
+            if (route.hasMultiSteps()) {
+                this.currentTask = task;
+                cognitiveCore.getPlanner().setStructuredPlan(task, route.multiSteps);
+                setupEngineStart();
+            } else if (route.nextTask != null) {
                 this.currentTask = route.nextTask;
                 setupEngineStart();
             } else {
@@ -200,6 +204,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                     
                     if (proactiveEngine != null) {
                         proactiveEngine.evaluateScreen(newContext);
+                    }
+
+                    if (intentRouter != null && newContext != null && newContext.packageName != null && newContext.packageName.contains("youtube")) {
+                        intentRouter.getYouTubeEngine().observeSearchResults(newContext);
                     }
                     
                     String failedActionToReport = null;

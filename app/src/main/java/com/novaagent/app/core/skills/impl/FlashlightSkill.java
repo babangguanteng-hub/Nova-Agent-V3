@@ -41,15 +41,19 @@ public class FlashlightSkill implements NovaSkill {
                     String cameraId = camManager.getCameraIdList()[0];
                     camManager.setTorchMode(cameraId, turnOn);
                     isFlashlightOn = turnOn;
-                    String speech = turnOn ? "Senter sudah dinyalakan, bos." : "Senter sudah dimatikan.";
+                    String speech = turnOn ? "Baik, senter sudah saya nyalakan." : "Senter sudah dimatikan.";
                     return SkillResult.success(speech);
+                } else {
+                    return SkillResult.failure("Perangkat ini tidak memiliki lampu senter (flash kamera).");
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                return SkillResult.failure("Gagal mengontrol senter: " + e.getMessage());
+            }
         }
 
-        // Fallback melalui ActionCommandDto jika context background membutuhkan injeksi service
+        // Delegasikan melalui ActionCommandDto jika context background membutuhkan SystemActionInjector / unit test
         ActionCommandDto cmd = new ActionCommandDto("toggle_flashlight", "");
-        return SkillResult.success(turnOn ? "Menyalakan senter." : "Mematikan senter.", cmd);
+        return SkillResult.success(turnOn ? "Baik, senter dinyalakan." : "Senter dimatikan.", cmd);
     }
 
     @Override

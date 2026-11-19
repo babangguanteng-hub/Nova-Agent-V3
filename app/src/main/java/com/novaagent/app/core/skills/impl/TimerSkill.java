@@ -42,30 +42,21 @@ public class TimerSkill implements NovaSkill {
         if (context == null) return SkillResult.failure("Konteks tidak tersedia.");
         String c = rawCommand.toLowerCase();
 
-        int seconds = 0;
-        // Cek menit
-        Matcher minMatcher = Pattern.compile(".*(\\d+)\\s*menit.*").matcher(c);
-        if (minMatcher.find()) {
-            try {
-                seconds += Integer.parseInt(minMatcher.group(1)) * 60;
-            } catch (Exception ignored) {}
-        }
+        int seconds = com.novaagent.app.core.device.IndonesianDateTimeParser.parseTimerSeconds(rawCommand);
 
-        // Cek detik
-        Matcher secMatcher = Pattern.compile(".*(\\d+)\\s*detik.*").matcher(c);
-        if (secMatcher.find()) {
-            try {
-                seconds += Integer.parseInt(secMatcher.group(1));
-            } catch (Exception ignored) {}
+        if (seconds <= 0) {
+            // Cek menit angka
+            Matcher minMatcher = Pattern.compile(".*(\\d+)\\s*menit.*").matcher(c);
+            if (minMatcher.find()) {
+                try { seconds = Integer.parseInt(minMatcher.group(1)) * 60; } catch (Exception ignored) {}
+            }
         }
 
         // Default jika hanya angka tanpa satuan: "timer 10" -> 10 menit
-        if (seconds == 0) {
+        if (seconds <= 0) {
             Matcher numMatcher = Pattern.compile(".*timer\\s*(\\d+).*").matcher(c);
             if (numMatcher.find()) {
-                try {
-                    seconds = Integer.parseInt(numMatcher.group(1)) * 60;
-                } catch (Exception ignored) {}
+                try { seconds = Integer.parseInt(numMatcher.group(1)) * 60; } catch (Exception ignored) {}
             }
         }
 
