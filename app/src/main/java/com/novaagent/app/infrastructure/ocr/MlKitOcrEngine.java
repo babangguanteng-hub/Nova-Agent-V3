@@ -1,13 +1,18 @@
 package com.novaagent.app.infrastructure.ocr;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.util.Log;
 import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
+import com.novaagent.app.data.model.UnifiedScreenContext;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,6 +24,21 @@ public class MlKitOcrEngine {
     private static final String TAG = "MlKitOcrEngine";
     private final TextRecognizer recognizer;
     private final ExecutorService ocrThread;
+
+    public static class OcrResult {
+        public final String text;
+        public final List<UnifiedScreenContext.ScreenElement> elements;
+
+        public OcrResult(String text, List<UnifiedScreenContext.ScreenElement> elements) {
+            this.text = text != null ? text : "";
+            this.elements = elements != null ? elements : new ArrayList<>();
+        }
+
+        @Override
+        public String toString() {
+            return text;
+        }
+    }
 
     public MlKitOcrEngine() {
         recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
@@ -49,8 +69,30 @@ public class MlKitOcrEngine {
                 recognizer.process(image)
                         .addOnSuccessListener(visionText -> {
                             String extractedText = visionText.getText();
+                            List<UnifiedScreenContext.ScreenElement> ocrElements = new ArrayList<>();
+                            
+                            for (Text.TextBlock block : visionText.getTextBlocks()) {
+                                for (Text.Line line : block.getLines()) {
+                                    Rect bounds = line.getBoundingBox();
+                                    if (bounds != null) {
+                                        UnifiedScreenContext.ScreenElement el = new UnifiedScreenContext.ScreenElement();
+                                        el.type = "OCR_TEXT";
+                                        el.text = line.getText();
+                                        el.boundsLeft = bounds.left;
+                                        el.boundsTop = bounds.top;
+                                        el.boundsRight = bounds.right;
+                                        el.boundsBottom = bounds.bottom;
+                                        el.centerX = bounds.centerX();
+                                        el.centerY = bounds.centerY();
+                                        el.isActionable = true;
+                                        ocrElements.add(el);
+                                    }
+                                }
+                            }
+                            
+                            OcrResult result = new OcrResult(extractedText, ocrElements);
                             // Publish hasilnya ke HEAVY_IO_LANE di EventBus
-                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.OCR_COMPLETED, extractedText));
+                            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.OCR_COMPLETED, result));
                         })
                         .addOnFailureListener(e -> {
                             Log.e(TAG, "Gagal ekstraksi ML Kit.", e);

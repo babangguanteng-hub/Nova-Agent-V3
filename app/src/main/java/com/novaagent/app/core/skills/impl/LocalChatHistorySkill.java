@@ -42,6 +42,12 @@ public class LocalChatHistorySkill implements NovaSkill {
         try {
             memory = ServiceLocator.getInstance().resolve(ConversationMemory.class);
         } catch (Exception ignored) {}
+        if (memory == null) {
+            try {
+                com.novaagent.app.core.brain.MemoryCoordinator coord = ServiceLocator.getInstance().resolve(com.novaagent.app.core.brain.MemoryCoordinator.class);
+                if (coord != null) memory = coord.getWorkingMemory();
+            } catch (Exception ignored) {}
+        }
 
         if (c.matches(".*(hapus|bersihkan|reset|lupakan).*")) {
             if (memory != null) {

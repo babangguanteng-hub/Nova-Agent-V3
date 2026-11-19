@@ -53,7 +53,10 @@ public void onCreate() {
     createNotificationChannel();
     
     ServiceLocator locator = ServiceLocator.getInstance();
-    locator.register(CognitiveCore.class, new CognitiveCore(this));
+    CognitiveCore cognitiveCore = new CognitiveCore(this);
+    locator.register(CognitiveCore.class, cognitiveCore);
+    locator.register(com.novaagent.app.core.brain.MemoryCoordinator.class, cognitiveCore.getMemoryCoordinator());
+    locator.register(com.novaagent.app.core.brain.ConversationMemory.class, cognitiveCore.getMemoryCoordinator().getWorkingMemory());
     
     perceptionCoordinator = new PerceptionCoordinator();
     locator.register(PerceptionCoordinator.class, perceptionCoordinator);
@@ -137,6 +140,8 @@ public void onDestroy() {
     if (perceptionCoordinator != null) perceptionCoordinator.destroy();
     
     locator.register(CognitiveCore.class, null);
+    locator.register(com.novaagent.app.core.brain.MemoryCoordinator.class, null);
+    locator.register(com.novaagent.app.core.brain.ConversationMemory.class, null);
     locator.register(PerceptionCoordinator.class, null);
 }
 

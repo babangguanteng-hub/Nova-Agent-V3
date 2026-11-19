@@ -48,6 +48,8 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     private final FullDuplexVoiceCoordinator fullDuplexCoordinator;
     private final BargeInCoordinator bargeInCoordinator;
+    private int audioErrorRetryCount = 0;
+    private static final int MAX_AUDIO_ERROR_RETRIES = 3;
 
     private final Runnable listeningWatchdog = () -> {
         if (!isCurrentlySpeaking) {
@@ -58,10 +60,12 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     private final RecognitionListener recognitionListener = new RecognitionListener() {
         @Override public void onReadyForSpeech(Bundle params) {
+            audioErrorRetryCount = 0;
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "LISTENING_READY"));
         }
 
         @Override public void onBeginningOfSpeech() {
+            audioErrorRetryCount = 0;
             if (!isCurrentlySpeaking) {
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "USER_SPEAKING"));
             }
@@ -87,18 +91,31 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
             // Silence normal timeout
             if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                audioErrorRetryCount = 0;
                 mainHandler.postDelayed(() -> resumeListening(), 250);
                 return;
             }
 
-            // Client / Busy / Audio IPC failure -> Recreate SpeechRecognizer instance
+            // Client / Busy / Audio IPC failure -> Recreate SpeechRecognizer instance with backoff
             if (error == SpeechRecognizer.ERROR_CLIENT || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ||
                 error == SpeechRecognizer.ERROR_AUDIO || error == SpeechRecognizer.ERROR_SERVER ||
                 error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
+                
+                audioErrorRetryCount++;
+                if (audioErrorRetryCount >= MAX_AUDIO_ERROR_RETRIES) {
+                    Log.w(TAG, "Konflik hardware mic (ERROR_AUDIO) terdeteksi. Melepas kunci AudioRecord dari FullDuplex untuk memulihkan SpeechRecognizer.");
+                    if (fullDuplexCoordinator != null) {
+                        try {
+                            fullDuplexCoordinator.stop();
+                        } catch (Exception ignored) {}
+                    }
+                }
+
+                long backoffDelay = Math.min(500L * audioErrorRetryCount, 3000L);
                 mainHandler.postDelayed(() -> {
                     recreateEar();
                     resumeListening();
-                }, 500);
+                }, backoffDelay);
                 return;
             }
 

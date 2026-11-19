@@ -43,7 +43,7 @@ public class ScreenLockSkill implements NovaSkill {
         if (locked) {
             return SkillResult.success("Layar perangkat telah dikunci.", new ActionCommandDto("lock_screen", ""));
         } else {
-            return SkillResult.success("Mengunci layar. Pastikan izin Aksesibilitas NOVA telah diaktifkan.",
+            return SkillResult.failure("Gagal mengunci layar. Pastikan izin Aksesibilitas NOVA telah diaktifkan di Pengaturan Android.",
                     new ActionCommandDto("lock_screen", ""));
         }
     }

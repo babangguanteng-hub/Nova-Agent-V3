@@ -54,8 +54,22 @@ public class ConditionalSentinelEngine {
         long delayMillis = delayMinutes * 60 * 1000L;
         Log.i(TAG, "Menjadwalkan tugas: '" + command + "' dalam " + delayMinutes + " menit.");
         
+        if (context != null) {
+            try {
+                android.content.SharedPreferences sp = context.getSharedPreferences("nova_sentinel_tasks", Context.MODE_PRIVATE);
+                long triggerAt = System.currentTimeMillis() + delayMillis;
+                sp.edit().putLong("task_" + command, triggerAt).apply();
+            } catch (Exception ignored) {}
+        }
+        
         timeHandler.postDelayed(() -> {
             Log.i(TAG, "Waktunya tiba! Mengeksekusi: " + command);
+            if (context != null) {
+                try {
+                    android.content.SharedPreferences sp = context.getSharedPreferences("nova_sentinel_tasks", Context.MODE_PRIVATE);
+                    sp.edit().remove("task_" + command).apply();
+                } catch (Exception ignored) {}
+            }
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Waktunya mengeksekusi tugas terjadwal bos."));
             executeTask(command);
         }, delayMillis);

@@ -27,10 +27,22 @@ public class AutonomousLoopEngineTest {
     public void testTaskCompletionVerifier() {
         TaskCompletionVerifier verifier = new TaskCompletionVerifier();
 
-        // Goal null -> false
+        // Goal null atau kosong -> false
         assertFalse(verifier.verifyCompletion(null, null));
+        assertFalse(verifier.verifyCompletion("", null));
 
         // Percakapan suara murni (currentContext == null) -> harus TRUE agar stopTask dipanggil bersih!
         assertTrue(verifier.verifyCompletion("Halo Nova", null));
+
+        // Konteks layar dengan error dialog -> harus FALSE
+        com.novaagent.app.data.model.UnifiedScreenContext errorContext = 
+                new com.novaagent.app.data.model.UnifiedScreenContext("com.example.app", System.currentTimeMillis(), null);
+        errorContext.ocrText = "Aplikasi has stopped unexpectedly";
+        assertFalse(verifier.verifyCompletion("Buka youtube", errorContext));
+
+        // Konteks layar dengan package / keyword cocok -> harus TRUE
+        com.novaagent.app.data.model.UnifiedScreenContext successContext = 
+                new com.novaagent.app.data.model.UnifiedScreenContext("com.google.android.youtube", System.currentTimeMillis(), null);
+        assertTrue(verifier.verifyCompletion("Buka youtube sekarang", successContext));
     }
 }

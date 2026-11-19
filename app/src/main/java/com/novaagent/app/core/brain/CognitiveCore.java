@@ -29,6 +29,7 @@ public class CognitiveCore {
     }
 
     public TaskPlanner getPlanner() { return taskPlanner; }
+    public MemoryCoordinator getMemoryCoordinator() { return memoryCoordinator; }
     
     public void wipeMemory() { 
         memoryCoordinator.wipeShortTermMemory(); 

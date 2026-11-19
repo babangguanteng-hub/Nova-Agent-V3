@@ -36,6 +36,10 @@ public class MemoryCoordinator {
         return workingMemory.getMemoryAsJsonArray();
     }
 
+    public ConversationMemory getWorkingMemory() {
+        return workingMemory;
+    }
+
     public void wipeShortTermMemory() {
         workingMemory.clearAmnesia();
     }

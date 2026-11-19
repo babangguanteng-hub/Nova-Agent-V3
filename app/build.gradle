@@ -43,9 +43,8 @@ dependencies {
     // ML Kit untuk Sistem Penglihatan AI (OCR)
     implementation 'com.google.mlkit:text-recognition:16.0.0'
     
-    // Jaringan untuk terhubung ke Groq AI (Retrofit & Gson)
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    // Jaringan HTTP & Streaming Server-Sent Events (SSE)
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
 
     testImplementation 'junit:junit:4.13.2'

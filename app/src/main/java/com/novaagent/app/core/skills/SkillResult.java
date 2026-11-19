@@ -37,4 +37,8 @@ public class SkillResult {
     public static SkillResult failure(String speech) {
         return new SkillResult(false, speech, null, null);
     }
+
+    public static SkillResult failure(String speech, ActionCommandDto action) {
+        return new SkillResult(false, speech, action, null);
+    }
 }

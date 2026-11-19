@@ -76,7 +76,6 @@ public void executeAction(ActionCommandDto cmd) {
             delayHandler.postDelayed(() -> {
                 service.typeTextAtCoordinate(cmd.x, cmd.y, cmd.textToType);
                 delayHandler.postDelayed(() -> {
-                    executeTap(service, (int)(screenWidth * 0.90), (int)(screenHeight * 0.90));
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.ACTION_EXECUTED, cmd.action));
                 }, 200);
             }, 250);

@@ -6,8 +6,15 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioManager;
 import android.os.Build;
@@ -198,19 +205,23 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
     private void applyShapeAndColor(NovaConfigManager cfg) {
         String shapeStr = cfg.getCustomShape();
-        GradientDrawable shapeDrawable = new GradientDrawable();
-
-        if ("square".equalsIgnoreCase(shapeStr)) {
-            shapeDrawable.setShape(GradientDrawable.RECTANGLE);
-            shapeDrawable.setCornerRadius(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, context.getResources().getDisplayMetrics()));
-        } else {
-            shapeDrawable.setShape(GradientDrawable.OVAL);
-        }
-
         int solidColor = parseColorCode(cfg.getCustomColor());
-        shapeDrawable.setColor(solidColor);
-        shapeDrawable.setStroke(4, solidColor | 0xFF000000);
-        jellyBg.setBackground(shapeDrawable);
+
+        if ("star".equalsIgnoreCase(shapeStr) || "heart".equalsIgnoreCase(shapeStr)) {
+            CustomBubbleShapeDrawable shapeDrawable = new CustomBubbleShapeDrawable(shapeStr, solidColor, solidColor | 0xFF000000);
+            jellyBg.setBackground(shapeDrawable);
+        } else {
+            GradientDrawable shapeDrawable = new GradientDrawable();
+            if ("square".equalsIgnoreCase(shapeStr)) {
+                shapeDrawable.setShape(GradientDrawable.RECTANGLE);
+                shapeDrawable.setCornerRadius(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, context.getResources().getDisplayMetrics()));
+            } else {
+                shapeDrawable.setShape(GradientDrawable.OVAL);
+            }
+            shapeDrawable.setColor(solidColor);
+            shapeDrawable.setStroke(4, solidColor | 0xFF000000);
+            jellyBg.setBackground(shapeDrawable);
+        }
     }
 
     private int parseColorCode(String colorName) {
@@ -266,8 +277,11 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 Color.parseColor("#CC00E5FF")  // Cyan loop
             );
             rgbColorAnimator.addUpdateListener(anim -> {
+                int c = (int) anim.getAnimatedValue();
                 if (jellyBg.getBackground() instanceof GradientDrawable) {
-                    ((GradientDrawable) jellyBg.getBackground()).setColor((int) anim.getAnimatedValue());
+                    ((GradientDrawable) jellyBg.getBackground()).setColor(c);
+                } else if (jellyBg.getBackground() instanceof CustomBubbleShapeDrawable) {
+                    ((CustomBubbleShapeDrawable) jellyBg.getBackground()).setColor(c);
                 }
             });
             rgbColorAnimator.setRepeatCount(ValueAnimator.INFINITE);
@@ -350,6 +364,105 @@ public class FloatingBubbleView implements EventBus.EventListener {
                 setStatus("🛑 DIPOTONG...");
                 jellyBg.animate().scaleX(1.35f).scaleY(1.35f).setDuration(120).start();
             }
+        }
+    }
+
+    public static class CustomBubbleShapeDrawable extends Drawable {
+        private final String shape;
+        private int color;
+        private int strokeColor;
+        private final Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path path = new Path();
+
+        public CustomBubbleShapeDrawable(String shape, int color, int strokeColor) {
+            this.shape = shape != null ? shape.toLowerCase() : "circle";
+            this.color = color;
+            this.strokeColor = strokeColor;
+            fillPaint.setStyle(Paint.Style.FILL);
+            fillPaint.setColor(color);
+            strokePaint.setStyle(Paint.Style.STROKE);
+            strokePaint.setStrokeWidth(4f);
+            strokePaint.setColor(strokeColor);
+        }
+
+        public void setColor(int color) {
+            this.color = color;
+            fillPaint.setColor(color);
+            invalidateSelf();
+        }
+
+        @Override
+        protected void onBoundsChange(Rect bounds) {
+            super.onBoundsChange(bounds);
+            rebuildPath(bounds);
+        }
+
+        private void rebuildPath(Rect bounds) {
+            path.reset();
+            float w = bounds.width();
+            float h = bounds.height();
+            float cx = bounds.exactCenterX();
+            float cy = bounds.exactCenterY();
+
+            if ("star".equals(shape)) {
+                float rOuter = Math.min(w, h) / 2f * 0.95f;
+                float rInner = rOuter * 0.45f;
+                double angleStep = Math.PI / 5;
+                for (int i = 0; i < 10; i++) {
+                    float r = (i % 2 == 0) ? rOuter : rInner;
+                    double angle = i * angleStep - Math.PI / 2;
+                    float x = cx + (float) (r * Math.cos(angle));
+                    float y = cy + (float) (r * Math.sin(angle));
+                    if (i == 0) path.moveTo(x, y);
+                    else path.lineTo(x, y);
+                }
+                path.close();
+            } else if ("heart".equals(shape)) {
+                float size = Math.min(w, h) * 0.9f;
+                float left = cx - size / 2f;
+                float top = cy - size / 2f + size * 0.05f;
+                path.moveTo(cx, top + size * 0.25f);
+                path.cubicTo(cx, top, left, top, left, top + size * 0.35f);
+                path.cubicTo(left, top + size * 0.65f, cx, top + size * 0.85f, cx, top + size * 0.95f);
+                path.cubicTo(cx, top + size * 0.85f, left + size, top + size * 0.65f, left + size, top + size * 0.35f);
+                path.cubicTo(left + size, top, cx, top, cx, top + size * 0.25f);
+                path.close();
+            }
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            if ("square".equals(shape)) {
+                RectF rf = new RectF(b);
+                float r = 24f;
+                canvas.drawRoundRect(rf, r, r, fillPaint);
+                canvas.drawRoundRect(rf, r, r, strokePaint);
+            } else if ("star".equals(shape) || "heart".equals(shape)) {
+                canvas.drawPath(path, fillPaint);
+                canvas.drawPath(path, strokePaint);
+            } else {
+                canvas.drawOval(new RectF(b), fillPaint);
+                canvas.drawOval(new RectF(b), strokePaint);
+            }
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            fillPaint.setAlpha(alpha);
+            strokePaint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter colorFilter) {
+            fillPaint.setColorFilter(colorFilter);
+            strokePaint.setColorFilter(colorFilter);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
         }
     }
 }

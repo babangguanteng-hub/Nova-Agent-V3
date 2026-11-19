@@ -17,7 +17,7 @@ public class SecureConfigManager {
             if (!key.isEmpty()) return key;
         } catch (Exception ignored) {}
 
-        // Fallback & migrasi otomatis dari prefs lama
+        // Fallback & migrasi otomatis dari prefs lama (lalu hapus plaintext)
         SharedPreferences legacyPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
         String legacyKey = legacyPrefs.getString(KEY_API_KEY, "");
         if (!legacyKey.isEmpty()) {
@@ -27,14 +27,23 @@ public class SecureConfigManager {
     }
 
     public static void saveApiKey(Context context, String apiKey) {
+        boolean encryptedSuccess = false;
         try {
             SharedPreferences securePrefs = getSecurePrefs(context);
             securePrefs.edit().putString(KEY_API_KEY, apiKey).apply();
+            encryptedSuccess = true;
         } catch (Exception ignored) {}
 
-        // Sinkronisasi legacy prefs sebagai fail-safe backup
+        // Hapus kunci plaintext dari legacy prefs jika enkripsi berhasil
         SharedPreferences legacyPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
-        legacyPrefs.edit().putString(KEY_API_KEY, apiKey).apply();
+        if (encryptedSuccess) {
+            if (legacyPrefs.contains(KEY_API_KEY)) {
+                legacyPrefs.edit().remove(KEY_API_KEY).apply();
+            }
+        } else {
+            // Fallback darurat hanya jika Keystore hardware gagal total
+            legacyPrefs.edit().putString(KEY_API_KEY, apiKey).apply();
+        }
     }
 
     private static SharedPreferences getSecurePrefs(Context context) throws Exception {

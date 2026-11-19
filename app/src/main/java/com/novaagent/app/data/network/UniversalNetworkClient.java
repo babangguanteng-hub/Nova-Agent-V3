@@ -149,9 +149,14 @@ public class UniversalNetworkClient {
                 String cleanModel = modelName.startsWith("models/") ? modelName.substring(7) : modelName;
                 if (useFallbackModel) cleanModel = "gemini-2.0-flash";
 
-                url = "https://generativelanguage.googleapis.com/v1beta/models/" + cleanModel + ":streamGenerateContent?alt=sse&key=" + rawApiKey;
+                url = "https://generativelanguage.googleapis.com/v1beta/models/" + cleanModel + ":streamGenerateContent?alt=sse";
                 body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
-                request = new Request.Builder().url(url).addHeader("Content-Type", "application/json").post(body).build();
+                request = new Request.Builder()
+                        .url(url)
+                        .addHeader("x-goog-api-key", rawApiKey)
+                        .addHeader("Content-Type", "application/json")
+                        .post(body)
+                        .build();
             } else {
                 JSONObject payload = new JSONObject();
                 String targetModel = modelName;
