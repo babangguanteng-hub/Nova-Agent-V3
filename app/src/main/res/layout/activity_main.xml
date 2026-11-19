@@ -5,14 +5,14 @@
     android:background="@drawable/bg_jarvis_main">
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TOP APP BAR (FUTURISTIC STICKY HEADER)                         -->
+    <!-- TOP APP BAR (FUTURISTIC FLOATING GLASS HEADER)                 -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <RelativeLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_alignParentTop="true"
-        android:background="#80060913"
+        android:background="#D9060913"
         android:paddingHorizontal="16dp"
         android:gravity="center_vertical"
         android:elevation="8dp">
@@ -102,6 +102,7 @@
                 android:paddingVertical="5dp"
                 android:layout_marginEnd="8dp"/>
 
+            <!-- Sparkle / Theme Button -->
             <ImageView
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="38dp"
@@ -114,6 +115,7 @@
                 android:clickable="true"
                 android:focusable="true"/>
 
+            <!-- Settings Button -->
             <ImageView
                 android:id="@+id/btnSettings"
                 android:layout_width="38dp"
@@ -128,7 +130,7 @@
     </RelativeLayout>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 1: CONTAINER BERANDA / DASHBOARD                           -->
+    <!-- TAB 1: CONTAINER BERANDA / DASHBOARD (SCREENSHOT 1)            -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerHome"
@@ -144,46 +146,24 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
-            <!-- 1. AI REACTOR CORE CENTERPIECE -->
+            <!-- 1. FREESTANDING 3D HERO ORB N (SCREENSHOT 1 HERO) -->
+            <com.novaagent.app.ui.view.NovaHeroOrbView
+                android:id="@+id/heroOrbView"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- State Text Centerpiece -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
                 android:orientation="vertical"
-                android:gravity="center_horizontal"
-                android:padding="20dp"
+                android:gravity="center"
                 android:layout_marginBottom="16dp">
-
-                <RelativeLayout
-                    android:layout_width="110dp"
-                    android:layout_height="110dp"
-                    android:layout_marginBottom="14dp">
-
-                    <!-- Outer Reactor Glow -->
-                    <View
-                        android:id="@+id/viewReactorOuter"
-                        android:layout_width="110dp"
-                        android:layout_height="110dp"
-                        android:background="@drawable/bg_jarvis_reactor_outer"/>
-
-                    <!-- Inner Reactor Core -->
-                    <View
-                        android:id="@+id/viewReactorInner"
-                        android:layout_width="74dp"
-                        android:layout_height="74dp"
-                        android:layout_centerInParent="true"
-                        android:background="@drawable/bg_jarvis_reactor_inner"/>
-
-                    <ImageView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_centerInParent="true"
-                        android:src="@drawable/ic_nova_n_logo"/>
-                </RelativeLayout>
 
                 <TextView
                     android:id="@+id/tvAiStateTitle"
@@ -191,7 +171,7 @@
                     android:layout_height="wrap_content"
                     android:text="SIAP MENERIMA PERINTAH"
                     android:textColor="#00E5FF"
-                    android:textSize="14sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.08"/>
 
@@ -202,33 +182,34 @@
                     android:text="Full-Duplex Voice Engine • Zero-Latency Dispatch Aktif"
                     android:textColor="#94A3B8"
                     android:textSize="11sp"
-                    android:layout_marginTop="4dp"/>
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
 
-            <!-- 2. QUICK VOICE & TEXT COMMAND PROMPT BAR -->
+            <!-- 2. PILL COMMAND INPUT BAR WITH ACOUSTIC PULSING MIC TRIGGER -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:layout_height="58dp"
+                android:background="@drawable/bg_neon_input_bar"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="16dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="4dp"
+                android:layout_marginBottom="20dp">
 
                 <EditText
                     android:id="@+id/etQuickPrompt"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:hint="Ketik atau ucapkan perintah..."
                     android:textColorHint="#64748B"
                     android:textColor="#FFFFFF"
                     android:background="@null"
-                    android:paddingHorizontal="14dp"
                     android:textSize="13sp"
                     android:imeOptions="actionSend"
                     android:inputType="text"/>
 
+                <!-- Quick Action Bolt Button -->
                 <ImageView
                     android:id="@+id/btnQuickSend"
                     android:layout_width="44dp"
@@ -241,99 +222,106 @@
                     android:clickable="true"
                     android:focusable="true"/>
 
-                <ImageView
+                <!-- Pulsing Acoustic Microphone Trigger Button -->
+                <com.novaagent.app.ui.view.PulsingMicButton
                     android:id="@+id/btnMicTrigger"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@drawable/ic_jarvis_mic"
-                    android:tint="#050811"
-                    android:background="@drawable/bg_jarvis_mic_trigger"
-                    android:padding="10dp"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
                     android:clickable="true"
                     android:focusable="true"/>
             </LinearLayout>
 
-            <!-- 3. QUICK ACTION SHORTCUTS (2x2 GRID) -->
+            <!-- 3. FEATURE SHORTCUTS (2x2 NEON GRID - SCREENSHOT 1) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="2"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
-                <!-- Shortcut 1: Keahlian Hub -->
-                <LinearLayout
+                <!-- Shortcut 1: Keahlian Jarvis (Cyan Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutSkills"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginEnd="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_jarvis_sparkle"
-                        android:tint="#00E5FF"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Keahlian Jarvis"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvSkillsCountBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="29 Keahlian Offline Aktif"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_sparkle"
+                            android:tint="#00E5FF"
+                            android:layout_marginBottom="10dp"/>
 
-                <!-- Shortcut 2: Kontrol Perangkat -->
-                <LinearLayout
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Keahlian Jarvis"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/tvSkillsCountBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="29 Keahlian Offline Aktif"
+                            android:textColor="#00E676"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
+
+                <!-- Shortcut 2: Kontrol Hardware (Purple Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutDevice"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@android:drawable/ic_lock_idle_charging"
-                        android:tint="#8B5CF6"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Kontrol Hardware"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvHomeBatteryBrief"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Senter, Volume, Daya"
-                        android:textColor="#94A3B8"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_shield"
+                            android:tint="#8B5CF6"
+                            android:layout_marginBottom="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Kontrol Hardware"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/tvHomeBatteryBrief"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Senter, Volume, Daya"
+                            android:textColor="#94A3B8"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
             </LinearLayout>
 
             <LinearLayout
@@ -341,82 +329,92 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="2"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="20dp">
 
-                <!-- Shortcut 3: Omni Router -->
-                <LinearLayout
+                <!-- Shortcut 3: Omni Router 2.0 (Cyan Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutOmni"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginEnd="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_jarvis_chip"
-                        android:tint="#00E5FF"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Omni Router 2.0"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Cascade &amp; Breaker"
-                        android:textColor="#00E5FF"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_chip"
+                            android:tint="#00E5FF"
+                            android:layout_marginBottom="10dp"/>
 
-                <!-- Shortcut 4: Memori Jangka Panjang -->
-                <LinearLayout
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Omni Router 2.0"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cascade &amp; Breaker"
+                            android:textColor="#00E5FF"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
+
+                <!-- Shortcut 4: Memori RAG (Orange Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutMemory"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@android:drawable/ic_menu_recent_history"
-                        android:tint="#FFAB00"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Memori RAG"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SQLite Semantik"
-                        android:textColor="#94A3B8"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@android:drawable/ic_menu_recent_history"
+                            android:tint="#FFAB00"
+                            android:layout_marginBottom="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Memori RAG"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SQLite Semantik"
+                            android:textColor="#94A3B8"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
             </LinearLayout>
 
-            <!-- 4. KARTU KONFIGURASI AI PROVIDER -->
+            <!-- 4. PUSAT PROVIDER AI & MULTI-KEY (GLASS PANEL) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -450,41 +448,23 @@
                             android:textColor="#94A3B8"
                             android:textSize="11sp"/>
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvActiveProviderBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✔ Siap"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="3dp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"/>
                 </RelativeLayout>
 
-                <!-- Spinner Provider -->
+                <!-- Provider Spinner -->
                 <Spinner
                     android:id="@+id/spinnerProvider"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    android:layout_height="46dp"
                     android:background="@drawable/bg_jarvis_input"
                     android:popupBackground="#0C1222"
-                    android:paddingStart="14dp"
-                    android:layout_marginBottom="12dp"/>
+                    android:paddingStart="12dp"
+                    android:layout_marginBottom="10dp"/>
 
                 <!-- Model Info -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/bg_jarvis_chip"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp"
                     android:layout_marginBottom="12dp">
 
                     <TextView
@@ -505,7 +485,7 @@
                         android:textStyle="bold"/>
                 </LinearLayout>
 
-                <!-- API Key Omni-Rotator Input -->
+                <!-- API Key Input -->
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
@@ -518,7 +498,7 @@
                         android:id="@+id/apiKeyInput"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:hint="API Key (Dukung Multi-Key dipisah koma)"
+                        android:hint="API Key (Multi-Key dipisah koma)"
                         android:textColorHint="#64748B"
                         android:textColor="#FFFFFF"
                         android:background="@null"
@@ -546,10 +526,10 @@
                     android:text="Simpan Konfigurasi AI"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_btn_secondary"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"
-                    android:textSize="14sp"/>
+                    android:textSize="13sp"/>
             </LinearLayout>
 
             <!-- 5. KARTU STATUS PERIZINAN SISTEM -->
@@ -559,7 +539,7 @@
                 android:background="@drawable/bg_jarvis_card"
                 android:orientation="vertical"
                 android:padding="18dp"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="16dp">
 
                 <RelativeLayout
                     android:layout_width="match_parent"
@@ -598,7 +578,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Layanan Aksesibilitas (A11y)"
+                        android:text="1. Layanan Aksesibilitas"
                         android:textColor="#FFFFFF"
                         android:textSize="13sp"/>
 
@@ -606,22 +586,20 @@
                         android:id="@+id/tvStatusA11y"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="✔ Terverifikasi"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"
+                        android:text="Buka Pengaturan"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
                         android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <!-- Jendela Mengambang (Overlay) -->
+                <!-- Overlay -->
                 <RelativeLayout
                     android:id="@+id/btnOverlay"
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:background="@drawable/bg_jarvis_input"
+                    android:layout_marginBottom="12dp"
                     android:paddingHorizontal="14dp"
                     android:gravity="center_vertical"
                     android:clickable="true"
@@ -630,7 +608,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Jendela Mengambang (Overlay)"
+                        android:text="2. Izin Tampil Di Atas Aplikasi"
                         android:textColor="#FFFFFF"
                         android:textSize="13sp"/>
 
@@ -638,63 +616,31 @@
                         android:id="@+id/tvStatusOverlay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="✔ Terverifikasi"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"
+                        android:text="Buka Pengaturan"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
                         android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
-            </LinearLayout>
 
-            <!-- 6. TOMBOL UTAMA START/STOP -->
-            <Button
-                android:id="@+id/btnStart"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:backgroundTint="@null"
-                android:background="@drawable/bg_jarvis_btn_primary"
-                android:text="▶  AKTIFKAN NOVA JARVIS"
-                android:textAllCaps="false"
-                android:textColor="#050811"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:elevation="6dp"
-                android:layout_marginBottom="20dp"/>
-
-            <!-- 7. DEVELOPER CREDIT -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginBottom="24dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Arsitektur Otonom Diciptakan Oleh"
-                    android:textSize="10sp"
-                    android:textColor="#64748B"/>
-
-                <TextView
-                    android:id="@+id/tvDeveloperCredit"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="★ MOCH KHOIRUL AZMAN ★"
-                    android:textSize="12sp"
+                <!-- Tombol Start Service -->
+                <Button
+                    android:id="@+id/btnStart"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Luncurkan Asisten NOVA JARVIS"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@null"
+                    android:background="@drawable/bg_neon_pill_solid_cyan"
+                    android:textColor="#050811"
                     android:textStyle="bold"
-                    android:textColor="#00E5FF"
-                    android:letterSpacing="0.08"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 2: CONTAINER KEAHLIAN / SKILLS (INTERAKTIF & BERFUNGSI)    -->
+    <!-- TAB 2: CONTAINER KEAHLIAN / SKILLS (SCREENSHOT 2)              -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerSkills"
@@ -712,16 +658,36 @@
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- Title & 29 Skills Offline Badge -->
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pusat Keahlian Nova Jarvis"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pusat Keahlian Nova Jarvis"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_alignParentStart="true"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="29 KEAHLIAN OFFLINE"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:textColor="#00E676"
+                    android:background="@drawable/bg_neon_pill_green"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -731,15 +697,15 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Skill 1: Senter -->
+            <!-- Skill 1: Senter Otonom (Flashlight) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -768,7 +734,8 @@
                         android:layout_height="wrap_content"
                         android:text="Mode Luring 100% • Status: Mati"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -778,21 +745,21 @@
                     android:text="Toggle"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 2: Volume Suara -->
+            <!-- Skill 2: Volume & Audio Level -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -821,7 +788,8 @@
                         android:layout_height="wrap_content"
                         android:text="Stream Media &amp; Panggilan Sistem"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -830,7 +798,7 @@
                     android:layout_height="38dp"
                     android:text="+"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"
                     android:layout_marginEnd="6dp"/>
@@ -841,25 +809,25 @@
                     android:layout_height="38dp"
                     android:text="-"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 3: Baterai & Sentinel Suhu -->
+            <!-- Skill 3: Sentinel Baterai & Suhu -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_green"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_lock_idle_charging"
+                    android:src="@drawable/ic_jarvis_shield"
                     android:tint="#00E676"
                     android:layout_marginEnd="12dp"/>
 
@@ -883,7 +851,8 @@
                         android:layout_height="wrap_content"
                         android:text="Monitoring ambang batas 15% &amp; 45°C"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -893,7 +862,7 @@
                     android:text="Cek"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_green"
                     android:textColor="#00E676"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
@@ -903,16 +872,16 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_purple"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_menu_agenda"
+                    android:src="@drawable/ic_shape_square"
                     android:tint="#8B5CF6"
                     android:layout_marginEnd="12dp"/>
 
@@ -935,7 +904,8 @@
                         android:layout_height="wrap_content"
                         android:text="Levenshtein typo tolerance &amp; alias lokal"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -945,21 +915,21 @@
                     android:text="Kamera"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_purple"
                     android:textColor="#8B5CF6"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 5: Web Search -->
+            <!-- Skill 5: Web Intelligence -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -977,7 +947,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Web Intelligence (Google)"
+                        android:text="Web Intelligence"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"
                         android:textStyle="bold"/>
@@ -987,7 +957,8 @@
                         android:layout_height="wrap_content"
                         android:text="Pencarian fakta instan di internet"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -997,21 +968,21 @@
                     android:text="Cari"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 6: Navigasi Sistem & Layar Visual -->
+            <!-- Skill 6: Navigasi & Vision Engine -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_green"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -1039,25 +1010,26 @@
                         android:layout_height="wrap_content"
                         android:text="ML Kit OCR On-Device &amp; Gestur Sistem"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="38dp"
                     android:text="Aktif"
-                    android:background="@drawable/bg_jarvis_badge_active"
+                    android:gravity="center"
+                    android:background="@drawable/bg_neon_pill_green"
                     android:textColor="#00E676"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textStyle="bold"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="3dp"/>
+                    android:paddingHorizontal="16dp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 3: CONTAINER STATUS & DIAGNOSTIK OMNI ROUTER 2.0           -->
+    <!-- TAB 3: CONTAINER STATUS & DIAGNOSTIK OMNI ROUTER (SCREENSHOT 3)-->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerStatus"
@@ -1075,7 +1047,7 @@
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
             <TextView
@@ -1094,11 +1066,11 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Kartu Status Omni Router 2.0 Live -->
+            <!-- Kartu 1: Live Omni Router 2.0 (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="vertical"
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
@@ -1125,18 +1097,18 @@
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <!-- Status Text Summary -->
+                <!-- Monospace Status Text -->
                 <TextView
                     android:id="@+id/tvOmniDiagnostics"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Memuat status provider..."
+                    android:text="Groq [CLOSED] ● 124ms\nGoogle AI Studio [CLOSED] ● 310ms\nCerebral [CLOSED] ● 450ms\nSemua 8 Cloud Provider terhubung &amp; stabil."
                     android:textColor="#FFFFFF"
                     android:textSize="12sp"
                     android:fontFamily="monospace"
                     android:background="@drawable/bg_jarvis_input"
                     android:padding="12dp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="14dp"/>
 
                 <!-- Action Buttons: Reset & Test -->
                 <LinearLayout
@@ -1152,9 +1124,10 @@
                         android:text="Reset Breakers"
                         android:textAllCaps="false"
                         android:backgroundTint="@null"
-                        android:background="@drawable/bg_jarvis_btn_secondary"
+                        android:background="@drawable/bg_neon_pill_cyan"
                         android:textColor="#00E5FF"
                         android:textSize="12sp"
+                        android:textStyle="bold"
                         android:layout_marginEnd="6dp"/>
 
                     <Button
@@ -1165,18 +1138,19 @@
                         android:text="Perbarui Data"
                         android:textAllCaps="false"
                         android:backgroundTint="@null"
-                        android:background="@drawable/bg_jarvis_chip"
-                        android:textColor="#FFFFFF"
+                        android:background="@drawable/bg_neon_pill_solid_cyan"
+                        android:textColor="#050811"
                         android:textSize="12sp"
+                        android:textStyle="bold"
                         android:layout_marginStart="6dp"/>
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Kartu Kesehatan Modul Utama -->
+            <!-- Kartu 2: Kesehatan Modul Sistem (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="vertical"
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
@@ -1193,36 +1167,36 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Full-Duplex Voice Engine: Siap (16kHz PCM + AEC + VAD)"
+                    android:text="✔ Full-Duplex Voice Engine: Siap (16kHz PCM + AEC + VAD)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Barge-In Coordinator: Siap (Interupsi instan &lt; 100ms)"
+                    android:text="✔ Barge-In Coordinator: Siap (Interupsi instan &lt; 100ms)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Zero-Latency Voice Dispatch: Siaga (0ms bypass layar)"
+                    android:text="✔ Zero-Latency Voice Dispatch: Siaga (0ms bypass layar)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• SQLite Scored RAG Memory: Versi 2 Aktif"
+                    android:text="✔ SQLite Scored RAG Memory: Versi 2 Aktif"
                     android:textColor="#00E676"
                     android:textSize="12sp"/>
             </LinearLayout>
 
-            <!-- Kartu Informasi Perangkat -->
+            <!-- Kartu 3: Spesifikasi Perangkat (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1231,28 +1205,41 @@
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <RelativeLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Spesifikasi Perangkat"
-                    android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Spesifikasi Perangkat"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"/>
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_jarvis_chip"
+                        android:tint="#8B5CF6"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
 
                 <TextView
                     android:id="@+id/tvDeviceHardwareInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Memuat data hardware..."
+                    android:text="• Model: Infinix Smart 8 Pro\n• Android: Versi 13 (SDK 33)\n• Arsitektur: armeabi-v7a\n• Jaringan: Menggunakan Data Seluler\n• Bluetooth saat ini nonaktif."
                     android:textColor="#94A3B8"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="4dp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 4: CONTAINER SETTINGS & PERSONALISASI                      -->
+    <!-- TAB 4: CONTAINER SETTINGS & PERSONALISASI (SCREENSHOT 4)       -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerSettings"
@@ -1270,7 +1257,7 @@
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
             <TextView
@@ -1289,7 +1276,7 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Seksi 1: Persona Suara -->
+            <!-- Seksi 1: Persona Suara Jarvis (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1312,7 +1299,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:weightSum="4"
-                    android:layout_marginBottom="10dp">
+                    android:layout_marginBottom="6dp">
 
                     <LinearLayout
                         android:id="@+id/boxVoiceDefault"
@@ -1360,7 +1347,6 @@
                         android:layout_weight="1"
                         android:background="@drawable/bg_box_unselected"
                         android:gravity="center"
-                        android:layout_marginEnd="4dp"
                         android:clickable="true"
                         android:focusable="true">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Friday" android:textColor="#FFF" android:textSize="12sp" android:textStyle="bold"/>
@@ -1368,7 +1354,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Seksi 2: Hologram Aura & Visual Bubble -->
+            <!-- Seksi 2: Aura Hologram & Floating Orb (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1417,7 +1403,7 @@
                     <View android:id="@+id/btnColorGreen" android:layout_width="32dp" android:layout_height="32dp" android:background="@drawable/bg_color_green" android:layout_marginHorizontal="6dp" android:clickable="true" android:focusable="true"/>
                 </LinearLayout>
 
-                <!-- Animasi Gaya -->
+                <!-- Animasi Gaya Micro -->
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gaya Animasi Micro:" android:textColor="#94A3B8" android:textSize="12sp" android:layout_marginBottom="6dp"/>
                 <Spinner
                     android:id="@+id/spinnerAnimStyle"
@@ -1454,7 +1440,7 @@
                     android:progress="85"/>
             </LinearLayout>
 
-            <!-- Seksi 3: Efisiensi Daya & Kontrol Sistem -->
+            <!-- Seksi 3: Efisiensi Daya & Kontrol Layar (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1488,7 +1474,7 @@
                 </RelativeLayout>
             </LinearLayout>
 
-            <!-- Seksi 4: Manajemen Memori & Privasi -->
+            <!-- Seksi 4: Manajemen Memori & Privasi (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1504,7 +1490,7 @@
                     android:textColor="#FFFFFF"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="4dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -1512,7 +1498,7 @@
                     android:text="Fakta &amp; preferensi Anda disimpan lokal di perangkat (SQLite)"
                     android:textColor="#94A3B8"
                     android:textSize="11sp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="14dp"/>
 
                 <Button
                     android:id="@+id/btnClearMemory"
@@ -1521,13 +1507,13 @@
                     android:text="Bersihkan Seluruh Memori Pribadi"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_red_outline"
                     android:textColor="#FF1744"
                     android:textSize="13sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Seksi 5: Tombol Simpan & Reset -->
+            <!-- Seksi 5: Tombol Simpan & Reset (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1542,7 +1528,7 @@
                     android:text="Reset Awal"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_box_unselected"
                     android:textColor="#94A3B8"
                     android:textSize="13sp"
                     android:layout_marginEnd="6dp"/>
@@ -1555,7 +1541,7 @@
                     android:text="Simpan Pengaturan"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_btn_primary"
+                    android:background="@drawable/bg_neon_pill_solid_cyan"
                     android:textColor="#050811"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -1572,7 +1558,7 @@
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_alignParentBottom="true"
-        android:background="#FA060913"
+        android:background="@drawable/bg_hud_dock"
         android:orientation="horizontal"
         android:weightSum="4"
         android:elevation="16dp">

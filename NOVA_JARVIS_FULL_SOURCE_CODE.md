@@ -169,6 +169,12 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                     📄 HologramAuraManager.java
                   📁 config/
                     📄 MainActivity.java
+                  📁 motion/
+                    📄 NeonMotionEngine.java
+                  📁 view/
+                    📄 NeonCardView.java
+                    📄 NovaHeroOrbView.java
+                    📄 PulsingMicButton.java
         📁 res/
           📁 drawable/
             📄 bg_badge_active.xml
@@ -191,6 +197,7 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
             📄 bg_dropdown_pill.xml
             📄 bg_edit_text.xml
             📄 bg_hologram_aura.xml
+            📄 bg_hud_dock.xml
             📄 bg_jarvis_badge_active.xml
             📄 bg_jarvis_badge_cyan.xml
             📄 bg_jarvis_badge_purple.xml
@@ -207,6 +214,16 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
             📄 bg_jarvis_reactor_outer.xml
             📄 bg_jelly_bubble.xml
             📄 bg_main_dark.xml
+            📄 bg_neon_card_cyan.xml
+            📄 bg_neon_card_green.xml
+            📄 bg_neon_card_orange.xml
+            📄 bg_neon_card_purple.xml
+            📄 bg_neon_input_bar.xml
+            📄 bg_neon_pill_cyan.xml
+            📄 bg_neon_pill_green.xml
+            📄 bg_neon_pill_purple.xml
+            📄 bg_neon_pill_red_outline.xml
+            📄 bg_neon_pill_solid_cyan.xml
             📄 bg_premium_badge.xml
             📄 bg_premium_button.xml
             📄 bg_premium_card.xml
@@ -286,17 +303,24 @@ Dokumen ini berisi seluruh struktur folder dan seluruh source code lengkap dari 
                   📁 network/
                     📁 omni/
                       📄 OmniRouterTest.java
+                📁 ui/
+                  📄 NeonMotionAndOrbTest.java
   📁 gradle/
     📁 wrapper/
       📄 gradle-wrapper.jar
       📄 gradle-wrapper.properties
+  📁 refrensi gambar tampilan /
+    📄 Gemini_Generated_Image_8jx2278jx2278jx2.jpeg
+    📄 Gemini_Generated_Image_iwsptkiwsptkiwsp.jpeg
+    📄 Gemini_Generated_Image_knhl31knhl31knhl.jpeg
+    📄 Gemini_Generated_Image_syzk7psyzk7psyzk.jpeg
 ```
 
 ---
 
 ## 2. COMPLETE SOURCE CODE LISTINGS
 
-### File 1/204: `build.gradle`
+### File 1/220: `build.gradle`
 
 ```groovy
 buildscript {
@@ -319,7 +343,7 @@ allprojects {
 
 ---
 
-### File 2/204: `gradle.properties`
+### File 2/220: `gradle.properties`
 
 ```text
 android.useAndroidX=true
@@ -330,7 +354,7 @@ org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
 
 ---
 
-### File 3/204: `local.properties`
+### File 3/220: `local.properties`
 
 ```text
 sdk.dir=/opt/android-sdk
@@ -339,7 +363,7 @@ sdk.dir=/opt/android-sdk
 
 ---
 
-### File 4/204: `settings.gradle`
+### File 4/220: `settings.gradle`
 
 ```groovy
 include ':app'
@@ -349,7 +373,7 @@ rootProject.name = "NovaAgent"
 
 ---
 
-### File 5/204: `app/build.gradle`
+### File 5/220: `app/build.gradle`
 
 ```groovy
 plugins {
@@ -408,7 +432,7 @@ dependencies {
 
 ---
 
-### File 6/204: `app/src/main/AndroidManifest.xml`
+### File 6/220: `app/src/main/AndroidManifest.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -488,7 +512,7 @@ dependencies {
 
 ---
 
-### File 7/204: `app/src/main/java/com/novaagent/app/NovaApplication.java`
+### File 7/220: `app/src/main/java/com/novaagent/app/NovaApplication.java`
 
 ```java
 package com.novaagent.app;
@@ -536,7 +560,7 @@ public class NovaApplication extends Application {
 
 ---
 
-### File 8/204: `app/src/main/java/com/novaagent/app/core/app/AppDiscoveryEngine.java`
+### File 8/220: `app/src/main/java/com/novaagent/app/core/app/AppDiscoveryEngine.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -740,7 +764,7 @@ public class AppDiscoveryEngine {
 
 ---
 
-### File 9/204: `app/src/main/java/com/novaagent/app/core/app/WhatsAppMessageAssistant.java`
+### File 9/220: `app/src/main/java/com/novaagent/app/core/app/WhatsAppMessageAssistant.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -882,7 +906,7 @@ public class WhatsAppMessageAssistant {
 
 ---
 
-### File 10/204: `app/src/main/java/com/novaagent/app/core/app/YouTubeControlEngine.java`
+### File 10/220: `app/src/main/java/com/novaagent/app/core/app/YouTubeControlEngine.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -1069,7 +1093,7 @@ public class YouTubeControlEngine {
 
 ---
 
-### File 11/204: `app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java`
+### File 11/220: `app/src/main/java/com/novaagent/app/core/audio/NovaAudioDirector.java`
 
 ```java
 package com.novaagent.app.core.audio;
@@ -1595,7 +1619,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
 ---
 
-### File 12/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVad.java`
+### File 12/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVad.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1718,7 +1742,7 @@ public class AdaptiveEnergyVad {
 
 ---
 
-### File 13/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioConfig.java`
+### File 13/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioConfig.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1753,7 +1777,7 @@ public final class AudioConfig {
 
 ---
 
-### File 14/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioEffectsProcessor.java`
+### File 14/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioEffectsProcessor.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -1917,7 +1941,7 @@ public class AudioEffectsProcessor {
 
 ---
 
-### File 15/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioRingBuffer.java`
+### File 15/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/AudioRingBuffer.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2024,7 +2048,7 @@ public class AudioRingBuffer {
 
 ---
 
-### File 16/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinator.java`
+### File 16/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinator.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2172,7 +2196,7 @@ public class BargeInCoordinator {
 
 ---
 
-### File 17/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/ContinuousListeningEngine.java`
+### File 17/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/ContinuousListeningEngine.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2277,7 +2301,7 @@ public class ContinuousListeningEngine {
 
 ---
 
-### File 18/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/FullDuplexVoiceCoordinator.java`
+### File 18/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/FullDuplexVoiceCoordinator.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2445,7 +2469,7 @@ public class FullDuplexVoiceCoordinator implements ContinuousListeningEngine.Fra
 
 ---
 
-### File 19/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngine.java`
+### File 19/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngine.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2757,7 +2781,7 @@ public class PcmAudioEngine {
 
 ---
 
-### File 20/204: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunker.java`
+### File 20/220: `app/src/main/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunker.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -2888,7 +2912,7 @@ public class StreamingSentenceChunker {
 
 ---
 
-### File 21/204: `app/src/main/java/com/novaagent/app/core/brain/CognitiveCore.java`
+### File 21/220: `app/src/main/java/com/novaagent/app/core/brain/CognitiveCore.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3001,7 +3025,7 @@ public class CognitiveCore {
 
 ---
 
-### File 22/204: `app/src/main/java/com/novaagent/app/core/brain/ContextManager.java`
+### File 22/220: `app/src/main/java/com/novaagent/app/core/brain/ContextManager.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3050,7 +3074,7 @@ public class ContextManager {
 
 ---
 
-### File 23/204: `app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java`
+### File 23/220: `app/src/main/java/com/novaagent/app/core/brain/ConversationMemory.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3146,7 +3170,7 @@ public class ConversationMemory {
 
 ---
 
-### File 24/204: `app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java`
+### File 24/220: `app/src/main/java/com/novaagent/app/core/brain/LongTermMemoryEngine.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3365,7 +3389,7 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
 
 ---
 
-### File 25/204: `app/src/main/java/com/novaagent/app/core/brain/MemoryCoordinator.java`
+### File 25/220: `app/src/main/java/com/novaagent/app/core/brain/MemoryCoordinator.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3450,7 +3474,7 @@ public class MemoryCoordinator {
 
 ---
 
-### File 26/204: `app/src/main/java/com/novaagent/app/core/brain/OfflineBrain.java`
+### File 26/220: `app/src/main/java/com/novaagent/app/core/brain/OfflineBrain.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3655,7 +3679,7 @@ public class OfflineBrain {
 
 ---
 
-### File 27/204: `app/src/main/java/com/novaagent/app/core/brain/StructuredTask.java`
+### File 27/220: `app/src/main/java/com/novaagent/app/core/brain/StructuredTask.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3802,7 +3826,7 @@ public class StructuredTask {
 
 ---
 
-### File 28/204: `app/src/main/java/com/novaagent/app/core/brain/TaskPlanner.java`
+### File 28/220: `app/src/main/java/com/novaagent/app/core/brain/TaskPlanner.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -3924,7 +3948,7 @@ public class TaskPlanner {
 
 ---
 
-### File 29/204: `app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java`
+### File 29/220: `app/src/main/java/com/novaagent/app/core/bus/AgentEvent.java`
 
 ```java
 package com.novaagent.app.core.bus;
@@ -3965,7 +3989,7 @@ public class AgentEvent {
 
 ---
 
-### File 30/204: `app/src/main/java/com/novaagent/app/core/bus/EventBus.java`
+### File 30/220: `app/src/main/java/com/novaagent/app/core/bus/EventBus.java`
 
 ```java
 package com.novaagent.app.core.bus;
@@ -4065,7 +4089,7 @@ public class EventBus {
 
 ---
 
-### File 31/204: `app/src/main/java/com/novaagent/app/core/config/NovaConfigManager.java`
+### File 31/220: `app/src/main/java/com/novaagent/app/core/config/NovaConfigManager.java`
 
 ```java
 package com.novaagent.app.core.config;
@@ -4284,7 +4308,7 @@ public class NovaConfigManager {
 
 ---
 
-### File 32/204: `app/src/main/java/com/novaagent/app/core/device/DeviceSystemController.java`
+### File 32/220: `app/src/main/java/com/novaagent/app/core/device/DeviceSystemController.java`
 
 ```java
 package com.novaagent.app.core.device;
@@ -4589,7 +4613,7 @@ public class DeviceSystemController {
 
 ---
 
-### File 33/204: `app/src/main/java/com/novaagent/app/core/device/IndonesianDateTimeParser.java`
+### File 33/220: `app/src/main/java/com/novaagent/app/core/device/IndonesianDateTimeParser.java`
 
 ```java
 package com.novaagent.app.core.device;
@@ -4772,7 +4796,7 @@ public class IndonesianDateTimeParser {
 
 ---
 
-### File 34/204: `app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java`
+### File 34/220: `app/src/main/java/com/novaagent/app/core/di/ServiceLocator.java`
 
 ```java
 package com.novaagent.app.core.di;
@@ -4832,7 +4856,7 @@ public class ServiceLocator {
 
 ---
 
-### File 35/204: `app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java`
+### File 35/220: `app/src/main/java/com/novaagent/app/core/engine/ActionVerificationScore.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -4967,7 +4991,7 @@ public class ActionVerificationScore {
 
 ---
 
-### File 36/204: `app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java`
+### File 36/220: `app/src/main/java/com/novaagent/app/core/engine/AutonomousLoopEngine.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -5289,7 +5313,7 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
 
 ---
 
-### File 37/204: `app/src/main/java/com/novaagent/app/core/engine/IntelligentCommandClassifier.java`
+### File 37/220: `app/src/main/java/com/novaagent/app/core/engine/IntelligentCommandClassifier.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -5551,7 +5575,7 @@ public class IntelligentCommandClassifier {
 
 ---
 
-### File 38/204: `app/src/main/java/com/novaagent/app/core/engine/LocalIntentRouter.java`
+### File 38/220: `app/src/main/java/com/novaagent/app/core/engine/LocalIntentRouter.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -5798,7 +5822,7 @@ public class LocalIntentRouter {
 
 ---
 
-### File 39/204: `app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java`
+### File 39/220: `app/src/main/java/com/novaagent/app/core/engine/SafetyPolicyEngine.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -5896,7 +5920,7 @@ public class SafetyPolicyEngine {
 
 ---
 
-### File 40/204: `app/src/main/java/com/novaagent/app/core/engine/TaskCheckpointManager.java`
+### File 40/220: `app/src/main/java/com/novaagent/app/core/engine/TaskCheckpointManager.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -5955,7 +5979,7 @@ public class TaskCheckpointManager {
 
 ---
 
-### File 41/204: `app/src/main/java/com/novaagent/app/core/engine/TaskCompletionVerifier.java`
+### File 41/220: `app/src/main/java/com/novaagent/app/core/engine/TaskCompletionVerifier.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -6036,7 +6060,7 @@ public class TaskCompletionVerifier {
 
 ---
 
-### File 42/204: `app/src/main/java/com/novaagent/app/core/proactive/ConditionalSentinelEngine.java`
+### File 42/220: `app/src/main/java/com/novaagent/app/core/proactive/ConditionalSentinelEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -6212,7 +6236,7 @@ public class ConditionalSentinelEngine {
 
 ---
 
-### File 43/204: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveConversationEngine.java`
+### File 43/220: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveConversationEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -6303,7 +6327,7 @@ public class ProactiveConversationEngine implements EventBus.EventListener {
 
 ---
 
-### File 44/204: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java`
+### File 44/220: `app/src/main/java/com/novaagent/app/core/proactive/ProactiveTriggerEngine.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -6351,7 +6375,7 @@ public class ProactiveTriggerEngine {
 
 ---
 
-### File 45/204: `app/src/main/java/com/novaagent/app/core/skills/NovaSkill.java`
+### File 45/220: `app/src/main/java/com/novaagent/app/core/skills/NovaSkill.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -6397,7 +6421,7 @@ public interface NovaSkill {
 
 ---
 
-### File 46/204: `app/src/main/java/com/novaagent/app/core/skills/SkillRegistry.java`
+### File 46/220: `app/src/main/java/com/novaagent/app/core/skills/SkillRegistry.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -6503,7 +6527,7 @@ public class SkillRegistry {
 
 ---
 
-### File 47/204: `app/src/main/java/com/novaagent/app/core/skills/SkillResult.java`
+### File 47/220: `app/src/main/java/com/novaagent/app/core/skills/SkillResult.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -6555,7 +6579,7 @@ public class SkillResult {
 
 ---
 
-### File 48/204: `app/src/main/java/com/novaagent/app/core/skills/impl/AppLauncherSkill.java`
+### File 48/220: `app/src/main/java/com/novaagent/app/core/skills/impl/AppLauncherSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6652,7 +6676,7 @@ public class AppLauncherSkill implements NovaSkill {
 
 ---
 
-### File 49/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BatterySkill.java`
+### File 49/220: `app/src/main/java/com/novaagent/app/core/skills/impl/BatterySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6719,7 +6743,7 @@ public class BatterySkill implements NovaSkill {
 
 ---
 
-### File 50/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BluetoothControlSkill.java`
+### File 50/220: `app/src/main/java/com/novaagent/app/core/skills/impl/BluetoothControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6784,7 +6808,7 @@ public class BluetoothControlSkill implements NovaSkill {
 
 ---
 
-### File 51/204: `app/src/main/java/com/novaagent/app/core/skills/impl/BrightnessControlSkill.java`
+### File 51/220: `app/src/main/java/com/novaagent/app/core/skills/impl/BrightnessControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6858,7 +6882,7 @@ public class BrightnessControlSkill implements NovaSkill {
 
 ---
 
-### File 52/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CalculatorSkill.java`
+### File 52/220: `app/src/main/java/com/novaagent/app/core/skills/impl/CalculatorSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -6977,7 +7001,7 @@ public class CalculatorSkill implements NovaSkill {
 
 ---
 
-### File 53/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ConnectionInfoSkill.java`
+### File 53/220: `app/src/main/java/com/novaagent/app/core/skills/impl/ConnectionInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7035,7 +7059,7 @@ public class ConnectionInfoSkill implements NovaSkill {
 
 ---
 
-### File 54/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentDateSkill.java`
+### File 54/220: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentDateSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7095,7 +7119,7 @@ public class CurrentDateSkill implements NovaSkill {
 
 ---
 
-### File 55/204: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentTimeSkill.java`
+### File 55/220: `app/src/main/java/com/novaagent/app/core/skills/impl/CurrentTimeSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7156,7 +7180,7 @@ public class CurrentTimeSkill implements NovaSkill {
 
 ---
 
-### File 56/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DayOfWeekSkill.java`
+### File 56/220: `app/src/main/java/com/novaagent/app/core/skills/impl/DayOfWeekSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7217,7 +7241,7 @@ public class DayOfWeekSkill implements NovaSkill {
 
 ---
 
-### File 57/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceInfoSkill.java`
+### File 57/220: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7283,7 +7307,7 @@ public class DeviceInfoSkill implements NovaSkill {
 
 ---
 
-### File 58/204: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceSettingsSkill.java`
+### File 58/220: `app/src/main/java/com/novaagent/app/core/skills/impl/DeviceSettingsSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7346,7 +7370,7 @@ public class DeviceSettingsSkill implements NovaSkill {
 
 ---
 
-### File 59/204: `app/src/main/java/com/novaagent/app/core/skills/impl/FlashlightSkill.java`
+### File 59/220: `app/src/main/java/com/novaagent/app/core/skills/impl/FlashlightSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7415,7 +7439,7 @@ public class FlashlightSkill implements NovaSkill {
 
 ---
 
-### File 60/204: `app/src/main/java/com/novaagent/app/core/skills/impl/GreetingChitchatSkill.java`
+### File 60/220: `app/src/main/java/com/novaagent/app/core/skills/impl/GreetingChitchatSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7494,7 +7518,7 @@ public class GreetingChitchatSkill implements NovaSkill {
 
 ---
 
-### File 61/204: `app/src/main/java/com/novaagent/app/core/skills/impl/HotspotControlSkill.java`
+### File 61/220: `app/src/main/java/com/novaagent/app/core/skills/impl/HotspotControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7556,7 +7580,7 @@ public class HotspotControlSkill implements NovaSkill {
 
 ---
 
-### File 62/204: `app/src/main/java/com/novaagent/app/core/skills/impl/IdentitySkill.java`
+### File 62/220: `app/src/main/java/com/novaagent/app/core/skills/impl/IdentitySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7612,7 +7636,7 @@ public class IdentitySkill implements NovaSkill {
 
 ---
 
-### File 63/204: `app/src/main/java/com/novaagent/app/core/skills/impl/InstalledAppsSearchSkill.java`
+### File 63/220: `app/src/main/java/com/novaagent/app/core/skills/impl/InstalledAppsSearchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7719,7 +7743,7 @@ public class InstalledAppsSearchSkill implements NovaSkill {
 
 ---
 
-### File 64/204: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalChatHistorySkill.java`
+### File 64/220: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalChatHistorySkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7801,7 +7825,7 @@ public class LocalChatHistorySkill implements NovaSkill {
 
 ---
 
-### File 65/204: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalReminderSkill.java`
+### File 65/220: `app/src/main/java/com/novaagent/app/core/skills/impl/LocalReminderSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7899,7 +7923,7 @@ public class LocalReminderSkill implements NovaSkill {
 
 ---
 
-### File 66/204: `app/src/main/java/com/novaagent/app/core/skills/impl/NovaStatusDiagnosticSkill.java`
+### File 66/220: `app/src/main/java/com/novaagent/app/core/skills/impl/NovaStatusDiagnosticSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -7968,7 +7992,7 @@ public class NovaStatusDiagnosticSkill implements NovaSkill {
 
 ---
 
-### File 67/204: `app/src/main/java/com/novaagent/app/core/skills/impl/OfflineNotesSkill.java`
+### File 67/220: `app/src/main/java/com/novaagent/app/core/skills/impl/OfflineNotesSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8085,7 +8109,7 @@ public class OfflineNotesSkill implements NovaSkill {
 
 ---
 
-### File 68/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenLockSkill.java`
+### File 68/220: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenLockSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8148,7 +8172,7 @@ public class ScreenLockSkill implements NovaSkill {
 
 ---
 
-### File 69/204: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenRotationSkill.java`
+### File 69/220: `app/src/main/java/com/novaagent/app/core/skills/impl/ScreenRotationSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8223,7 +8247,7 @@ public class ScreenRotationSkill implements NovaSkill {
 
 ---
 
-### File 70/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SimpleCalendarSkill.java`
+### File 70/220: `app/src/main/java/com/novaagent/app/core/skills/impl/SimpleCalendarSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8302,7 +8326,7 @@ public class SimpleCalendarSkill implements NovaSkill {
 
 ---
 
-### File 71/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SoundModeControlSkill.java`
+### File 71/220: `app/src/main/java/com/novaagent/app/core/skills/impl/SoundModeControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8383,7 +8407,7 @@ public class SoundModeControlSkill implements NovaSkill {
 
 ---
 
-### File 72/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SpeakInfoSkill.java`
+### File 72/220: `app/src/main/java/com/novaagent/app/core/skills/impl/SpeakInfoSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8444,7 +8468,7 @@ public class SpeakInfoSkill implements NovaSkill {
 
 ---
 
-### File 73/204: `app/src/main/java/com/novaagent/app/core/skills/impl/StopwatchSkill.java`
+### File 73/220: `app/src/main/java/com/novaagent/app/core/skills/impl/StopwatchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8538,7 +8562,7 @@ public class StopwatchSkill implements NovaSkill {
 
 ---
 
-### File 74/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemNavigationSkill.java`
+### File 74/220: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemNavigationSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8612,7 +8636,7 @@ public class SystemNavigationSkill implements NovaSkill {
 
 ---
 
-### File 75/204: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemSettingsSkill.java`
+### File 75/220: `app/src/main/java/com/novaagent/app/core/skills/impl/SystemSettingsSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8685,7 +8709,7 @@ public class SystemSettingsSkill implements NovaSkill {
 
 ---
 
-### File 76/204: `app/src/main/java/com/novaagent/app/core/skills/impl/TimeDateSkill.java`
+### File 76/220: `app/src/main/java/com/novaagent/app/core/skills/impl/TimeDateSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8741,7 +8765,7 @@ public class TimeDateSkill implements NovaSkill {
 
 ---
 
-### File 77/204: `app/src/main/java/com/novaagent/app/core/skills/impl/TimerSkill.java`
+### File 77/220: `app/src/main/java/com/novaagent/app/core/skills/impl/TimerSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8836,7 +8860,7 @@ public class TimerSkill implements NovaSkill {
 
 ---
 
-### File 78/204: `app/src/main/java/com/novaagent/app/core/skills/impl/UnitConversionSkill.java`
+### File 78/220: `app/src/main/java/com/novaagent/app/core/skills/impl/UnitConversionSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -8956,7 +8980,7 @@ public class UnitConversionSkill implements NovaSkill {
 
 ---
 
-### File 79/204: `app/src/main/java/com/novaagent/app/core/skills/impl/VolumeSkill.java`
+### File 79/220: `app/src/main/java/com/novaagent/app/core/skills/impl/VolumeSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -9055,7 +9079,7 @@ public class VolumeSkill implements NovaSkill {
 
 ---
 
-### File 80/204: `app/src/main/java/com/novaagent/app/core/skills/impl/WebSearchSkill.java`
+### File 80/220: `app/src/main/java/com/novaagent/app/core/skills/impl/WebSearchSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -9177,7 +9201,7 @@ public class WebSearchSkill implements NovaSkill {
 
 ---
 
-### File 81/204: `app/src/main/java/com/novaagent/app/core/skills/impl/WifiControlSkill.java`
+### File 81/220: `app/src/main/java/com/novaagent/app/core/skills/impl/WifiControlSkill.java`
 
 ```java
 package com.novaagent.app.core.skills.impl;
@@ -9242,7 +9266,7 @@ public class WifiControlSkill implements NovaSkill {
 
 ---
 
-### File 82/204: `app/src/main/java/com/novaagent/app/core/state/AgentState.java`
+### File 82/220: `app/src/main/java/com/novaagent/app/core/state/AgentState.java`
 
 ```java
 package com.novaagent.app.core.state;
@@ -9268,7 +9292,7 @@ public enum AgentState {
 
 ---
 
-### File 83/204: `app/src/main/java/com/novaagent/app/core/vision/PerceptionCoordinator.java`
+### File 83/220: `app/src/main/java/com/novaagent/app/core/vision/PerceptionCoordinator.java`
 
 ```java
 package com.novaagent.app.core.vision;
@@ -9353,7 +9377,7 @@ public class PerceptionCoordinator implements EventBus.EventListener {
 
 ---
 
-### File 84/204: `app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java`
+### File 84/220: `app/src/main/java/com/novaagent/app/core/vision/SemanticVisionEngine.java`
 
 ```java
 package com.novaagent.app.core.vision;
@@ -9512,7 +9536,7 @@ public class SemanticVisionEngine {
 
 ---
 
-### File 85/204: `app/src/main/java/com/novaagent/app/core/vision/VisualChangeTracker.java`
+### File 85/220: `app/src/main/java/com/novaagent/app/core/vision/VisualChangeTracker.java`
 
 ```java
 package com.novaagent.app.core.vision;
@@ -9579,7 +9603,7 @@ public class VisualChangeTracker {
 
 ---
 
-### File 86/204: `app/src/main/java/com/novaagent/app/data/cache/NodeCache.java`
+### File 86/220: `app/src/main/java/com/novaagent/app/data/cache/NodeCache.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -9623,7 +9647,7 @@ public class NodeCache {
 
 ---
 
-### File 87/204: `app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java`
+### File 87/220: `app/src/main/java/com/novaagent/app/data/cache/ObjectPool.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -9680,7 +9704,7 @@ public class ObjectPool<T> {
 
 ---
 
-### File 88/204: `app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java`
+### File 88/220: `app/src/main/java/com/novaagent/app/data/cache/ScreenCache.java`
 
 ```java
 package com.novaagent.app.data.cache;
@@ -9756,7 +9780,7 @@ public class ScreenCache {
 
 ---
 
-### File 89/204: `app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java`
+### File 89/220: `app/src/main/java/com/novaagent/app/data/model/ActionCommandDto.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -9830,7 +9854,7 @@ public class ActionCommandDto {
 
 ---
 
-### File 90/204: `app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java`
+### File 90/220: `app/src/main/java/com/novaagent/app/data/model/ActionVerificationResult.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -9860,7 +9884,7 @@ public class ActionVerificationResult {
 
 ---
 
-### File 91/204: `app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java`
+### File 91/220: `app/src/main/java/com/novaagent/app/data/model/UnifiedScreenContext.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -9966,7 +9990,7 @@ public class UnifiedScreenContext {
 
 ---
 
-### File 92/204: `app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java`
+### File 92/220: `app/src/main/java/com/novaagent/app/data/network/UniversalNetworkClient.java`
 
 ```java
 package com.novaagent.app.data.network;
@@ -10393,7 +10417,7 @@ public class UniversalNetworkClient {
 
 ---
 
-### File 93/204: `app/src/main/java/com/novaagent/app/data/network/omni/OmniRouter.java`
+### File 93/220: `app/src/main/java/com/novaagent/app/data/network/omni/OmniRouter.java`
 
 ```java
 package com.novaagent.app.data.network.omni;
@@ -10618,7 +10642,7 @@ public class OmniRouter {
 
 ---
 
-### File 94/204: `app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java`
+### File 94/220: `app/src/main/java/com/novaagent/app/data/repository/PromptRegistry.java`
 
 ```java
 package com.novaagent.app.data.repository;
@@ -10654,7 +10678,7 @@ public class PromptRegistry {
 
 ---
 
-### File 95/204: `app/src/main/java/com/novaagent/app/data/repository/SecureConfigManager.java`
+### File 95/220: `app/src/main/java/com/novaagent/app/data/repository/SecureConfigManager.java`
 
 ```java
 package com.novaagent.app.data.repository;
@@ -10723,7 +10747,7 @@ public class SecureConfigManager {
 
 ---
 
-### File 96/204: `app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java`
+### File 96/220: `app/src/main/java/com/novaagent/app/infrastructure/injector/SystemActionInjector.java`
 
 ```java
 package com.novaagent.app.infrastructure.injector;
@@ -10961,7 +10985,7 @@ private void handleLocalHardware(Context context, String cmd) {
 
 ---
 
-### File 97/204: `app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java`
+### File 97/220: `app/src/main/java/com/novaagent/app/infrastructure/ocr/MlKitOcrEngine.java`
 
 ```java
 package com.novaagent.app.infrastructure.ocr;
@@ -11083,7 +11107,7 @@ public class MlKitOcrEngine {
 
 ---
 
-### File 98/204: `app/src/main/java/com/novaagent/app/infrastructure/system/FailureDiagnosisEngine.java`
+### File 98/220: `app/src/main/java/com/novaagent/app/infrastructure/system/FailureDiagnosisEngine.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -11123,7 +11147,7 @@ public class FailureDiagnosisEngine {
 
 ---
 
-### File 99/204: `app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java`
+### File 99/220: `app/src/main/java/com/novaagent/app/infrastructure/system/NovaWatchdog.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -11237,7 +11261,7 @@ public class NovaWatchdog implements EventBus.EventListener {
 
 ---
 
-### File 100/204: `app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java`
+### File 100/220: `app/src/main/java/com/novaagent/app/infrastructure/system/RecoveryManager.java`
 
 ```java
 package com.novaagent.app.infrastructure.system;
@@ -11336,7 +11360,7 @@ public class RecoveryManager implements EventBus.EventListener {
 
 ---
 
-### File 101/204: `app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java`
+### File 101/220: `app/src/main/java/com/novaagent/app/services/accessibility/NodeCompactor.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -11399,7 +11423,7 @@ public class NodeCompactor {
 
 ---
 
-### File 102/204: `app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java`
+### File 102/220: `app/src/main/java/com/novaagent/app/services/accessibility/NodeScanner.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -11462,7 +11486,7 @@ public class NodeScanner {
 
 ---
 
-### File 103/204: `app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java`
+### File 103/220: `app/src/main/java/com/novaagent/app/services/accessibility/NovaAccessibilityService.java`
 
 ```java
 package com.novaagent.app.services.accessibility;
@@ -11590,7 +11614,7 @@ public class NovaAccessibilityService extends AccessibilityService {
 
 ---
 
-### File 104/204: `app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java`
+### File 104/220: `app/src/main/java/com/novaagent/app/services/foreground/MediaProjectionWrapper.java`
 
 ```java
 package com.novaagent.app.services.foreground;
@@ -11762,7 +11786,7 @@ public class MediaProjectionWrapper {
 
 ---
 
-### File 105/204: `app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java`
+### File 105/220: `app/src/main/java/com/novaagent/app/services/foreground/NovaForegroundService.java`
 
 ```java
 package com.novaagent.app.services.foreground;
@@ -12063,7 +12087,7 @@ private void createNotificationChannel() {
 
 ---
 
-### File 106/204: `app/src/main/java/com/novaagent/app/services/notification/NovaNotificationListenerService.java`
+### File 106/220: `app/src/main/java/com/novaagent/app/services/notification/NovaNotificationListenerService.java`
 
 ```java
 package com.novaagent.app.services.notification;
@@ -12208,7 +12232,7 @@ public class NovaNotificationListenerService extends NotificationListenerService
 
 ---
 
-### File 107/204: `app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java`
+### File 107/220: `app/src/main/java/com/novaagent/app/ui/bubble/BubbleViewModel.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -12283,7 +12307,7 @@ public class BubbleViewModel implements EventBus.EventListener {
 
 ---
 
-### File 108/204: `app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java`
+### File 108/220: `app/src/main/java/com/novaagent/app/ui/bubble/FloatingBubbleView.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -12759,7 +12783,7 @@ public class FloatingBubbleView implements EventBus.EventListener {
 
 ---
 
-### File 109/204: `app/src/main/java/com/novaagent/app/ui/bubble/HologramAuraManager.java`
+### File 109/220: `app/src/main/java/com/novaagent/app/ui/bubble/HologramAuraManager.java`
 
 ```java
 package com.novaagent.app.ui.bubble;
@@ -12860,7 +12884,7 @@ public class HologramAuraManager {
 
 ---
 
-### File 110/204: `app/src/main/java/com/novaagent/app/ui/config/MainActivity.java`
+### File 110/220: `app/src/main/java/com/novaagent/app/ui/config/MainActivity.java`
 
 ```java
 package com.novaagent.app.ui.config;
@@ -12911,6 +12935,10 @@ import com.novaagent.app.core.device.DeviceSystemController;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.data.network.omni.OmniRouter;
 import com.novaagent.app.services.foreground.NovaForegroundService;
+import com.novaagent.app.ui.motion.NeonMotionEngine;
+import com.novaagent.app.ui.view.NeonCardView;
+import com.novaagent.app.ui.view.NovaHeroOrbView;
+import com.novaagent.app.ui.view.PulsingMicButton;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -12924,6 +12952,9 @@ public class MainActivity extends AppCompatActivity {
     private ToneGenerator toneGen;
     private Dialog currentDialog = null;
     private DeviceSystemController deviceController;
+
+    private NovaHeroOrbView heroOrbView;
+    private PulsingMicButton btnMicTrigger;
 
     private final String[] providers = {
         "Groq", "Google AI Studio", "Cerebral", "Mistral AI",
@@ -12981,6 +13012,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
+        heroOrbView = findViewById(R.id.heroOrbView);
+        if (heroOrbView != null) {
+            heroOrbView.setPowerSaveMode(prefs.getBoolean("power_save", false));
+        }
+
         containerHome = findViewById(R.id.containerHome);
         containerSkills = findViewById(R.id.containerSkills);
         containerStatus = findViewById(R.id.containerStatus);
@@ -13003,6 +13039,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnTheme = findViewById(R.id.btnThemeToggle);
         if (btnTheme != null) {
+            NeonMotionEngine.attachTouchFeedback(btnTheme);
             btnTheme.setOnClickListener(v -> {
                 playClickSound();
                 Toast.makeText(this, "Tema Neo-Cyan Glassmorphism Aktif", Toast.LENGTH_SHORT).show();
@@ -13011,6 +13048,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnTopSettings = findViewById(R.id.btnSettings);
         if (btnTopSettings != null) {
+            NeonMotionEngine.attachTouchFeedback(btnTopSettings);
             btnTopSettings.setOnClickListener(v -> {
                 playClickSound();
                 switchTab(3);
@@ -13115,15 +13153,32 @@ public class MainActivity extends AppCompatActivity {
     private void setupQuickCommandAndShortcuts() {
         EditText etQuickPrompt = findViewById(R.id.etQuickPrompt);
         View btnQuickSend = findViewById(R.id.btnQuickSend);
-        View btnMicTrigger = findViewById(R.id.btnMicTrigger);
+        btnMicTrigger = findViewById(R.id.btnMicTrigger);
+
+        if (btnMicTrigger != null) {
+            btnMicTrigger.setPowerSaveMode(prefs.getBoolean("power_save", false));
+            btnMicTrigger.setOnClickListener(v -> {
+                playClickSound();
+                btnMicTrigger.setListening(true);
+                if (heroOrbView != null) {
+                    heroOrbView.setOrbState(NovaHeroOrbView.OrbState.LISTENING);
+                }
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, "Halo Nova Jarvis"));
+                Toast.makeText(this, "Mikrofon Nova Siaga • Full-Duplex Voice Engine", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         if (btnQuickSend != null && etQuickPrompt != null) {
+            NeonMotionEngine.attachTouchFeedback(btnQuickSend);
             btnQuickSend.setOnClickListener(v -> {
                 playClickSound();
                 String query = etQuickPrompt.getText().toString().trim();
                 if (query.isEmpty()) {
                     Toast.makeText(this, "Masukkan perintah teks terlebih dahulu", Toast.LENGTH_SHORT).show();
                     return;
+                }
+                if (heroOrbView != null) {
+                    heroOrbView.setOrbState(NovaHeroOrbView.OrbState.THINKING);
                 }
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, query));
                 try {
@@ -13137,25 +13192,29 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        if (btnMicTrigger != null) {
-            btnMicTrigger.setOnClickListener(v -> {
-                playClickSound();
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, "Halo Nova Jarvis"));
-                Toast.makeText(this, "Mikrofon Nova Siaga • Full-Duplex Voice Engine", Toast.LENGTH_SHORT).show();
-            });
+        NeonCardView cardSkills = findViewById(R.id.cardShortcutSkills);
+        if (cardSkills != null) {
+            cardSkills.setNeonAccent(NeonCardView.NeonAccent.CYAN);
+            cardSkills.setOnClickListener(v -> { playClickSound(); switchTab(1); });
         }
 
-        View cardSkills = findViewById(R.id.cardShortcutSkills);
-        if (cardSkills != null) cardSkills.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        NeonCardView cardDevice = findViewById(R.id.cardShortcutDevice);
+        if (cardDevice != null) {
+            cardDevice.setNeonAccent(NeonCardView.NeonAccent.PURPLE);
+            cardDevice.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        }
 
-        View cardDevice = findViewById(R.id.cardShortcutDevice);
-        if (cardDevice != null) cardDevice.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        NeonCardView cardOmni = findViewById(R.id.cardShortcutOmni);
+        if (cardOmni != null) {
+            cardOmni.setNeonAccent(NeonCardView.NeonAccent.CYAN);
+            cardOmni.setOnClickListener(v -> { playClickSound(); switchTab(2); });
+        }
 
-        View cardOmni = findViewById(R.id.cardShortcutOmni);
-        if (cardOmni != null) cardOmni.setOnClickListener(v -> { playClickSound(); switchTab(2); });
-
-        View cardMemory = findViewById(R.id.cardShortcutMemory);
-        if (cardMemory != null) cardMemory.setOnClickListener(v -> { playClickSound(); switchTab(3); });
+        NeonCardView cardMemory = findViewById(R.id.cardShortcutMemory);
+        if (cardMemory != null) {
+            cardMemory.setNeonAccent(NeonCardView.NeonAccent.ORANGE);
+            cardMemory.setOnClickListener(v -> { playClickSound(); switchTab(3); });
+        }
     }
 
     private void setupSkillsTab() {
@@ -13198,6 +13257,7 @@ public class MainActivity extends AppCompatActivity {
         TextView tvBattery = findViewById(R.id.tvBatteryDetailed);
         View btnCheckBattery = findViewById(R.id.btnCheckBattery);
         if (btnCheckBattery != null) {
+            NeonMotionEngine.attachTouchFeedback(btnCheckBattery);
             btnCheckBattery.setOnClickListener(v -> {
                 playClickSound();
                 String summary = deviceController.getBatterySummary();
@@ -13208,6 +13268,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnCamera = findViewById(R.id.btnTestLaunchCamera);
         if (btnCamera != null) {
+            NeonMotionEngine.attachTouchFeedback(btnCamera);
             btnCamera.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -13221,6 +13282,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnWebSearch = findViewById(R.id.btnTestWebSearch);
         if (btnWebSearch != null) {
+            NeonMotionEngine.attachTouchFeedback(btnWebSearch);
             btnWebSearch.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -13247,6 +13309,7 @@ public class MainActivity extends AppCompatActivity {
         };
 
         if (btnRefresh != null) {
+            NeonMotionEngine.attachTouchFeedback(btnRefresh);
             btnRefresh.setOnClickListener(v -> {
                 playClickSound();
                 refreshOmniUI.run();
@@ -13255,6 +13318,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (btnReset != null) {
+            NeonMotionEngine.attachTouchFeedback(btnReset);
             btnReset.setOnClickListener(v -> {
                 playClickSound();
                 OmniRouter.getInstance().resetAll();
@@ -13393,10 +13457,19 @@ public class MainActivity extends AppCompatActivity {
 
         if (switchMaster != null) switchMaster.setChecked(prefs.getBoolean("bubble_master", true));
         if (cbHologram != null) cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
-        if (switchPower != null) switchPower.setChecked(prefs.getBoolean("power_save", false));
+        if (switchPower != null) {
+            boolean pwr = prefs.getBoolean("power_save", false);
+            switchPower.setChecked(pwr);
+            switchPower.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (heroOrbView != null) heroOrbView.setPowerSaveMode(isChecked);
+                if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(isChecked);
+                NeonMotionEngine.setReducedMotion(isChecked);
+            });
+        }
 
         View btnClearMem = findViewById(R.id.btnClearMemory);
         if (btnClearMem != null) {
+            NeonMotionEngine.attachTouchFeedback(btnClearMem);
             btnClearMem.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -13411,6 +13484,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnReset = findViewById(R.id.rowResetSettings);
         if (btnReset != null) {
+            NeonMotionEngine.attachTouchFeedback(btnReset);
             btnReset.setOnClickListener(v -> {
                 playClickSound();
                 selectedVoice = "nova"; selectedColor = "cyan"; selectedShape = "circle"; selectedAnim = "breathe";
@@ -13427,6 +13501,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnSave = findViewById(R.id.btnSaveSettings);
         if (btnSave != null) {
+            NeonMotionEngine.attachTouchFeedback(btnSave);
             btnSave.setOnClickListener(v -> {
                 playClickSound();
                 float pitch = 1.0f; float speed = 1.05f;
@@ -13437,6 +13512,10 @@ public class MainActivity extends AppCompatActivity {
                 boolean pwrSave = switchPower != null && switchPower.isChecked();
                 boolean masterOn = switchMaster != null && switchMaster.isChecked();
                 String finalAnim = (pwrSave || !masterOn) ? "static" : selectedAnim;
+
+                if (heroOrbView != null) heroOrbView.setPowerSaveMode(pwrSave);
+                if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(pwrSave);
+                NeonMotionEngine.setReducedMotion(pwrSave);
 
                 prefs.edit()
                     .putString("custom_voice", selectedVoice)
@@ -13526,8 +13605,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (heroOrbView != null) heroOrbView.pauseAnimation();
+        if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(true);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        boolean pwrSave = prefs.getBoolean("power_save", false);
+        if (heroOrbView != null) {
+            heroOrbView.setPowerSaveMode(pwrSave);
+            if (!pwrSave) heroOrbView.resumeAnimation();
+        }
+        if (btnMicTrigger != null) {
+            btnMicTrigger.setPowerSaveMode(pwrSave);
+        }
+        NeonMotionEngine.setReducedMotion(pwrSave);
+
         updateNetworkStatusBadge();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);
@@ -13619,7 +13715,966 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 111/204: `app/src/main/res/drawable/bg_badge_active.xml`
+### File 111/220: `app/src/main/java/com/novaagent/app/ui/motion/NeonMotionEngine.java`
+
+```java
+package com.novaagent.app.ui.motion;
+
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.animation.OvershootInterpolator;
+
+/**
+ * NeonMotionEngine — Centralized lightweight micro-interaction and motion utility.
+ * Optimized for entry-level hardware (Infinix Smart 8 Pro / MediaTek Helio G36).
+ * Provides:
+ * - Fluid touch scale compression on press with spring release
+ * - Success pulse animations
+ * - Reduced motion support
+ */
+public class NeonMotionEngine {
+
+    private static boolean isReducedMotion = false;
+
+    public static void setReducedMotion(boolean reduced) {
+        isReducedMotion = reduced;
+    }
+
+    public static boolean isReducedMotion() {
+        return isReducedMotion;
+    }
+
+    /**
+     * Applies fluid press & spring release micro-interaction to any interactive view.
+     */
+    public static void attachTouchFeedback(View view) {
+        if (view == null) return;
+
+        view.setOnTouchListener((v, event) -> {
+            if (isReducedMotion) return false;
+
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.animate()
+                            .scaleX(0.95f)
+                            .scaleY(0.95f)
+                            .setDuration(110)
+                            .start();
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    v.animate()
+                            .scaleX(1.0f)
+                            .scaleY(1.0f)
+                            .setDuration(220)
+                            .setInterpolator(new OvershootInterpolator(2.0f))
+                            .start();
+                    break;
+            }
+            return false; // Allow click listener to trigger
+        });
+    }
+
+    /**
+     * Celebratory pulse animation when an action succeeds.
+     */
+    public static void pulseSuccess(View view) {
+        if (view == null || isReducedMotion) return;
+
+        PropertyValuesHolder scaleX = PropertyValuesHolder.ofFloat("scaleX", 1.0f, 1.08f, 1.0f);
+        PropertyValuesHolder scaleY = PropertyValuesHolder.ofFloat("scaleY", 1.0f, 1.08f, 1.0f);
+
+        ObjectAnimator animator = ObjectAnimator.ofPropertyValuesHolder(view, scaleX, scaleY);
+        animator.setDuration(300);
+        animator.setInterpolator(new OvershootInterpolator(1.8f));
+        animator.start();
+    }
+}
+
+```
+
+---
+
+### File 112/220: `app/src/main/java/com/novaagent/app/ui/view/NeonCardView.java`
+
+```java
+package com.novaagent.app.ui.view;
+
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.animation.OvershootInterpolator;
+import android.widget.FrameLayout;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+/**
+ * NeonCardView — Lightweight futuristic glassmorphic card container with animated neon borders.
+ * Optimized for MediaTek Helio G36 (Cortex-A53):
+ * - Pre-allocated Paints, RectFs, and Shaders
+ * - Touch micro-interaction (spring scale down on press, bounce back on release)
+ * - Power-save and lifecycle aware
+ */
+public class NeonCardView extends FrameLayout {
+
+    public enum NeonAccent {
+        CYAN(0xFF00E5FF, 0x4D00E5FF),
+        PURPLE(0xFF8B5CF6, 0x4D8B5CF6),
+        GREEN(0xFF00E676, 0x4D00E676),
+        ORANGE(0xFFFFAB00, 0x4DFFAB00);
+
+        public final int strokeColor;
+        public final int glowColor;
+
+        NeonAccent(int stroke, int glow) {
+            this.strokeColor = stroke;
+            this.glowColor = glow;
+        }
+    }
+
+    private final Paint paintBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF rectBounds = new RectF();
+    private final RectF rectStroke = new RectF();
+
+    private NeonAccent accent = NeonAccent.CYAN;
+    private float cornerRadius = 40f; // ~16dp default
+    private float strokeWidth = 3f;   // ~1.2dp default
+    private boolean isPressedState = false;
+
+    public NeonCardView(@NonNull Context context) {
+        super(context);
+        init();
+    }
+
+    public NeonCardView(@NonNull Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public NeonCardView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        setWillNotDraw(false);
+
+        float density = getResources().getDisplayMetrics().density;
+        cornerRadius = 16f * density;
+        strokeWidth = 1.2f * density;
+
+        paintBg.setStyle(Paint.Style.FILL);
+        paintBg.setColor(0xE60A1120); // Dark translucent midnight glass
+
+        paintStroke.setStyle(Paint.Style.STROKE);
+        paintStroke.setStrokeWidth(strokeWidth);
+        paintStroke.setColor(accent.strokeColor);
+
+        paintGlow.setStyle(Paint.Style.STROKE);
+        paintGlow.setStrokeWidth(strokeWidth * 2.2f);
+        paintGlow.setColor(accent.glowColor);
+    }
+
+    public void setNeonAccent(NeonAccent accent) {
+        this.accent = accent;
+        paintStroke.setColor(accent.strokeColor);
+        paintGlow.setColor(accent.glowColor);
+        updateGradients();
+        invalidate();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        rectBounds.set(0, 0, w, h);
+        float halfStroke = strokeWidth / 2f;
+        rectStroke.set(halfStroke, halfStroke, w - halfStroke, h - halfStroke);
+        updateGradients();
+    }
+
+    private void updateGradients() {
+        if (rectBounds.width() <= 0 || rectBounds.height() <= 0) return;
+
+        LinearGradient bgGradient = new LinearGradient(
+                0, 0, rectBounds.width(), rectBounds.height(),
+                new int[]{0xF00D162B, 0xE6070D1A},
+                new float[]{0f, 1f},
+                Shader.TileMode.CLAMP
+        );
+        paintBg.setShader(bgGradient);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        // 1. Draw Glassmorphism Fill
+        canvas.drawRoundRect(rectBounds, cornerRadius, cornerRadius, paintBg);
+
+        // 2. Draw Soft Neon Glow
+        canvas.drawRoundRect(rectStroke, cornerRadius, cornerRadius, paintGlow);
+
+        // 3. Draw Crisp Outer Neon Border
+        canvas.drawRoundRect(rectStroke, cornerRadius, cornerRadius, paintStroke);
+
+        super.onDraw(canvas);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        if (!isClickable() && !isFocusable()) {
+            return super.onTouchEvent(event);
+        }
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                isPressedState = true;
+                animate().scaleX(0.97f).scaleY(0.97f).setDuration(120).start();
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                isPressedState = false;
+                animate().scaleX(1.0f).scaleY(1.0f).setDuration(220)
+                        .setInterpolator(new OvershootInterpolator(1.5f)).start();
+                break;
+        }
+        return super.onTouchEvent(event);
+    }
+}
+
+```
+
+---
+
+### File 113/220: `app/src/main/java/com/novaagent/app/ui/view/NovaHeroOrbView.java`
+
+```java
+package com.novaagent.app.ui.view;
+
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.util.AttributeSet;
+import android.view.View;
+import android.view.animation.LinearInterpolator;
+
+import androidx.annotation.Nullable;
+
+/**
+ * NovaHeroOrbView — Premium Holographic 3D Hero Orb with Letter 'N'.
+ * Features:
+ * - 3 Tilted holographic orbit rings revolving at independent irrational ratios
+ * - Traveling energy beacons on orbit paths
+ * - Core circular reactor with breathing cyan & violet glow
+ * - Geometric 3D-styled futuristic letter 'N'
+ * - Constellation of 14 floating sparkling particles
+ * - Fine cybernetic background circuit trace
+ * - Zero object allocations in onDraw() (Helio G36 / Cortex-A53 optimized)
+ * - Automatic lifecycle pause on hide / detach / power-save
+ */
+public class NovaHeroOrbView extends View {
+
+    public enum OrbState {
+        IDLE,
+        LISTENING,
+        THINKING,
+        SPEAKING,
+        EXECUTING,
+        ERROR,
+        OFFLINE
+    }
+
+    // Color Constants
+    private static final int COLOR_CYAN = 0xFF00E5FF;
+    private static final int COLOR_CYAN_BRIGHT = 0xFF38E8FF;
+    private static final int COLOR_CYAN_GLOW = 0x5500E5FF;
+    private static final int COLOR_VIOLET = 0xFF8B5CF6;
+    private static final int COLOR_VIOLET_GLOW = 0x448B5CF6;
+    private static final int COLOR_CORE_DARK = 0xFF080E1C;
+    private static final int COLOR_CIRCUIT = 0x2600E5FF;
+    private static final int COLOR_AMBER = 0xFFFFAB00;
+    private static final int COLOR_ERROR = 0xFFFF1744;
+    private static final int COLOR_WHITE = 0xFFFFFFFF;
+
+    // Pre-allocated Paints
+    private final Paint paintCircuit = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintGlowCore = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintCore = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintRingCyan = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintRingViolet = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintOrbit1 = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintOrbit2 = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintOrbit3 = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintBeacon = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintParticle = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintLetterN = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintLetterNGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    // Pre-allocated Paths & Rects
+    private final Path pathCircuit = new Path();
+    private final Path pathLetterN = new Path();
+    private final RectF rectCore = new RectF();
+    private final RectF rectOrbit1 = new RectF();
+    private final RectF rectOrbit2 = new RectF();
+    private final RectF rectOrbit3 = new RectF();
+    private final Matrix matrixRotate = new Matrix();
+
+    // Particle Struct (Pre-allocated pool of 14 particles)
+    private static class Particle {
+        float angle;
+        float radiusRatio;
+        float speed;
+        float size;
+        float baseAlpha;
+    }
+    private final Particle[] particles = new Particle[14];
+
+    // Animation & State Variables
+    private OrbState currentState = OrbState.IDLE;
+    private ValueAnimator animator;
+    private float animationFraction = 0f;
+    private float orbitAngle1 = 0f;
+    private float orbitAngle2 = 45f;
+    private float orbitAngle3 = 90f;
+    private float pulsePhase = 0f;
+
+    private boolean isPowerSaveMode = false;
+    private boolean isAnimating = false;
+
+    // View Dimensions
+    private float cx, cy;
+    private float baseRadius;
+
+    public NovaHeroOrbView(Context context) {
+        super(context);
+        init();
+    }
+
+    public NovaHeroOrbView(Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public NovaHeroOrbView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        // Circuit Trace Paint
+        paintCircuit.setStyle(Paint.Style.STROKE);
+        paintCircuit.setStrokeWidth(1.2f);
+        paintCircuit.setColor(COLOR_CIRCUIT);
+
+        // Core Glowing Paint
+        paintGlowCore.setStyle(Paint.Style.FILL);
+
+        // Core Center Circle Paint
+        paintCore.setStyle(Paint.Style.FILL);
+        paintCore.setColor(COLOR_CORE_DARK);
+
+        // Concentric Rings
+        paintRingCyan.setStyle(Paint.Style.STROKE);
+        paintRingCyan.setStrokeWidth(3.0f);
+        paintRingCyan.setColor(COLOR_CYAN);
+
+        paintRingViolet.setStyle(Paint.Style.STROKE);
+        paintRingViolet.setStrokeWidth(2.0f);
+        paintRingViolet.setColor(COLOR_VIOLET);
+
+        // Orbit Rings
+        paintOrbit1.setStyle(Paint.Style.STROKE);
+        paintOrbit1.setStrokeWidth(2.2f);
+        paintOrbit1.setColor(COLOR_CYAN_GLOW);
+
+        paintOrbit2.setStyle(Paint.Style.STROKE);
+        paintOrbit2.setStrokeWidth(1.8f);
+        paintOrbit2.setColor(COLOR_VIOLET_GLOW);
+
+        paintOrbit3.setStyle(Paint.Style.STROKE);
+        paintOrbit3.setStrokeWidth(1.5f);
+        paintOrbit3.setColor(0x3300E5FF);
+
+        // Beacons & Particles
+        paintBeacon.setStyle(Paint.Style.FILL);
+        paintBeacon.setColor(COLOR_WHITE);
+
+        paintParticle.setStyle(Paint.Style.FILL);
+        paintParticle.setColor(COLOR_CYAN);
+
+        // Letter N
+        paintLetterN.setStyle(Paint.Style.FILL);
+        paintLetterNGlow.setStyle(Paint.Style.STROKE);
+        paintLetterNGlow.setStrokeWidth(2.5f);
+        paintLetterNGlow.setColor(0x8000E5FF);
+
+        // Initialize Particle Pool
+        for (int i = 0; i < particles.length; i++) {
+            Particle p = new Particle();
+            p.angle = (float) (Math.PI * 2 * i / particles.length);
+            p.radiusRatio = 1.05f + (float) (Math.random() * 0.45f);
+            p.speed = 0.008f + (float) (Math.random() * 0.012f);
+            p.size = 2.0f + (float) (Math.random() * 2.8f);
+            p.baseAlpha = 0.4f + (float) (Math.random() * 0.55f);
+            particles[i] = p;
+        }
+
+        setupAnimator();
+    }
+
+    private void setupAnimator() {
+        animator = ValueAnimator.ofFloat(0f, 1f);
+        animator.setDuration(4000);
+        animator.setRepeatCount(ValueAnimator.INFINITE);
+        animator.setInterpolator(new LinearInterpolator());
+        animator.addUpdateListener(animation -> {
+            animationFraction = animation.getAnimatedFraction();
+
+            float speedMultiplier = 1.0f;
+            switch (currentState) {
+                case LISTENING:
+                    speedMultiplier = 1.4f;
+                    break;
+                case THINKING:
+                case EXECUTING:
+                    speedMultiplier = 2.0f;
+                    break;
+                case SPEAKING:
+                    speedMultiplier = 1.6f;
+                    break;
+                case OFFLINE:
+                    speedMultiplier = 0.4f;
+                    break;
+                case ERROR:
+                    speedMultiplier = 0.6f;
+                    break;
+                case IDLE:
+                default:
+                    speedMultiplier = 1.0f;
+                    break;
+            }
+
+            if (!isPowerSaveMode) {
+                orbitAngle1 = (orbitAngle1 + 0.65f * speedMultiplier) % 360f;
+                orbitAngle2 = (orbitAngle2 - 0.42f * speedMultiplier) % 360f;
+                orbitAngle3 = (orbitAngle3 + 0.28f * speedMultiplier) % 360f;
+                pulsePhase = (pulsePhase + 0.045f * speedMultiplier) % (float) (Math.PI * 2);
+
+                for (Particle p : particles) {
+                    p.angle = (p.angle + p.speed * speedMultiplier) % (float) (Math.PI * 2);
+                }
+            }
+
+            invalidate();
+        });
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        cx = w / 2f;
+        cy = h / 2f;
+        baseRadius = Math.min(cx, cy) * 0.44f;
+
+        // Core Rect
+        rectCore.set(cx - baseRadius, cy - baseRadius, cx + baseRadius, cy + baseRadius);
+
+        // Orbit 1: Wide horizontal ellipse tilted -25 deg
+        float rx1 = baseRadius * 1.75f;
+        float ry1 = baseRadius * 0.68f;
+        rectOrbit1.set(-rx1, -ry1, rx1, ry1);
+
+        // Orbit 2: Ellipse tilted +35 deg
+        float rx2 = baseRadius * 1.62f;
+        float ry2 = baseRadius * 0.58f;
+        rectOrbit2.set(-rx2, -ry2, rx2, ry2);
+
+        // Orbit 3: Ellipse tilted +75 deg (more upright)
+        float rx3 = baseRadius * 1.50f;
+        float ry3 = baseRadius * 0.52f;
+        rectOrbit3.set(-rx3, -ry3, rx3, ry3);
+
+        // Gradients
+        RadialGradient glowGradient = new RadialGradient(
+                cx, cy, baseRadius * 1.35f,
+                new int[]{0x6600E5FF, 0x228B5CF6, 0x00000000},
+                new float[]{0.0f, 0.65f, 1.0f},
+                Shader.TileMode.CLAMP
+        );
+        paintGlowCore.setShader(glowGradient);
+
+        // Letter N Geometric Cyber Path
+        buildLetterNPath();
+
+        // Background Cybernetic Circuit Lines
+        buildCircuitPath(w, h);
+    }
+
+    private void buildLetterNPath() {
+        pathLetterN.reset();
+        float nHeight = baseRadius * 0.95f;
+        float nWidth = baseRadius * 0.72f;
+        float barWidth = baseRadius * 0.17f;
+
+        float left = cx - nWidth / 2f;
+        float top = cy - nHeight / 2f;
+        float right = cx + nWidth / 2f;
+        float bottom = cy + nHeight / 2f;
+
+        // Left Pillar
+        pathLetterN.moveTo(left, bottom);
+        pathLetterN.lineTo(left, top);
+        pathLetterN.lineTo(left + barWidth, top);
+
+        // Diagonal Crossbar
+        pathLetterN.lineTo(right - barWidth, bottom - barWidth * 0.4f);
+
+        // Right Pillar
+        pathLetterN.lineTo(right - barWidth, top);
+        pathLetterN.lineTo(right, top);
+        pathLetterN.lineTo(right, bottom);
+        pathLetterN.lineTo(right - barWidth, bottom);
+
+        // Inner Diagonal return
+        pathLetterN.lineTo(left + barWidth, top + barWidth * 0.4f);
+        pathLetterN.lineTo(left + barWidth, bottom);
+        pathLetterN.close();
+
+        LinearGradient nGradient = new LinearGradient(
+                left, top, right, bottom,
+                new int[]{COLOR_WHITE, COLOR_CYAN, COLOR_VIOLET},
+                new float[]{0.0f, 0.45f, 1.0f},
+                Shader.TileMode.CLAMP
+        );
+        paintLetterN.setShader(nGradient);
+    }
+
+    private void buildCircuitPath(int w, int h) {
+        pathCircuit.reset();
+        float y = cy;
+        float r = baseRadius * 1.55f;
+
+        // Left Circuit Traces
+        pathCircuit.moveTo(0, y - baseRadius * 0.35f);
+        pathCircuit.lineTo(cx - r - 40, y - baseRadius * 0.35f);
+        pathCircuit.lineTo(cx - r - 10, y - baseRadius * 0.15f);
+        pathCircuit.lineTo(cx - r, y - baseRadius * 0.15f);
+
+        pathCircuit.moveTo(0, y + baseRadius * 0.35f);
+        pathCircuit.lineTo(cx - r - 50, y + baseRadius * 0.35f);
+        pathCircuit.lineTo(cx - r - 20, y + baseRadius * 0.15f);
+        pathCircuit.lineTo(cx - r, y + baseRadius * 0.15f);
+
+        // Right Circuit Traces
+        pathCircuit.moveTo(w, y - baseRadius * 0.35f);
+        pathCircuit.lineTo(cx + r + 40, y - baseRadius * 0.35f);
+        pathCircuit.lineTo(cx + r + 10, y - baseRadius * 0.15f);
+        pathCircuit.lineTo(cx + r, y - baseRadius * 0.15f);
+
+        pathCircuit.moveTo(w, y + baseRadius * 0.35f);
+        pathCircuit.lineTo(cx + r + 50, y + baseRadius * 0.35f);
+        pathCircuit.lineTo(cx + r + 20, y + baseRadius * 0.15f);
+        pathCircuit.lineTo(cx + r, y + baseRadius * 0.15f);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        if (cx <= 0 || cy <= 0) return;
+
+        // 1. Draw Subtle Background Circuit Lines
+        canvas.drawPath(pathCircuit, paintCircuit);
+
+        // 2. Draw Orbit Rings Behind Core (Back arcs)
+        drawOrbitRing(canvas, rectOrbit1, -25f, orbitAngle1, paintOrbit1, true);
+        drawOrbitRing(canvas, rectOrbit2, 35f, orbitAngle2, paintOrbit2, true);
+        drawOrbitRing(canvas, rectOrbit3, 75f, orbitAngle3, paintOrbit3, true);
+
+        // 3. Draw Core Radial Glow
+        float pulse = (float) Math.sin(pulsePhase);
+        float currentCoreRadius = baseRadius * (1.0f + 0.025f * pulse);
+        canvas.drawCircle(cx, cy, currentCoreRadius * 1.35f, paintGlowCore);
+
+        // 4. Draw Dark Reactor Core Circle
+        canvas.drawCircle(cx, cy, currentCoreRadius, paintCore);
+
+        // 5. Draw Concentric Neon Rings
+        int ringCyanColor = (currentState == OrbState.ERROR) ? COLOR_ERROR :
+                (currentState == OrbState.OFFLINE ? 0x6694A3B8 : COLOR_CYAN);
+        paintRingCyan.setColor(ringCyanColor);
+        canvas.drawCircle(cx, cy, currentCoreRadius, paintRingCyan);
+        canvas.drawCircle(cx, cy, currentCoreRadius * 0.88f, paintRingViolet);
+        canvas.drawCircle(cx, cy, currentCoreRadius * 1.08f, paintOrbit3);
+
+        // 6. Draw Orbit Rings In Front of Core (Front arcs & Beacons)
+        drawOrbitRing(canvas, rectOrbit1, -25f, orbitAngle1, paintOrbit1, false);
+        drawOrbitRing(canvas, rectOrbit2, 35f, orbitAngle2, paintOrbit2, false);
+        drawOrbitRing(canvas, rectOrbit3, 75f, orbitAngle3, paintOrbit3, false);
+
+        // 7. Draw Floating Sparkling Particles (Helio G36 low-overhead loop)
+        if (!isPowerSaveMode) {
+            for (Particle p : particles) {
+                float px = cx + (float) Math.cos(p.angle) * (baseRadius * p.radiusRatio);
+                float py = cy + (float) Math.sin(p.angle) * (baseRadius * p.radiusRatio * 0.7f);
+                float pAlpha = (float) Math.abs(Math.sin(p.angle + pulsePhase)) * p.baseAlpha;
+                paintParticle.setAlpha((int) (pAlpha * 255));
+                canvas.drawCircle(px, py, p.size, paintParticle);
+            }
+        }
+
+        // 8. Draw Futuristic Letter 'N' Centerpiece
+        canvas.save();
+        float nScale = 1.0f + 0.015f * pulse;
+        canvas.scale(nScale, nScale, cx, cy);
+        canvas.drawPath(pathLetterN, paintLetterNGlow);
+        canvas.drawPath(pathLetterN, paintLetterN);
+        canvas.restore();
+    }
+
+    /**
+     * Efficiently draws an elliptical orbit ring and its traveling energy beacon.
+     */
+    private void drawOrbitRing(Canvas canvas, RectF bounds, float tiltAngle, float progressAngle, Paint ringPaint, boolean backOnly) {
+        canvas.save();
+        canvas.translate(cx, cy);
+        canvas.rotate(tiltAngle);
+
+        // Draw the full ellipse ring once during front-pass to eliminate duplicate stroke
+        if (!backOnly) {
+            canvas.drawOval(bounds, ringPaint);
+
+            // Draw traveling energy beacon node on the ring
+            if (!isPowerSaveMode) {
+                double rad = Math.toRadians(progressAngle);
+                float bx = bounds.right * (float) Math.cos(rad);
+                float by = bounds.bottom * (float) Math.sin(rad);
+
+                paintBeacon.setAlpha(255);
+                canvas.drawCircle(bx, by, 4.2f, paintBeacon);
+                paintBeacon.setAlpha(120);
+                canvas.drawCircle(bx, by, 7.5f, paintBeacon);
+            }
+        }
+
+        canvas.restore();
+    }
+
+    public void setOrbState(OrbState state) {
+        this.currentState = state;
+        invalidate();
+    }
+
+    public OrbState getOrbState() {
+        return currentState;
+    }
+
+    public void setPowerSaveMode(boolean powerSave) {
+        this.isPowerSaveMode = powerSave;
+        if (powerSave) {
+            pauseAnimation();
+        } else {
+            resumeAnimation();
+        }
+        invalidate();
+    }
+
+    public void startAnimation() {
+        if (animator != null && !animator.isRunning() && !isPowerSaveMode) {
+            animator.start();
+            isAnimating = true;
+        }
+    }
+
+    public void pauseAnimation() {
+        if (animator != null && animator.isRunning()) {
+            animator.cancel();
+            isAnimating = false;
+        }
+    }
+
+    public void resumeAnimation() {
+        if (animator != null && !animator.isRunning() && !isPowerSaveMode && getVisibility() == VISIBLE) {
+            animator.start();
+            isAnimating = true;
+        }
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (getVisibility() == VISIBLE && !isPowerSaveMode) {
+            startAnimation();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        pauseAnimation();
+    }
+
+    @Override
+    protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (visibility == VISIBLE && !isPowerSaveMode) {
+            resumeAnimation();
+        } else {
+            pauseAnimation();
+        }
+    }
+}
+
+```
+
+---
+
+### File 114/220: `app/src/main/java/com/novaagent/app/ui/view/PulsingMicButton.java`
+
+```java
+package com.novaagent.app.ui.view;
+
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.OvershootInterpolator;
+
+import androidx.annotation.Nullable;
+
+/**
+ * PulsingMicButton — Premium Voice Trigger Button with Acoustic Ripple Waves.
+ * Recreates the exact microphone button from Screenshot 1:
+ * - Concentric acoustic acoustic rings expanding outward
+ * - Dark metallic inner circle with cyan neon border
+ * - Stylized vector microphone icon
+ * - Touch spring feedback
+ * - Low-resource canvas drawing
+ */
+public class PulsingMicButton extends View {
+
+    private final Paint paintRipple = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintCircleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintCircleBorder = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint paintMic = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path pathMic = new Path();
+
+    private ValueAnimator rippleAnimator;
+    private float rippleProgress = 0f;
+    private boolean isListening = false;
+    private boolean isPowerSaveMode = false;
+
+    private float cx, cy, innerRadius;
+
+    public PulsingMicButton(Context context) {
+        super(context);
+        init();
+    }
+
+    public PulsingMicButton(Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    public PulsingMicButton(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init();
+    }
+
+    private void init() {
+        setClickable(true);
+        setFocusable(true);
+
+        paintRipple.setStyle(Paint.Style.STROKE);
+        paintRipple.setColor(0x4000E5FF);
+
+        paintCircleBg.setStyle(Paint.Style.FILL);
+        paintCircleBg.setColor(0xFF0F1A2E);
+
+        paintCircleBorder.setStyle(Paint.Style.STROKE);
+        paintCircleBorder.setStrokeWidth(3f);
+        paintCircleBorder.setColor(0xFF00E5FF);
+
+        paintMic.setStyle(Paint.Style.FILL);
+        paintMic.setColor(Color.WHITE);
+
+        rippleAnimator = ValueAnimator.ofFloat(0f, 1f);
+        rippleAnimator.setDuration(1600);
+        rippleAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        rippleAnimator.setInterpolator(new LinearInterpolator());
+        rippleAnimator.addUpdateListener(animation -> {
+            rippleProgress = animation.getAnimatedFraction();
+            invalidate();
+        });
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        cx = w / 2f;
+        cy = h / 2f;
+        innerRadius = Math.min(cx, cy) * 0.58f;
+
+        // Metallic gradient for inner circle
+        LinearGradient grad = new LinearGradient(
+                cx - innerRadius, cy - innerRadius,
+                cx + innerRadius, cy + innerRadius,
+                new int[]{0xFF1C2C4A, 0xFF0A1220},
+                new float[]{0f, 1f},
+                Shader.TileMode.CLAMP
+        );
+        paintCircleBg.setShader(grad);
+
+        buildMicPath();
+    }
+
+    private void buildMicPath() {
+        pathMic.reset();
+        float r = innerRadius * 0.42f;
+
+        // Microphone capsule
+        float top = cy - r * 0.9f;
+        float bottom = cy + r * 0.2f;
+        float halfW = r * 0.38f;
+
+        // Capsule body
+        pathMic.moveTo(cx - halfW, top + halfW);
+        pathMic.quadTo(cx - halfW, top, cx, top);
+        pathMic.quadTo(cx + halfW, top, cx + halfW, top + halfW);
+        pathMic.lineTo(cx + halfW, bottom - halfW);
+        pathMic.quadTo(cx + halfW, bottom, cx, bottom);
+        pathMic.quadTo(cx - halfW, bottom, cx - halfW, bottom - halfW);
+        pathMic.close();
+
+        // Stand / base line
+        pathMic.moveTo(cx - halfW * 0.7f, cy + r * 0.85f);
+        pathMic.lineTo(cx + halfW * 0.7f, cy + r * 0.85f);
+        pathMic.moveTo(cx, cy + r * 0.55f);
+        pathMic.lineTo(cx, cy + r * 0.85f);
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        if (cx <= 0 || cy <= 0) return;
+
+        // 1. Draw Acoustic Ripple Waves
+        if (!isPowerSaveMode) {
+            float maxRipple = Math.min(cx, cy) * 0.96f;
+            float extra = (maxRipple - innerRadius);
+
+            for (int i = 0; i < 3; i++) {
+                float waveFrac = (rippleProgress + i * 0.33f) % 1.0f;
+                float currentRadius = innerRadius + waveFrac * extra;
+                float alpha = (1.0f - waveFrac) * (isListening ? 0.75f : 0.35f);
+                paintRipple.setStrokeWidth(1.8f);
+                paintRipple.setColor(0x00E5FF);
+                paintRipple.setAlpha((int) (alpha * 255));
+                canvas.drawCircle(cx, cy, currentRadius, paintRipple);
+            }
+        }
+
+        // 2. Draw Metallic Inner Circle
+        canvas.drawCircle(cx, cy, innerRadius, paintCircleBg);
+
+        // 3. Draw Neon Border
+        canvas.drawCircle(cx, cy, innerRadius, paintCircleBorder);
+
+        // 4. Draw Vector Microphone Icon
+        canvas.drawPath(pathMic, paintMic);
+    }
+
+    public void setListening(boolean listening) {
+        this.isListening = listening;
+        paintCircleBorder.setColor(listening ? 0xFF00E676 : 0xFF00E5FF);
+        invalidate();
+    }
+
+    public void setPowerSaveMode(boolean powerSave) {
+        this.isPowerSaveMode = powerSave;
+        if (powerSave && rippleAnimator != null && rippleAnimator.isRunning()) {
+            rippleAnimator.cancel();
+        } else if (!powerSave && rippleAnimator != null && !rippleAnimator.isRunning() && getVisibility() == VISIBLE) {
+            rippleAnimator.start();
+        }
+        invalidate();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                animate().scaleX(0.92f).scaleY(0.92f).setDuration(100).start();
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                animate().scaleX(1.0f).scaleY(1.0f).setDuration(200)
+                        .setInterpolator(new OvershootInterpolator(1.8f)).start();
+                break;
+        }
+        return super.onTouchEvent(event);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (getVisibility() == VISIBLE && !isPowerSaveMode && rippleAnimator != null && !rippleAnimator.isRunning()) {
+            rippleAnimator.start();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (rippleAnimator != null) {
+            rippleAnimator.cancel();
+        }
+    }
+
+    @Override
+    protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (visibility == VISIBLE && !isPowerSaveMode) {
+            if (rippleAnimator != null && !rippleAnimator.isRunning()) rippleAnimator.start();
+        } else {
+            if (rippleAnimator != null && rippleAnimator.isRunning()) rippleAnimator.cancel();
+        }
+    }
+}
+
+```
+
+---
+
+### File 115/220: `app/src/main/res/drawable/bg_badge_active.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13633,7 +14688,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 112/204: `app/src/main/res/drawable/bg_badge_green.xml`
+### File 116/220: `app/src/main/res/drawable/bg_badge_green.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13647,7 +14702,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 113/204: `app/src/main/res/drawable/bg_badge_green_solid.xml`
+### File 117/220: `app/src/main/res/drawable/bg_badge_green_solid.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13660,7 +14715,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 114/204: `app/src/main/res/drawable/bg_badge_inactive.xml`
+### File 118/220: `app/src/main/res/drawable/bg_badge_inactive.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13674,7 +14729,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 115/204: `app/src/main/res/drawable/bg_banner_glow.xml`
+### File 119/220: `app/src/main/res/drawable/bg_banner_glow.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13688,35 +14743,46 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 116/204: `app/src/main/res/drawable/bg_box_selected.xml`
+### File 120/220: `app/src/main/res/drawable/bg_box_selected.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:startColor="#1B355A" android:endColor="#0F203C" android:angle="270" />
-    <corners android:radius="16dp" />
-    <stroke android:width="2dp" android:color="#00E5FF" />
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="45"
+        android:startColor="#00E5FF"
+        android:centerColor="#0077FE"
+        android:endColor="#8B5CF6" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1.5dp"
+        android:color="#38E8FF" />
 </shape>
 
 ```
 
 ---
 
-### File 117/204: `app/src/main/res/drawable/bg_box_unselected.xml`
+### File 121/220: `app/src/main/res/drawable/bg_box_unselected.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#0A1122" />
-    <corners android:radius="16dp" />
-    <stroke android:width="1dp" android:color="#1FFFFFFF" />
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#4D0C1527" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1dp"
+        android:color="#1E2D4A" />
 </shape>
 
 ```
 
 ---
 
-### File 118/204: `app/src/main/res/drawable/bg_btn_gradient.xml`
+### File 122/220: `app/src/main/res/drawable/bg_btn_gradient.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13733,7 +14799,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 119/204: `app/src/main/res/drawable/bg_bubble_cyber.xml`
+### File 123/220: `app/src/main/res/drawable/bg_bubble_cyber.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13748,7 +14814,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 120/204: `app/src/main/res/drawable/bg_card_cyber.xml`
+### File 124/220: `app/src/main/res/drawable/bg_card_cyber.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13762,7 +14828,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 121/204: `app/src/main/res/drawable/bg_circle_btn.xml`
+### File 125/220: `app/src/main/res/drawable/bg_circle_btn.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13775,7 +14841,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 122/204: `app/src/main/res/drawable/bg_close_btn.xml`
+### File 126/220: `app/src/main/res/drawable/bg_close_btn.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13788,7 +14854,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 123/204: `app/src/main/res/drawable/bg_color_cyan.xml`
+### File 127/220: `app/src/main/res/drawable/bg_color_cyan.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13801,7 +14867,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 124/204: `app/src/main/res/drawable/bg_color_green.xml`
+### File 128/220: `app/src/main/res/drawable/bg_color_green.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13813,7 +14879,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 125/204: `app/src/main/res/drawable/bg_color_orange.xml`
+### File 129/220: `app/src/main/res/drawable/bg_color_orange.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13825,7 +14891,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 126/204: `app/src/main/res/drawable/bg_color_pink.xml`
+### File 130/220: `app/src/main/res/drawable/bg_color_pink.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13837,7 +14903,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 127/204: `app/src/main/res/drawable/bg_color_purple.xml`
+### File 131/220: `app/src/main/res/drawable/bg_color_purple.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13849,7 +14915,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 128/204: `app/src/main/res/drawable/bg_dropdown_pill.xml`
+### File 132/220: `app/src/main/res/drawable/bg_dropdown_pill.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13863,7 +14929,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 129/204: `app/src/main/res/drawable/bg_edit_text.xml`
+### File 133/220: `app/src/main/res/drawable/bg_edit_text.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13877,7 +14943,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 130/204: `app/src/main/res/drawable/bg_hologram_aura.xml`
+### File 134/220: `app/src/main/res/drawable/bg_hologram_aura.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13892,7 +14958,26 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 131/204: `app/src/main/res/drawable/bg_jarvis_badge_active.xml`
+### File 135/220: `app/src/main/res/drawable/bg_hud_dock.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#F2060913" />
+            <stroke
+                android:width="1dp"
+                android:color="#1E2D4A" />
+        </shape>
+    </item>
+</layer-list>
+
+```
+
+---
+
+### File 136/220: `app/src/main/res/drawable/bg_jarvis_badge_active.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13909,7 +14994,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 132/204: `app/src/main/res/drawable/bg_jarvis_badge_cyan.xml`
+### File 137/220: `app/src/main/res/drawable/bg_jarvis_badge_cyan.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13926,7 +15011,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 133/204: `app/src/main/res/drawable/bg_jarvis_badge_purple.xml`
+### File 138/220: `app/src/main/res/drawable/bg_jarvis_badge_purple.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13943,7 +15028,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 134/204: `app/src/main/res/drawable/bg_jarvis_badge_warning.xml`
+### File 139/220: `app/src/main/res/drawable/bg_jarvis_badge_warning.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13960,7 +15045,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 135/204: `app/src/main/res/drawable/bg_jarvis_btn_primary.xml`
+### File 140/220: `app/src/main/res/drawable/bg_jarvis_btn_primary.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -13983,7 +15068,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 136/204: `app/src/main/res/drawable/bg_jarvis_btn_secondary.xml`
+### File 141/220: `app/src/main/res/drawable/bg_jarvis_btn_secondary.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14004,7 +15089,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 137/204: `app/src/main/res/drawable/bg_jarvis_card.xml`
+### File 142/220: `app/src/main/res/drawable/bg_jarvis_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14021,7 +15106,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 138/204: `app/src/main/res/drawable/bg_jarvis_card_interactive.xml`
+### File 143/220: `app/src/main/res/drawable/bg_jarvis_card_interactive.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14042,7 +15127,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 139/204: `app/src/main/res/drawable/bg_jarvis_chip.xml`
+### File 144/220: `app/src/main/res/drawable/bg_jarvis_chip.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14059,7 +15144,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 140/204: `app/src/main/res/drawable/bg_jarvis_input.xml`
+### File 145/220: `app/src/main/res/drawable/bg_jarvis_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14076,7 +15161,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 141/204: `app/src/main/res/drawable/bg_jarvis_main.xml`
+### File 146/220: `app/src/main/res/drawable/bg_jarvis_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14094,7 +15179,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 142/204: `app/src/main/res/drawable/bg_jarvis_mic_trigger.xml`
+### File 147/220: `app/src/main/res/drawable/bg_jarvis_mic_trigger.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14118,7 +15203,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 143/204: `app/src/main/res/drawable/bg_jarvis_reactor_inner.xml`
+### File 148/220: `app/src/main/res/drawable/bg_jarvis_reactor_inner.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14136,7 +15221,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 144/204: `app/src/main/res/drawable/bg_jarvis_reactor_outer.xml`
+### File 149/220: `app/src/main/res/drawable/bg_jarvis_reactor_outer.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14152,7 +15237,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 145/204: `app/src/main/res/drawable/bg_jelly_bubble.xml`
+### File 150/220: `app/src/main/res/drawable/bg_jelly_bubble.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14165,7 +15250,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 146/204: `app/src/main/res/drawable/bg_main_dark.xml`
+### File 151/220: `app/src/main/res/drawable/bg_main_dark.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14177,7 +15262,194 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 147/204: `app/src/main/res/drawable/bg_premium_badge.xml`
+### File 152/220: `app/src/main/res/drawable/bg_neon_card_cyan.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#E60D172A"
+        android:endColor="#D9080E1A" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#00E5FF" />
+</shape>
+
+```
+
+---
+
+### File 153/220: `app/src/main/res/drawable/bg_neon_card_green.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#E60D241E"
+        android:endColor="#D9061410" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#00E676" />
+</shape>
+
+```
+
+---
+
+### File 154/220: `app/src/main/res/drawable/bg_neon_card_orange.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#E626180D"
+        android:endColor="#D9160E06" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#FFAB00" />
+</shape>
+
+```
+
+---
+
+### File 155/220: `app/src/main/res/drawable/bg_neon_card_purple.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#E612102A"
+        android:endColor="#D9090818" />
+    <corners android:radius="18dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#8B5CF6" />
+</shape>
+
+```
+
+---
+
+### File 156/220: `app/src/main/res/drawable/bg_neon_input_bar.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E60A1324" />
+    <corners android:radius="28dp" />
+    <stroke
+        android:width="1.5dp"
+        android:color="#00E5FF" />
+</shape>
+
+```
+
+---
+
+### File 157/220: `app/src/main/res/drawable/bg_neon_pill_cyan.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#3300E5FF" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#00E5FF" />
+</shape>
+
+```
+
+---
+
+### File 158/220: `app/src/main/res/drawable/bg_neon_pill_green.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#2600E676" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#00E676" />
+</shape>
+
+```
+
+---
+
+### File 159/220: `app/src/main/res/drawable/bg_neon_pill_purple.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#268B5CF6" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#8B5CF6" />
+</shape>
+
+```
+
+---
+
+### File 160/220: `app/src/main/res/drawable/bg_neon_pill_red_outline.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1AFF1744" />
+    <corners android:radius="20dp" />
+    <stroke
+        android:width="1.2dp"
+        android:color="#FF1744" />
+</shape>
+
+```
+
+---
+
+### File 161/220: `app/src/main/res/drawable/bg_neon_pill_solid_cyan.xml`
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="45"
+        android:startColor="#00E5FF"
+        android:endColor="#0077FE" />
+    <corners android:radius="24dp" />
+</shape>
+
+```
+
+---
+
+### File 162/220: `app/src/main/res/drawable/bg_premium_badge.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14191,7 +15463,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 148/204: `app/src/main/res/drawable/bg_premium_button.xml`
+### File 163/220: `app/src/main/res/drawable/bg_premium_button.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14208,7 +15480,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 149/204: `app/src/main/res/drawable/bg_premium_card.xml`
+### File 164/220: `app/src/main/res/drawable/bg_premium_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14222,7 +15494,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 150/204: `app/src/main/res/drawable/bg_premium_input.xml`
+### File 165/220: `app/src/main/res/drawable/bg_premium_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14236,7 +15508,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 151/204: `app/src/main/res/drawable/bg_premium_main.xml`
+### File 166/220: `app/src/main/res/drawable/bg_premium_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14248,7 +15520,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 152/204: `app/src/main/res/drawable/bg_start_glow.xml`
+### File 167/220: `app/src/main/res/drawable/bg_start_glow.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14261,7 +15533,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 153/204: `app/src/main/res/drawable/bg_ultra_badge.xml`
+### File 168/220: `app/src/main/res/drawable/bg_ultra_badge.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14275,7 +15547,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 154/204: `app/src/main/res/drawable/bg_ultra_button.xml`
+### File 169/220: `app/src/main/res/drawable/bg_ultra_button.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14293,7 +15565,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 155/204: `app/src/main/res/drawable/bg_ultra_card.xml`
+### File 170/220: `app/src/main/res/drawable/bg_ultra_card.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14307,7 +15579,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 156/204: `app/src/main/res/drawable/bg_ultra_input.xml`
+### File 171/220: `app/src/main/res/drawable/bg_ultra_input.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14321,7 +15593,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 157/204: `app/src/main/res/drawable/bg_ultra_main.xml`
+### File 172/220: `app/src/main/res/drawable/bg_ultra_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14333,7 +15605,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 158/204: `app/src/main/res/drawable/ic_jarvis_bolt.xml`
+### File 173/220: `app/src/main/res/drawable/ic_jarvis_bolt.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14351,7 +15623,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 159/204: `app/src/main/res/drawable/ic_jarvis_chip.xml`
+### File 174/220: `app/src/main/res/drawable/ic_jarvis_chip.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14372,7 +15644,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 160/204: `app/src/main/res/drawable/ic_jarvis_mic.xml`
+### File 175/220: `app/src/main/res/drawable/ic_jarvis_mic.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14393,7 +15665,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 161/204: `app/src/main/res/drawable/ic_jarvis_shield.xml`
+### File 176/220: `app/src/main/res/drawable/ic_jarvis_shield.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14411,7 +15683,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 162/204: `app/src/main/res/drawable/ic_jarvis_sparkle.xml`
+### File 177/220: `app/src/main/res/drawable/ic_jarvis_sparkle.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14432,7 +15704,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 163/204: `app/src/main/res/drawable/ic_jelly_face.xml`
+### File 178/220: `app/src/main/res/drawable/ic_jelly_face.xml`
 
 ```xml
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -14455,7 +15727,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 164/204: `app/src/main/res/drawable/ic_launcher_background.xml`
+### File 179/220: `app/src/main/res/drawable/ic_launcher_background.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14469,7 +15741,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 165/204: `app/src/main/res/drawable/ic_launcher_foreground.xml`
+### File 180/220: `app/src/main/res/drawable/ic_launcher_foreground.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14488,7 +15760,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 166/204: `app/src/main/res/drawable/ic_launcher_nova.xml`
+### File 181/220: `app/src/main/res/drawable/ic_launcher_nova.xml`
 
 ```xml
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -14521,7 +15793,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 167/204: `app/src/main/res/drawable/ic_nova_n_logo.xml`
+### File 182/220: `app/src/main/res/drawable/ic_nova_n_logo.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14542,7 +15814,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 168/204: `app/src/main/res/drawable/ic_shape_circle.xml`
+### File 183/220: `app/src/main/res/drawable/ic_shape_circle.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14555,7 +15827,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 169/204: `app/src/main/res/drawable/ic_shape_heart.xml`
+### File 184/220: `app/src/main/res/drawable/ic_shape_heart.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14568,7 +15840,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 170/204: `app/src/main/res/drawable/ic_shape_square.xml`
+### File 185/220: `app/src/main/res/drawable/ic_shape_square.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14581,7 +15853,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 171/204: `app/src/main/res/drawable/ic_shape_star.xml`
+### File 186/220: `app/src/main/res/drawable/ic_shape_star.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14594,7 +15866,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 172/204: `app/src/main/res/drawable/ic_soundwave.xml`
+### File 187/220: `app/src/main/res/drawable/ic_soundwave.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14612,7 +15884,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 173/204: `app/src/main/res/layout/activity_main.xml`
+### File 188/220: `app/src/main/res/layout/activity_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -14622,14 +15894,14 @@ public class MainActivity extends AppCompatActivity {
     android:background="@drawable/bg_jarvis_main">
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TOP APP BAR (FUTURISTIC STICKY HEADER)                         -->
+    <!-- TOP APP BAR (FUTURISTIC FLOATING GLASS HEADER)                 -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <RelativeLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_alignParentTop="true"
-        android:background="#80060913"
+        android:background="#D9060913"
         android:paddingHorizontal="16dp"
         android:gravity="center_vertical"
         android:elevation="8dp">
@@ -14719,6 +15991,7 @@ public class MainActivity extends AppCompatActivity {
                 android:paddingVertical="5dp"
                 android:layout_marginEnd="8dp"/>
 
+            <!-- Sparkle / Theme Button -->
             <ImageView
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="38dp"
@@ -14731,6 +16004,7 @@ public class MainActivity extends AppCompatActivity {
                 android:clickable="true"
                 android:focusable="true"/>
 
+            <!-- Settings Button -->
             <ImageView
                 android:id="@+id/btnSettings"
                 android:layout_width="38dp"
@@ -14745,7 +16019,7 @@ public class MainActivity extends AppCompatActivity {
     </RelativeLayout>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 1: CONTAINER BERANDA / DASHBOARD                           -->
+    <!-- TAB 1: CONTAINER BERANDA / DASHBOARD (SCREENSHOT 1)            -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerHome"
@@ -14761,46 +16035,24 @@ public class MainActivity extends AppCompatActivity {
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
-            <!-- 1. AI REACTOR CORE CENTERPIECE -->
+            <!-- 1. FREESTANDING 3D HERO ORB N (SCREENSHOT 1 HERO) -->
+            <com.novaagent.app.ui.view.NovaHeroOrbView
+                android:id="@+id/heroOrbView"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginBottom="4dp"/>
+
+            <!-- State Text Centerpiece -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
                 android:orientation="vertical"
-                android:gravity="center_horizontal"
-                android:padding="20dp"
+                android:gravity="center"
                 android:layout_marginBottom="16dp">
-
-                <RelativeLayout
-                    android:layout_width="110dp"
-                    android:layout_height="110dp"
-                    android:layout_marginBottom="14dp">
-
-                    <!-- Outer Reactor Glow -->
-                    <View
-                        android:id="@+id/viewReactorOuter"
-                        android:layout_width="110dp"
-                        android:layout_height="110dp"
-                        android:background="@drawable/bg_jarvis_reactor_outer"/>
-
-                    <!-- Inner Reactor Core -->
-                    <View
-                        android:id="@+id/viewReactorInner"
-                        android:layout_width="74dp"
-                        android:layout_height="74dp"
-                        android:layout_centerInParent="true"
-                        android:background="@drawable/bg_jarvis_reactor_inner"/>
-
-                    <ImageView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:layout_centerInParent="true"
-                        android:src="@drawable/ic_nova_n_logo"/>
-                </RelativeLayout>
 
                 <TextView
                     android:id="@+id/tvAiStateTitle"
@@ -14808,7 +16060,7 @@ public class MainActivity extends AppCompatActivity {
                     android:layout_height="wrap_content"
                     android:text="SIAP MENERIMA PERINTAH"
                     android:textColor="#00E5FF"
-                    android:textSize="14sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
                     android:letterSpacing="0.08"/>
 
@@ -14819,33 +16071,34 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Full-Duplex Voice Engine • Zero-Latency Dispatch Aktif"
                     android:textColor="#94A3B8"
                     android:textSize="11sp"
-                    android:layout_marginTop="4dp"/>
+                    android:layout_marginTop="3dp"/>
             </LinearLayout>
 
-            <!-- 2. QUICK VOICE & TEXT COMMAND PROMPT BAR -->
+            <!-- 2. PILL COMMAND INPUT BAR WITH ACOUSTIC PULSING MIC TRIGGER -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:layout_height="58dp"
+                android:background="@drawable/bg_neon_input_bar"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="16dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="4dp"
+                android:layout_marginBottom="20dp">
 
                 <EditText
                     android:id="@+id/etQuickPrompt"
                     android:layout_width="0dp"
-                    android:layout_height="48dp"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:hint="Ketik atau ucapkan perintah..."
                     android:textColorHint="#64748B"
                     android:textColor="#FFFFFF"
                     android:background="@null"
-                    android:paddingHorizontal="14dp"
                     android:textSize="13sp"
                     android:imeOptions="actionSend"
                     android:inputType="text"/>
 
+                <!-- Quick Action Bolt Button -->
                 <ImageView
                     android:id="@+id/btnQuickSend"
                     android:layout_width="44dp"
@@ -14858,99 +16111,106 @@ public class MainActivity extends AppCompatActivity {
                     android:clickable="true"
                     android:focusable="true"/>
 
-                <ImageView
+                <!-- Pulsing Acoustic Microphone Trigger Button -->
+                <com.novaagent.app.ui.view.PulsingMicButton
                     android:id="@+id/btnMicTrigger"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:src="@drawable/ic_jarvis_mic"
-                    android:tint="#050811"
-                    android:background="@drawable/bg_jarvis_mic_trigger"
-                    android:padding="10dp"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
                     android:clickable="true"
                     android:focusable="true"/>
             </LinearLayout>
 
-            <!-- 3. QUICK ACTION SHORTCUTS (2x2 GRID) -->
+            <!-- 3. FEATURE SHORTCUTS (2x2 NEON GRID - SCREENSHOT 1) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="2"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
-                <!-- Shortcut 1: Keahlian Hub -->
-                <LinearLayout
+                <!-- Shortcut 1: Keahlian Jarvis (Cyan Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutSkills"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginEnd="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_jarvis_sparkle"
-                        android:tint="#00E5FF"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Keahlian Jarvis"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvSkillsCountBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="29 Keahlian Offline Aktif"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_sparkle"
+                            android:tint="#00E5FF"
+                            android:layout_marginBottom="10dp"/>
 
-                <!-- Shortcut 2: Kontrol Perangkat -->
-                <LinearLayout
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Keahlian Jarvis"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/tvSkillsCountBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="29 Keahlian Offline Aktif"
+                            android:textColor="#00E676"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
+
+                <!-- Shortcut 2: Kontrol Hardware (Purple Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutDevice"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@android:drawable/ic_lock_idle_charging"
-                        android:tint="#8B5CF6"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Kontrol Hardware"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:id="@+id/tvHomeBatteryBrief"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Senter, Volume, Daya"
-                        android:textColor="#94A3B8"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_shield"
+                            android:tint="#8B5CF6"
+                            android:layout_marginBottom="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Kontrol Hardware"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/tvHomeBatteryBrief"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Senter, Volume, Daya"
+                            android:textColor="#94A3B8"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
             </LinearLayout>
 
             <LinearLayout
@@ -14958,82 +16218,92 @@ public class MainActivity extends AppCompatActivity {
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:weightSum="2"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="20dp">
 
-                <!-- Shortcut 3: Omni Router -->
-                <LinearLayout
+                <!-- Shortcut 3: Omni Router 2.0 (Cyan Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutOmni"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginEnd="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@drawable/ic_jarvis_chip"
-                        android:tint="#00E5FF"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Omni Router 2.0"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Cascade &amp; Breaker"
-                        android:textColor="#00E5FF"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_jarvis_chip"
+                            android:tint="#00E5FF"
+                            android:layout_marginBottom="10dp"/>
 
-                <!-- Shortcut 4: Memori Jangka Panjang -->
-                <LinearLayout
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Omni Router 2.0"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Cascade &amp; Breaker"
+                            android:textColor="#00E5FF"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
+
+                <!-- Shortcut 4: Memori RAG (Orange Glow) -->
+                <com.novaagent.app.ui.view.NeonCardView
                     android:id="@+id/cardShortcutMemory"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_jarvis_card_interactive"
-                    android:orientation="vertical"
-                    android:padding="14dp"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="6dp"
                     android:clickable="true"
                     android:focusable="true">
 
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:src="@android:drawable/ic_menu_recent_history"
-                        android:tint="#FFAB00"
-                        android:layout_marginBottom="8dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Memori RAG"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"/>
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SQLite Semantik"
-                        android:textColor="#94A3B8"
-                        android:textSize="10sp"/>
-                </LinearLayout>
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@android:drawable/ic_menu_recent_history"
+                            android:tint="#FFAB00"
+                            android:layout_marginBottom="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Memori RAG"
+                            android:textColor="#FFFFFF"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SQLite Semantik"
+                            android:textColor="#94A3B8"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                </com.novaagent.app.ui.view.NeonCardView>
             </LinearLayout>
 
-            <!-- 4. KARTU KONFIGURASI AI PROVIDER -->
+            <!-- 4. PUSAT PROVIDER AI & MULTI-KEY (GLASS PANEL) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -15067,41 +16337,23 @@ public class MainActivity extends AppCompatActivity {
                             android:textColor="#94A3B8"
                             android:textSize="11sp"/>
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvActiveProviderBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="✔ Siap"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="3dp"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"/>
                 </RelativeLayout>
 
-                <!-- Spinner Provider -->
+                <!-- Provider Spinner -->
                 <Spinner
                     android:id="@+id/spinnerProvider"
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    android:layout_height="46dp"
                     android:background="@drawable/bg_jarvis_input"
                     android:popupBackground="#0C1222"
-                    android:paddingStart="14dp"
-                    android:layout_marginBottom="12dp"/>
+                    android:paddingStart="12dp"
+                    android:layout_marginBottom="10dp"/>
 
                 <!-- Model Info -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/bg_jarvis_chip"
-                    android:paddingHorizontal="12dp"
-                    android:paddingVertical="8dp"
                     android:layout_marginBottom="12dp">
 
                     <TextView
@@ -15122,7 +16374,7 @@ public class MainActivity extends AppCompatActivity {
                         android:textStyle="bold"/>
                 </LinearLayout>
 
-                <!-- API Key Omni-Rotator Input -->
+                <!-- API Key Input -->
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="50dp"
@@ -15135,7 +16387,7 @@ public class MainActivity extends AppCompatActivity {
                         android:id="@+id/apiKeyInput"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:hint="API Key (Dukung Multi-Key dipisah koma)"
+                        android:hint="API Key (Multi-Key dipisah koma)"
                         android:textColorHint="#64748B"
                         android:textColor="#FFFFFF"
                         android:background="@null"
@@ -15163,10 +16415,10 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Simpan Konfigurasi AI"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_btn_secondary"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"
-                    android:textSize="14sp"/>
+                    android:textSize="13sp"/>
             </LinearLayout>
 
             <!-- 5. KARTU STATUS PERIZINAN SISTEM -->
@@ -15176,7 +16428,7 @@ public class MainActivity extends AppCompatActivity {
                 android:background="@drawable/bg_jarvis_card"
                 android:orientation="vertical"
                 android:padding="18dp"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="16dp">
 
                 <RelativeLayout
                     android:layout_width="match_parent"
@@ -15215,7 +16467,7 @@ public class MainActivity extends AppCompatActivity {
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Layanan Aksesibilitas (A11y)"
+                        android:text="1. Layanan Aksesibilitas"
                         android:textColor="#FFFFFF"
                         android:textSize="13sp"/>
 
@@ -15223,22 +16475,20 @@ public class MainActivity extends AppCompatActivity {
                         android:id="@+id/tvStatusA11y"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="✔ Terverifikasi"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"
+                        android:text="Buka Pengaturan"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
                         android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <!-- Jendela Mengambang (Overlay) -->
+                <!-- Overlay -->
                 <RelativeLayout
                     android:id="@+id/btnOverlay"
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:background="@drawable/bg_jarvis_input"
+                    android:layout_marginBottom="12dp"
                     android:paddingHorizontal="14dp"
                     android:gravity="center_vertical"
                     android:clickable="true"
@@ -15247,7 +16497,7 @@ public class MainActivity extends AppCompatActivity {
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Jendela Mengambang (Overlay)"
+                        android:text="2. Izin Tampil Di Atas Aplikasi"
                         android:textColor="#FFFFFF"
                         android:textSize="13sp"/>
 
@@ -15255,63 +16505,31 @@ public class MainActivity extends AppCompatActivity {
                         android:id="@+id/tvStatusOverlay"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="✔ Terverifikasi"
-                        android:background="@drawable/bg_jarvis_badge_active"
-                        android:textColor="#00E676"
-                        android:textSize="10sp"
+                        android:text="Buka Pengaturan"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
                         android:textStyle="bold"
-                        android:paddingHorizontal="8dp"
-                        android:paddingVertical="3dp"
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
-            </LinearLayout>
 
-            <!-- 6. TOMBOL UTAMA START/STOP -->
-            <Button
-                android:id="@+id/btnStart"
-                android:layout_width="match_parent"
-                android:layout_height="58dp"
-                android:backgroundTint="@null"
-                android:background="@drawable/bg_jarvis_btn_primary"
-                android:text="▶  AKTIFKAN NOVA JARVIS"
-                android:textAllCaps="false"
-                android:textColor="#050811"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:elevation="6dp"
-                android:layout_marginBottom="20dp"/>
-
-            <!-- 7. DEVELOPER CREDIT -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginBottom="24dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Arsitektur Otonom Diciptakan Oleh"
-                    android:textSize="10sp"
-                    android:textColor="#64748B"/>
-
-                <TextView
-                    android:id="@+id/tvDeveloperCredit"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="★ MOCH KHOIRUL AZMAN ★"
-                    android:textSize="12sp"
+                <!-- Tombol Start Service -->
+                <Button
+                    android:id="@+id/btnStart"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Luncurkan Asisten NOVA JARVIS"
+                    android:textAllCaps="false"
+                    android:backgroundTint="@null"
+                    android:background="@drawable/bg_neon_pill_solid_cyan"
+                    android:textColor="#050811"
                     android:textStyle="bold"
-                    android:textColor="#00E5FF"
-                    android:letterSpacing="0.08"
-                    android:layout_marginTop="2dp"/>
+                    android:textSize="14sp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 2: CONTAINER KEAHLIAN / SKILLS (INTERAKTIF & BERFUNGSI)    -->
+    <!-- TAB 2: CONTAINER KEAHLIAN / SKILLS (SCREENSHOT 2)              -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerSkills"
@@ -15329,16 +16547,36 @@ public class MainActivity extends AppCompatActivity {
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- Title & 29 Skills Offline Badge -->
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pusat Keahlian Nova Jarvis"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Pusat Keahlian Nova Jarvis"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_alignParentStart="true"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="29 KEAHLIAN OFFLINE"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:textColor="#00E676"
+                    android:background="@drawable/bg_neon_pill_green"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp"
+                    android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -15348,15 +16586,15 @@ public class MainActivity extends AppCompatActivity {
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Skill 1: Senter -->
+            <!-- Skill 1: Senter Otonom (Flashlight) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -15385,7 +16623,8 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="Mode Luring 100% • Status: Mati"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -15395,21 +16634,21 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Toggle"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 2: Volume Suara -->
+            <!-- Skill 2: Volume & Audio Level -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -15438,7 +16677,8 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="Stream Media &amp; Panggilan Sistem"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -15447,7 +16687,7 @@ public class MainActivity extends AppCompatActivity {
                     android:layout_height="38dp"
                     android:text="+"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"
                     android:layout_marginEnd="6dp"/>
@@ -15458,25 +16698,25 @@ public class MainActivity extends AppCompatActivity {
                     android:layout_height="38dp"
                     android:text="-"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 3: Baterai & Sentinel Suhu -->
+            <!-- Skill 3: Sentinel Baterai & Suhu -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_green"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_lock_idle_charging"
+                    android:src="@drawable/ic_jarvis_shield"
                     android:tint="#00E676"
                     android:layout_marginEnd="12dp"/>
 
@@ -15500,7 +16740,8 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="Monitoring ambang batas 15% &amp; 45°C"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -15510,7 +16751,7 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Cek"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_green"
                     android:textColor="#00E676"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
@@ -15520,16 +16761,16 @@ public class MainActivity extends AppCompatActivity {
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_purple"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
                     android:layout_height="32dp"
-                    android:src="@android:drawable/ic_menu_agenda"
+                    android:src="@drawable/ic_shape_square"
                     android:tint="#8B5CF6"
                     android:layout_marginEnd="12dp"/>
 
@@ -15552,7 +16793,8 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="Levenshtein typo tolerance &amp; alias lokal"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -15562,21 +16804,21 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Kamera"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_purple"
                     android:textColor="#8B5CF6"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 5: Web Search -->
+            <!-- Skill 5: Web Intelligence -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="10dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -15594,7 +16836,7 @@ public class MainActivity extends AppCompatActivity {
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Web Intelligence (Google)"
+                        android:text="Web Intelligence"
                         android:textColor="#FFFFFF"
                         android:textSize="14sp"
                         android:textStyle="bold"/>
@@ -15604,7 +16846,8 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="Pencarian fakta instan di internet"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <Button
@@ -15614,21 +16857,21 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Cari"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_cyan"
                     android:textColor="#00E5FF"
                     android:textSize="12sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Skill 6: Navigasi Sistem & Layar Visual -->
+            <!-- Skill 6: Navigasi & Vision Engine -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_green"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:padding="16dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
                 <ImageView
                     android:layout_width="32dp"
@@ -15656,25 +16899,26 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_height="wrap_content"
                         android:text="ML Kit OCR On-Device &amp; Gestur Sistem"
                         android:textColor="#94A3B8"
-                        android:textSize="11sp"/>
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
 
                 <TextView
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="38dp"
                     android:text="Aktif"
-                    android:background="@drawable/bg_jarvis_badge_active"
+                    android:gravity="center"
+                    android:background="@drawable/bg_neon_pill_green"
                     android:textColor="#00E676"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textStyle="bold"
-                    android:paddingHorizontal="10dp"
-                    android:paddingVertical="3dp"/>
+                    android:paddingHorizontal="16dp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 3: CONTAINER STATUS & DIAGNOSTIK OMNI ROUTER 2.0           -->
+    <!-- TAB 3: CONTAINER STATUS & DIAGNOSTIK OMNI ROUTER (SCREENSHOT 3)-->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerStatus"
@@ -15692,7 +16936,7 @@ public class MainActivity extends AppCompatActivity {
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
             <TextView
@@ -15711,11 +16955,11 @@ public class MainActivity extends AppCompatActivity {
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Kartu Status Omni Router 2.0 Live -->
+            <!-- Kartu 1: Live Omni Router 2.0 (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="vertical"
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
@@ -15742,18 +16986,18 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <!-- Status Text Summary -->
+                <!-- Monospace Status Text -->
                 <TextView
                     android:id="@+id/tvOmniDiagnostics"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Memuat status provider..."
+                    android:text="Groq [CLOSED] ● 124ms\nGoogle AI Studio [CLOSED] ● 310ms\nCerebral [CLOSED] ● 450ms\nSemua 8 Cloud Provider terhubung &amp; stabil."
                     android:textColor="#FFFFFF"
                     android:textSize="12sp"
                     android:fontFamily="monospace"
                     android:background="@drawable/bg_jarvis_input"
                     android:padding="12dp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="14dp"/>
 
                 <!-- Action Buttons: Reset & Test -->
                 <LinearLayout
@@ -15769,9 +17013,10 @@ public class MainActivity extends AppCompatActivity {
                         android:text="Reset Breakers"
                         android:textAllCaps="false"
                         android:backgroundTint="@null"
-                        android:background="@drawable/bg_jarvis_btn_secondary"
+                        android:background="@drawable/bg_neon_pill_cyan"
                         android:textColor="#00E5FF"
                         android:textSize="12sp"
+                        android:textStyle="bold"
                         android:layout_marginEnd="6dp"/>
 
                     <Button
@@ -15782,18 +17027,19 @@ public class MainActivity extends AppCompatActivity {
                         android:text="Perbarui Data"
                         android:textAllCaps="false"
                         android:backgroundTint="@null"
-                        android:background="@drawable/bg_jarvis_chip"
-                        android:textColor="#FFFFFF"
+                        android:background="@drawable/bg_neon_pill_solid_cyan"
+                        android:textColor="#050811"
                         android:textSize="12sp"
+                        android:textStyle="bold"
                         android:layout_marginStart="6dp"/>
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Kartu Kesehatan Modul Utama -->
+            <!-- Kartu 2: Kesehatan Modul Sistem (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_jarvis_card"
+                android:background="@drawable/bg_neon_card_cyan"
                 android:orientation="vertical"
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
@@ -15810,36 +17056,36 @@ public class MainActivity extends AppCompatActivity {
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Full-Duplex Voice Engine: Siap (16kHz PCM + AEC + VAD)"
+                    android:text="✔ Full-Duplex Voice Engine: Siap (16kHz PCM + AEC + VAD)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Barge-In Coordinator: Siap (Interupsi instan &lt; 100ms)"
+                    android:text="✔ Barge-In Coordinator: Siap (Interupsi instan &lt; 100ms)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• Zero-Latency Voice Dispatch: Siaga (0ms bypass layar)"
+                    android:text="✔ Zero-Latency Voice Dispatch: Siaga (0ms bypass layar)"
                     android:textColor="#00E676"
                     android:textSize="12sp"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="• SQLite Scored RAG Memory: Versi 2 Aktif"
+                    android:text="✔ SQLite Scored RAG Memory: Versi 2 Aktif"
                     android:textColor="#00E676"
                     android:textSize="12sp"/>
             </LinearLayout>
 
-            <!-- Kartu Informasi Perangkat -->
+            <!-- Kartu 3: Spesifikasi Perangkat (Screenshot 3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -15848,28 +17094,41 @@ public class MainActivity extends AppCompatActivity {
                 android:padding="18dp"
                 android:layout_marginBottom="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <RelativeLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Spesifikasi Perangkat"
-                    android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Spesifikasi Perangkat"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"
+                        android:textStyle="bold"/>
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_jarvis_chip"
+                        android:tint="#8B5CF6"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
 
                 <TextView
                     android:id="@+id/tvDeviceHardwareInfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Memuat data hardware..."
+                    android:text="• Model: Infinix Smart 8 Pro\n• Android: Versi 13 (SDK 33)\n• Arsitektur: armeabi-v7a\n• Jaringan: Menggunakan Data Seluler\n• Bluetooth saat ini nonaktif."
                     android:textColor="#94A3B8"
-                    android:textSize="12sp"/>
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="4dp"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
 
     <!-- ══════════════════════════════════════════════════════════════ -->
-    <!-- TAB 4: CONTAINER SETTINGS & PERSONALISASI                      -->
+    <!-- TAB 4: CONTAINER SETTINGS & PERSONALISASI (SCREENSHOT 4)       -->
     <!-- ══════════════════════════════════════════════════════════════ -->
     <ScrollView
         android:id="@+id/containerSettings"
@@ -15887,7 +17146,7 @@ public class MainActivity extends AppCompatActivity {
             android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingTop="16dp"
-            android:paddingBottom="80dp"
+            android:paddingBottom="84dp"
             android:clipToPadding="false">
 
             <TextView
@@ -15906,7 +17165,7 @@ public class MainActivity extends AppCompatActivity {
                 android:textSize="12sp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Seksi 1: Persona Suara -->
+            <!-- Seksi 1: Persona Suara Jarvis (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -15929,7 +17188,7 @@ public class MainActivity extends AppCompatActivity {
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:weightSum="4"
-                    android:layout_marginBottom="10dp">
+                    android:layout_marginBottom="6dp">
 
                     <LinearLayout
                         android:id="@+id/boxVoiceDefault"
@@ -15977,7 +17236,6 @@ public class MainActivity extends AppCompatActivity {
                         android:layout_weight="1"
                         android:background="@drawable/bg_box_unselected"
                         android:gravity="center"
-                        android:layout_marginEnd="4dp"
                         android:clickable="true"
                         android:focusable="true">
                         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Friday" android:textColor="#FFF" android:textSize="12sp" android:textStyle="bold"/>
@@ -15985,7 +17243,7 @@ public class MainActivity extends AppCompatActivity {
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Seksi 2: Hologram Aura & Visual Bubble -->
+            <!-- Seksi 2: Aura Hologram & Floating Orb (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -16034,7 +17292,7 @@ public class MainActivity extends AppCompatActivity {
                     <View android:id="@+id/btnColorGreen" android:layout_width="32dp" android:layout_height="32dp" android:background="@drawable/bg_color_green" android:layout_marginHorizontal="6dp" android:clickable="true" android:focusable="true"/>
                 </LinearLayout>
 
-                <!-- Animasi Gaya -->
+                <!-- Animasi Gaya Micro -->
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Gaya Animasi Micro:" android:textColor="#94A3B8" android:textSize="12sp" android:layout_marginBottom="6dp"/>
                 <Spinner
                     android:id="@+id/spinnerAnimStyle"
@@ -16071,7 +17329,7 @@ public class MainActivity extends AppCompatActivity {
                     android:progress="85"/>
             </LinearLayout>
 
-            <!-- Seksi 3: Efisiensi Daya & Kontrol Sistem -->
+            <!-- Seksi 3: Efisiensi Daya & Kontrol Layar (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -16105,7 +17363,7 @@ public class MainActivity extends AppCompatActivity {
                 </RelativeLayout>
             </LinearLayout>
 
-            <!-- Seksi 4: Manajemen Memori & Privasi -->
+            <!-- Seksi 4: Manajemen Memori & Privasi (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -16121,7 +17379,7 @@ public class MainActivity extends AppCompatActivity {
                     android:textColor="#FFFFFF"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="6dp"/>
+                    android:layout_marginBottom="4dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -16129,7 +17387,7 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Fakta &amp; preferensi Anda disimpan lokal di perangkat (SQLite)"
                     android:textColor="#94A3B8"
                     android:textSize="11sp"
-                    android:layout_marginBottom="12dp"/>
+                    android:layout_marginBottom="14dp"/>
 
                 <Button
                     android:id="@+id/btnClearMemory"
@@ -16138,13 +17396,13 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Bersihkan Seluruh Memori Pribadi"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_neon_pill_red_outline"
                     android:textColor="#FF1744"
                     android:textSize="13sp"
                     android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Seksi 5: Tombol Simpan & Reset -->
+            <!-- Seksi 5: Tombol Simpan & Reset (Screenshot 4) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -16159,7 +17417,7 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Reset Awal"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_chip"
+                    android:background="@drawable/bg_box_unselected"
                     android:textColor="#94A3B8"
                     android:textSize="13sp"
                     android:layout_marginEnd="6dp"/>
@@ -16172,7 +17430,7 @@ public class MainActivity extends AppCompatActivity {
                     android:text="Simpan Pengaturan"
                     android:textAllCaps="false"
                     android:backgroundTint="@null"
-                    android:background="@drawable/bg_jarvis_btn_primary"
+                    android:background="@drawable/bg_neon_pill_solid_cyan"
                     android:textColor="#050811"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -16189,7 +17447,7 @@ public class MainActivity extends AppCompatActivity {
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_alignParentBottom="true"
-        android:background="#FA060913"
+        android:background="@drawable/bg_hud_dock"
         android:orientation="horizontal"
         android:weightSum="4"
         android:elevation="16dp">
@@ -16345,7 +17603,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 174/204: `app/src/main/res/layout/dialog_about.xml`
+### File 189/220: `app/src/main/res/layout/dialog_about.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -16505,7 +17763,7 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 175/204: `app/src/main/res/layout/dialog_settings.xml`
+### File 190/220: `app/src/main/res/layout/dialog_settings.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -16836,7 +18094,7 @@ android:elevation="24dp">
 
 ---
 
-### File 176/204: `app/src/main/res/layout/dialog_status.xml`
+### File 191/220: `app/src/main/res/layout/dialog_status.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17120,7 +18378,7 @@ android:elevation="24dp">
 
 ---
 
-### File 177/204: `app/src/main/res/layout/layout_close_target.xml`
+### File 192/220: `app/src/main/res/layout/layout_close_target.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17141,7 +18399,7 @@ android:elevation="24dp">
 
 ---
 
-### File 178/204: `app/src/main/res/layout/layout_floating_bubble.xml`
+### File 193/220: `app/src/main/res/layout/layout_floating_bubble.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17203,7 +18461,7 @@ android:elevation="24dp">
 
 ---
 
-### File 179/204: `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`
+### File 194/220: `app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17216,7 +18474,7 @@ android:elevation="24dp">
 
 ---
 
-### File 180/204: `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml`
+### File 195/220: `app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17229,7 +18487,7 @@ android:elevation="24dp">
 
 ---
 
-### File 181/204: `app/src/main/res/values/colors.xml`
+### File 196/220: `app/src/main/res/values/colors.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17246,12 +18504,17 @@ android:elevation="24dp">
 
     <color name="neon_cyan">#00E5FF</color>
     <color name="neon_cyan_glow">#3300E5FF</color>
+    <color name="neon_cyan_bright">#38E8FF</color>
     <color name="neon_violet">#8B5CF6</color>
     <color name="neon_purple">#7C3AED</color>
+    <color name="neon_pink">#FF2A85</color>
     <color name="neon_blue">#2979FF</color>
     <color name="neon_emerald">#00E676</color>
     <color name="neon_amber">#FFAB00</color>
     <color name="neon_crimson">#FF1744</color>
+    <color name="bg_glass_card">#D90A1120</color>
+    <color name="bg_glass_card_subtle">#99080E1A</color>
+    <color name="bg_glass_dock">#F2060913</color>
 
     <color name="text_primary">#FFFFFF</color>
     <color name="text_secondary">#94A3B8</color>
@@ -17267,7 +18530,7 @@ android:elevation="24dp">
 
 ---
 
-### File 182/204: `app/src/main/res/values/styles.xml`
+### File 197/220: `app/src/main/res/values/styles.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17286,7 +18549,7 @@ android:elevation="24dp">
 
 ---
 
-### File 183/204: `app/src/main/res/xml/accessibility_service_config.xml`
+### File 198/220: `app/src/main/res/xml/accessibility_service_config.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17302,7 +18565,7 @@ android:elevation="24dp">
 
 ---
 
-### File 184/204: `app/src/main/res/xml/device_admin_receiver.xml`
+### File 199/220: `app/src/main/res/xml/device_admin_receiver.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -17316,7 +18579,7 @@ android:elevation="24dp">
 
 ---
 
-### File 185/204: `app/src/test/java/com/novaagent/app/core/app/AppDiscoveryEngineTest.java`
+### File 200/220: `app/src/test/java/com/novaagent/app/core/app/AppDiscoveryEngineTest.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -17348,7 +18611,7 @@ public class AppDiscoveryEngineTest {
 
 ---
 
-### File 186/204: `app/src/test/java/com/novaagent/app/core/app/LiveVoiceAndVisionUpgradeTest.java`
+### File 201/220: `app/src/test/java/com/novaagent/app/core/app/LiveVoiceAndVisionUpgradeTest.java`
 
 ```java
 package com.novaagent.app.core.app;
@@ -17552,7 +18815,7 @@ public class LiveVoiceAndVisionUpgradeTest {
 
 ---
 
-### File 187/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVadTest.java`
+### File 202/220: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AdaptiveEnergyVadTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -17644,7 +18907,7 @@ public class AdaptiveEnergyVadTest {
 
 ---
 
-### File 188/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AudioRingBufferTest.java`
+### File 203/220: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/AudioRingBufferTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -17711,7 +18974,7 @@ public class AudioRingBufferTest {
 
 ---
 
-### File 189/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinatorTest.java`
+### File 204/220: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/BargeInCoordinatorTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -17748,7 +19011,7 @@ public class BargeInCoordinatorTest {
 
 ---
 
-### File 190/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngineTest.java`
+### File 205/220: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/PcmAudioEngineTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -17792,7 +19055,7 @@ public class PcmAudioEngineTest {
 
 ---
 
-### File 191/204: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunkerTest.java`
+### File 206/220: `app/src/test/java/com/novaagent/app/core/audio/fullduplex/StreamingSentenceChunkerTest.java`
 
 ```java
 package com.novaagent.app.core.audio.fullduplex;
@@ -17845,7 +19108,7 @@ public class StreamingSentenceChunkerTest {
 
 ---
 
-### File 192/204: `app/src/test/java/com/novaagent/app/core/brain/ConversationMemoryTest.java`
+### File 207/220: `app/src/test/java/com/novaagent/app/core/brain/ConversationMemoryTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -17879,7 +19142,7 @@ public class ConversationMemoryTest {
 
 ---
 
-### File 193/204: `app/src/test/java/com/novaagent/app/core/brain/LongTermMemoryEngineTest.java`
+### File 208/220: `app/src/test/java/com/novaagent/app/core/brain/LongTermMemoryEngineTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -17920,7 +19183,7 @@ public class LongTermMemoryEngineTest {
 
 ---
 
-### File 194/204: `app/src/test/java/com/novaagent/app/core/brain/OfflineBrainTest.java`
+### File 209/220: `app/src/test/java/com/novaagent/app/core/brain/OfflineBrainTest.java`
 
 ```java
 package com.novaagent.app.core.brain;
@@ -17993,7 +19256,7 @@ public class OfflineBrainTest {
 
 ---
 
-### File 195/204: `app/src/test/java/com/novaagent/app/core/config/NovaConfigManagerTest.java`
+### File 210/220: `app/src/test/java/com/novaagent/app/core/config/NovaConfigManagerTest.java`
 
 ```java
 package com.novaagent.app.core.config;
@@ -18028,7 +19291,7 @@ public class NovaConfigManagerTest {
 
 ---
 
-### File 196/204: `app/src/test/java/com/novaagent/app/core/engine/AutonomousLoopEngineTest.java`
+### File 211/220: `app/src/test/java/com/novaagent/app/core/engine/AutonomousLoopEngineTest.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -18084,7 +19347,7 @@ public class AutonomousLoopEngineTest {
 
 ---
 
-### File 197/204: `app/src/test/java/com/novaagent/app/core/engine/IntelligentCommandClassifierTest.java`
+### File 212/220: `app/src/test/java/com/novaagent/app/core/engine/IntelligentCommandClassifierTest.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -18162,7 +19425,7 @@ public class IntelligentCommandClassifierTest {
 
 ---
 
-### File 198/204: `app/src/test/java/com/novaagent/app/core/engine/LocalIntentRouterTest.java`
+### File 213/220: `app/src/test/java/com/novaagent/app/core/engine/LocalIntentRouterTest.java`
 
 ```java
 package com.novaagent.app.core.engine;
@@ -18224,7 +19487,7 @@ public class LocalIntentRouterTest {
 
 ---
 
-### File 199/204: `app/src/test/java/com/novaagent/app/core/proactive/ConditionalSentinelEngineTest.java`
+### File 214/220: `app/src/test/java/com/novaagent/app/core/proactive/ConditionalSentinelEngineTest.java`
 
 ```java
 package com.novaagent.app.core.proactive;
@@ -18272,7 +19535,7 @@ public class ConditionalSentinelEngineTest {
 
 ---
 
-### File 200/204: `app/src/test/java/com/novaagent/app/core/skills/SkillRegistryTest.java`
+### File 215/220: `app/src/test/java/com/novaagent/app/core/skills/SkillRegistryTest.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -18369,7 +19632,7 @@ public class SkillRegistryTest {
 
 ---
 
-### File 201/204: `app/src/test/java/com/novaagent/app/core/skills/TwentyNineOfflineSkillsTest.java`
+### File 216/220: `app/src/test/java/com/novaagent/app/core/skills/TwentyNineOfflineSkillsTest.java`
 
 ```java
 package com.novaagent.app.core.skills;
@@ -18686,7 +19949,7 @@ public class TwentyNineOfflineSkillsTest {
 
 ---
 
-### File 202/204: `app/src/test/java/com/novaagent/app/data/model/UnifiedScreenContextTest.java`
+### File 217/220: `app/src/test/java/com/novaagent/app/data/model/UnifiedScreenContextTest.java`
 
 ```java
 package com.novaagent.app.data.model;
@@ -18743,7 +20006,7 @@ public class UnifiedScreenContextTest {
 
 ---
 
-### File 203/204: `app/src/test/java/com/novaagent/app/data/network/omni/OmniRouterTest.java`
+### File 218/220: `app/src/test/java/com/novaagent/app/data/network/omni/OmniRouterTest.java`
 
 ```java
 package com.novaagent.app.data.network.omni;
@@ -18817,7 +20080,65 @@ public class OmniRouterTest {
 
 ---
 
-### File 204/204: `gradle/wrapper/gradle-wrapper.properties`
+### File 219/220: `app/src/test/java/com/novaagent/app/ui/NeonMotionAndOrbTest.java`
+
+```java
+package com.novaagent.app.ui;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import com.novaagent.app.ui.motion.NeonMotionEngine;
+import com.novaagent.app.ui.view.NeonCardView;
+import com.novaagent.app.ui.view.NovaHeroOrbView;
+
+import org.junit.Test;
+
+public class NeonMotionAndOrbTest {
+
+    @Test
+    public void testNeonCardViewAccents() {
+        for (NeonCardView.NeonAccent accent : NeonCardView.NeonAccent.values()) {
+            assertNotNull(accent.name());
+            assertTrue(accent.strokeColor != 0);
+            assertTrue(accent.glowColor != 0);
+        }
+
+        assertEquals(0xFF00E5FF, NeonCardView.NeonAccent.CYAN.strokeColor);
+        assertEquals(0xFF8B5CF6, NeonCardView.NeonAccent.PURPLE.strokeColor);
+        assertEquals(0xFF00E676, NeonCardView.NeonAccent.GREEN.strokeColor);
+        assertEquals(0xFFFFAB00, NeonCardView.NeonAccent.ORANGE.strokeColor);
+    }
+
+    @Test
+    public void testNovaHeroOrbStates() {
+        assertEquals(7, NovaHeroOrbView.OrbState.values().length);
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("IDLE"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("LISTENING"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("THINKING"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("SPEAKING"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("EXECUTING"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("ERROR"));
+        assertNotNull(NovaHeroOrbView.OrbState.valueOf("OFFLINE"));
+    }
+
+    @Test
+    public void testNeonMotionEngineReducedMotion() {
+        NeonMotionEngine.setReducedMotion(true);
+        assertTrue(NeonMotionEngine.isReducedMotion());
+
+        NeonMotionEngine.setReducedMotion(false);
+        assertFalse(NeonMotionEngine.isReducedMotion());
+    }
+}
+
+```
+
+---
+
+### File 220/220: `gradle/wrapper/gradle-wrapper.properties`
 
 ```text
 distributionBase=GRADLE_USER_HOME

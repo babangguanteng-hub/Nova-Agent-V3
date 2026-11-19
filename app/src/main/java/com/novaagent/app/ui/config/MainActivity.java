@@ -46,6 +46,10 @@ import com.novaagent.app.core.device.DeviceSystemController;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.data.network.omni.OmniRouter;
 import com.novaagent.app.services.foreground.NovaForegroundService;
+import com.novaagent.app.ui.motion.NeonMotionEngine;
+import com.novaagent.app.ui.view.NeonCardView;
+import com.novaagent.app.ui.view.NovaHeroOrbView;
+import com.novaagent.app.ui.view.PulsingMicButton;
 
 import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -59,6 +63,9 @@ public class MainActivity extends AppCompatActivity {
     private ToneGenerator toneGen;
     private Dialog currentDialog = null;
     private DeviceSystemController deviceController;
+
+    private NovaHeroOrbView heroOrbView;
+    private PulsingMicButton btnMicTrigger;
 
     private final String[] providers = {
         "Groq", "Google AI Studio", "Cerebral", "Mistral AI",
@@ -116,6 +123,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initViews() {
+        heroOrbView = findViewById(R.id.heroOrbView);
+        if (heroOrbView != null) {
+            heroOrbView.setPowerSaveMode(prefs.getBoolean("power_save", false));
+        }
+
         containerHome = findViewById(R.id.containerHome);
         containerSkills = findViewById(R.id.containerSkills);
         containerStatus = findViewById(R.id.containerStatus);
@@ -138,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnTheme = findViewById(R.id.btnThemeToggle);
         if (btnTheme != null) {
+            NeonMotionEngine.attachTouchFeedback(btnTheme);
             btnTheme.setOnClickListener(v -> {
                 playClickSound();
                 Toast.makeText(this, "Tema Neo-Cyan Glassmorphism Aktif", Toast.LENGTH_SHORT).show();
@@ -146,6 +159,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnTopSettings = findViewById(R.id.btnSettings);
         if (btnTopSettings != null) {
+            NeonMotionEngine.attachTouchFeedback(btnTopSettings);
             btnTopSettings.setOnClickListener(v -> {
                 playClickSound();
                 switchTab(3);
@@ -250,15 +264,32 @@ public class MainActivity extends AppCompatActivity {
     private void setupQuickCommandAndShortcuts() {
         EditText etQuickPrompt = findViewById(R.id.etQuickPrompt);
         View btnQuickSend = findViewById(R.id.btnQuickSend);
-        View btnMicTrigger = findViewById(R.id.btnMicTrigger);
+        btnMicTrigger = findViewById(R.id.btnMicTrigger);
+
+        if (btnMicTrigger != null) {
+            btnMicTrigger.setPowerSaveMode(prefs.getBoolean("power_save", false));
+            btnMicTrigger.setOnClickListener(v -> {
+                playClickSound();
+                btnMicTrigger.setListening(true);
+                if (heroOrbView != null) {
+                    heroOrbView.setOrbState(NovaHeroOrbView.OrbState.LISTENING);
+                }
+                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, "Halo Nova Jarvis"));
+                Toast.makeText(this, "Mikrofon Nova Siaga • Full-Duplex Voice Engine", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         if (btnQuickSend != null && etQuickPrompt != null) {
+            NeonMotionEngine.attachTouchFeedback(btnQuickSend);
             btnQuickSend.setOnClickListener(v -> {
                 playClickSound();
                 String query = etQuickPrompt.getText().toString().trim();
                 if (query.isEmpty()) {
                     Toast.makeText(this, "Masukkan perintah teks terlebih dahulu", Toast.LENGTH_SHORT).show();
                     return;
+                }
+                if (heroOrbView != null) {
+                    heroOrbView.setOrbState(NovaHeroOrbView.OrbState.THINKING);
                 }
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, query));
                 try {
@@ -272,25 +303,29 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        if (btnMicTrigger != null) {
-            btnMicTrigger.setOnClickListener(v -> {
-                playClickSound();
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.USER_INTERACTION, "Halo Nova Jarvis"));
-                Toast.makeText(this, "Mikrofon Nova Siaga • Full-Duplex Voice Engine", Toast.LENGTH_SHORT).show();
-            });
+        NeonCardView cardSkills = findViewById(R.id.cardShortcutSkills);
+        if (cardSkills != null) {
+            cardSkills.setNeonAccent(NeonCardView.NeonAccent.CYAN);
+            cardSkills.setOnClickListener(v -> { playClickSound(); switchTab(1); });
         }
 
-        View cardSkills = findViewById(R.id.cardShortcutSkills);
-        if (cardSkills != null) cardSkills.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        NeonCardView cardDevice = findViewById(R.id.cardShortcutDevice);
+        if (cardDevice != null) {
+            cardDevice.setNeonAccent(NeonCardView.NeonAccent.PURPLE);
+            cardDevice.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        }
 
-        View cardDevice = findViewById(R.id.cardShortcutDevice);
-        if (cardDevice != null) cardDevice.setOnClickListener(v -> { playClickSound(); switchTab(1); });
+        NeonCardView cardOmni = findViewById(R.id.cardShortcutOmni);
+        if (cardOmni != null) {
+            cardOmni.setNeonAccent(NeonCardView.NeonAccent.CYAN);
+            cardOmni.setOnClickListener(v -> { playClickSound(); switchTab(2); });
+        }
 
-        View cardOmni = findViewById(R.id.cardShortcutOmni);
-        if (cardOmni != null) cardOmni.setOnClickListener(v -> { playClickSound(); switchTab(2); });
-
-        View cardMemory = findViewById(R.id.cardShortcutMemory);
-        if (cardMemory != null) cardMemory.setOnClickListener(v -> { playClickSound(); switchTab(3); });
+        NeonCardView cardMemory = findViewById(R.id.cardShortcutMemory);
+        if (cardMemory != null) {
+            cardMemory.setNeonAccent(NeonCardView.NeonAccent.ORANGE);
+            cardMemory.setOnClickListener(v -> { playClickSound(); switchTab(3); });
+        }
     }
 
     private void setupSkillsTab() {
@@ -333,6 +368,7 @@ public class MainActivity extends AppCompatActivity {
         TextView tvBattery = findViewById(R.id.tvBatteryDetailed);
         View btnCheckBattery = findViewById(R.id.btnCheckBattery);
         if (btnCheckBattery != null) {
+            NeonMotionEngine.attachTouchFeedback(btnCheckBattery);
             btnCheckBattery.setOnClickListener(v -> {
                 playClickSound();
                 String summary = deviceController.getBatterySummary();
@@ -343,6 +379,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnCamera = findViewById(R.id.btnTestLaunchCamera);
         if (btnCamera != null) {
+            NeonMotionEngine.attachTouchFeedback(btnCamera);
             btnCamera.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -356,6 +393,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnWebSearch = findViewById(R.id.btnTestWebSearch);
         if (btnWebSearch != null) {
+            NeonMotionEngine.attachTouchFeedback(btnWebSearch);
             btnWebSearch.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -382,6 +420,7 @@ public class MainActivity extends AppCompatActivity {
         };
 
         if (btnRefresh != null) {
+            NeonMotionEngine.attachTouchFeedback(btnRefresh);
             btnRefresh.setOnClickListener(v -> {
                 playClickSound();
                 refreshOmniUI.run();
@@ -390,6 +429,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (btnReset != null) {
+            NeonMotionEngine.attachTouchFeedback(btnReset);
             btnReset.setOnClickListener(v -> {
                 playClickSound();
                 OmniRouter.getInstance().resetAll();
@@ -528,10 +568,19 @@ public class MainActivity extends AppCompatActivity {
 
         if (switchMaster != null) switchMaster.setChecked(prefs.getBoolean("bubble_master", true));
         if (cbHologram != null) cbHologram.setChecked(prefs.getBoolean("enable_hologram", true));
-        if (switchPower != null) switchPower.setChecked(prefs.getBoolean("power_save", false));
+        if (switchPower != null) {
+            boolean pwr = prefs.getBoolean("power_save", false);
+            switchPower.setChecked(pwr);
+            switchPower.setOnCheckedChangeListener((btn, isChecked) -> {
+                if (heroOrbView != null) heroOrbView.setPowerSaveMode(isChecked);
+                if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(isChecked);
+                NeonMotionEngine.setReducedMotion(isChecked);
+            });
+        }
 
         View btnClearMem = findViewById(R.id.btnClearMemory);
         if (btnClearMem != null) {
+            NeonMotionEngine.attachTouchFeedback(btnClearMem);
             btnClearMem.setOnClickListener(v -> {
                 playClickSound();
                 try {
@@ -546,6 +595,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnReset = findViewById(R.id.rowResetSettings);
         if (btnReset != null) {
+            NeonMotionEngine.attachTouchFeedback(btnReset);
             btnReset.setOnClickListener(v -> {
                 playClickSound();
                 selectedVoice = "nova"; selectedColor = "cyan"; selectedShape = "circle"; selectedAnim = "breathe";
@@ -562,6 +612,7 @@ public class MainActivity extends AppCompatActivity {
 
         View btnSave = findViewById(R.id.btnSaveSettings);
         if (btnSave != null) {
+            NeonMotionEngine.attachTouchFeedback(btnSave);
             btnSave.setOnClickListener(v -> {
                 playClickSound();
                 float pitch = 1.0f; float speed = 1.05f;
@@ -572,6 +623,10 @@ public class MainActivity extends AppCompatActivity {
                 boolean pwrSave = switchPower != null && switchPower.isChecked();
                 boolean masterOn = switchMaster != null && switchMaster.isChecked();
                 String finalAnim = (pwrSave || !masterOn) ? "static" : selectedAnim;
+
+                if (heroOrbView != null) heroOrbView.setPowerSaveMode(pwrSave);
+                if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(pwrSave);
+                NeonMotionEngine.setReducedMotion(pwrSave);
 
                 prefs.edit()
                     .putString("custom_voice", selectedVoice)
@@ -661,8 +716,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (heroOrbView != null) heroOrbView.pauseAnimation();
+        if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(true);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        boolean pwrSave = prefs.getBoolean("power_save", false);
+        if (heroOrbView != null) {
+            heroOrbView.setPowerSaveMode(pwrSave);
+            if (!pwrSave) heroOrbView.resumeAnimation();
+        }
+        if (btnMicTrigger != null) {
+            btnMicTrigger.setPowerSaveMode(pwrSave);
+        }
+        NeonMotionEngine.setReducedMotion(pwrSave);
+
         updateNetworkStatusBadge();
         TextView tvA11y = findViewById(R.id.tvStatusA11y);
         TextView tvOverlay = findViewById(R.id.tvStatusOverlay);

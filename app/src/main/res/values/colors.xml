@@ -12,12 +12,17 @@
 
     <color name="neon_cyan">#00E5FF</color>
     <color name="neon_cyan_glow">#3300E5FF</color>
+    <color name="neon_cyan_bright">#38E8FF</color>
     <color name="neon_violet">#8B5CF6</color>
     <color name="neon_purple">#7C3AED</color>
+    <color name="neon_pink">#FF2A85</color>
     <color name="neon_blue">#2979FF</color>
     <color name="neon_emerald">#00E676</color>
     <color name="neon_amber">#FFAB00</color>
     <color name="neon_crimson">#FF1744</color>
+    <color name="bg_glass_card">#D90A1120</color>
+    <color name="bg_glass_card_subtle">#99080E1A</color>
+    <color name="bg_glass_dock">#F2060913</color>
 
     <color name="text_primary">#FFFFFF</color>
     <color name="text_secondary">#94A3B8</color>
