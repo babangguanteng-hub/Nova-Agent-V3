@@ -95,17 +95,17 @@ public class NovaConfigManager {
     public String getAiModel() { return prefs.getString(KEY_AI_MODEL, getPreferredModelForProvider(getAiProvider())); }
 
     public static String getPreferredModelForProvider(String provider) {
-        if (provider == null) return "openai/gpt-oss-20b";
+        if (provider == null) return "llama-3.3-70b-versatile";
         switch (provider) {
-            case "Google AI Studio": return "gemini-3.5-flash";
-            case "Groq": return "openai/gpt-oss-20b";
-            case "Cerebral": return "GPT-OSS / Qwen 3.8 27B";
-            case "Mistral AI": return "ministral-3b-latest";
-            case "Cohere": return "north-mini-code-1.0";
-            case "Cloudflare Workers AI": return "@cf/google/gemma-4-26b-a4b-it";
-            case "NVIDIA NIM": return "meta/llama-3.1-70b-instruct";
+            case "Google AI Studio": return "gemini-2.5-flash";
+            case "Groq": return "llama-3.3-70b-versatile";
+            case "Cerebral": return "llama-3.3-70b";
+            case "Mistral AI": return "mistral-small-latest";
+            case "Cohere": return "command-r-plus-08-2024";
+            case "Cloudflare Workers AI": return "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+            case "NVIDIA NIM": return "meta/llama-3.3-70b-instruct";
             case "Open Router": return "meta-llama/llama-3.3-70b-instruct:free";
-            default: return "openai/gpt-oss-20b";
+            default: return "llama-3.3-70b-versatile";
         }
     }
 

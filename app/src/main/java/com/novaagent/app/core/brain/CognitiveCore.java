@@ -3,6 +3,7 @@ package com.novaagent.app.core.brain;
 import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.data.model.ActionCommandDto;
 import com.novaagent.app.data.model.UnifiedScreenContext;
 import com.novaagent.app.data.network.UniversalNetworkClient;
@@ -48,9 +49,20 @@ public class CognitiveCore {
 
     public void processEnvironment(String userCommand, UnifiedScreenContext rawContext, String previousFailedAction, CoreCallback callback) {
         try {
+            // BRAIN-01 & BRAIN-02: Jangan timpa plan multi-langkah dan selalu rekam percakapan user
             if (!taskPlanner.hasActivePlan()) {
                 taskPlanner.setMainGoal(userCommand);
-                if (userCommand != null && !userCommand.trim().isEmpty()) {
+            }
+            if (userCommand != null && !userCommand.trim().isEmpty()) {
+                JSONArray history = memoryCoordinator.getRecentChatHistory();
+                boolean alreadyAdded = false;
+                if (history != null && history.length() > 0) {
+                    JSONObject last = history.getJSONObject(history.length() - 1);
+                    if ("user".equals(last.optString("role")) && userCommand.trim().equals(last.optString("content"))) {
+                        alreadyAdded = true;
+                    }
+                }
+                if (!alreadyAdded) {
                     memoryCoordinator.addContext("user", userCommand.trim());
                 }
             }
@@ -87,6 +99,19 @@ public class CognitiveCore {
                         ActionCommandDto cmd = new ActionCommandDto(rawJsonContent);
                         if (cmd.speech != null && !cmd.speech.isEmpty()) memoryCoordinator.addContext("assistant", cmd.speech);
                         
+                        // BRAIN-03: Simpan fakta baru secara otomatis ke LongTermMemoryEngine
+                        if (cmd.memoryToSave != null && !cmd.memoryToSave.trim().isEmpty()) {
+                            try {
+                                LongTermMemoryEngine ltm = ServiceLocator.getInstance().resolve(LongTermMemoryEngine.class);
+                                if (ltm != null) {
+                                    ltm.saveFact(cmd.memoryToSave.trim(), LongTermMemoryEngine.CAT_GENERAL);
+                                    Log.i(TAG, "🧠 Memori Baru Otomatis Tersimpan: " + cmd.memoryToSave.trim());
+                                }
+                            } catch (Exception e) {
+                                Log.w(TAG, "Gagal menyimpan memori otomatis: " + e.getMessage());
+                            }
+                        }
+
                         if (!cmd.subTasks.isEmpty()) taskPlanner.setNewPlan(cmd.subTasks);
                         if (cmd.stepComplete) taskPlanner.markStepComplete();
 

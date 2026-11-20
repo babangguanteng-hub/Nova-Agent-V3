@@ -119,7 +119,10 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         this.stepCount = 0;
         this.consecutiveFailures = 0;
         this.lastCommandExecuted = null;
-        cognitiveCore.getPlanner().setMainGoal(currentTask);
+        // BRAIN-01: Jangan timpa structuredPlan jika sudah ada rencana multi-langkah aktif
+        if (!cognitiveCore.getPlanner().hasActivePlan()) {
+            cognitiveCore.getPlanner().setMainGoal(currentTask);
+        }
         
         checkpointManager.saveCheckpoint(currentTask, cognitiveCore.getPlanner().getPendingTasks(), stepCount);
         

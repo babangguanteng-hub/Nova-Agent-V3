@@ -229,7 +229,7 @@
                         android:id="@+id/tvStatusModel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="openai/gpt-oss-20b"
+                        android:text="llama-3.3-70b-versatile"
                         android:textColor="#00E5FF"
                         android:textSize="13sp"
                         android:textStyle="bold"

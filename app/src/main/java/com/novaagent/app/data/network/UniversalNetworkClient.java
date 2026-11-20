@@ -76,30 +76,34 @@ public class UniversalNetworkClient {
             case "Groq": return "llama-3.3-70b-versatile";
             case "Cerebral": return "llama-3.3-70b";
             case "Mistral AI": return "mistral-small-latest";
-            case "Cohere": return "command-r-plus";
-            case "Cloudflare Workers AI": return "@cf/meta/llama-3.1-8b-instruct";
-            case "NVIDIA NIM": return "meta/llama-3.1-70b-instruct";
+            case "Cohere": return "command-r-plus-08-2024";
+            case "Cloudflare Workers AI": return "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+            case "NVIDIA NIM": return "meta/llama-3.3-70b-instruct";
             case "Open Router": return "meta-llama/llama-3.3-70b-instruct:free";
             default: return "llama-3.3-70b-versatile";
         }
     }
 
     public void executeCall(JSONArray messages, NetworkCallback callback, int retryCount) {
-        executeCallWithRotation(messages, callback, retryCount, 0, false);
+        executeCallWithRotation(messages, callback, retryCount, 0, false, null, null);
     }
 
     private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount, boolean useFallbackModel) {
+        executeCallWithRotation(messages, callback, retryCount, keyRotationCount, useFallbackModel, null, null);
+    }
+
+    private void executeCallWithRotation(JSONArray messages, NetworkCallback callback, int retryCount, int keyRotationCount, boolean useFallbackModel, String overrideProvider, String overrideModel) {
         cancelActiveCall();
 
         SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        String provider = prefs.getString("ai_provider", "Groq");
-        String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKey(context).trim();
+        String provider = (overrideProvider != null && !overrideProvider.isEmpty()) ? overrideProvider : prefs.getString("ai_provider", "Groq");
+        String rawKeys = com.novaagent.app.data.repository.SecureConfigManager.getApiKeyForProvider(context, provider).trim();
         String defaultPreferred = com.novaagent.app.core.config.NovaConfigManager.getPreferredModelForProvider(provider);
-        String savedModel = prefs.getString("ai_model", defaultPreferred).trim();
+        String savedModel = (overrideModel != null && !overrideModel.isEmpty()) ? overrideModel : prefs.getString("ai_model", defaultPreferred).trim();
 
         List<String> keyList = parseKeys(rawKeys);
         if (keyList.isEmpty()) {
-            callback.onError("API Key Kosong! Masukkan kunci API di aplikasi.");
+            callback.onError("API Key Kosong untuk " + provider + "! Masukkan kunci API di aplikasi.");
             return;
         }
 
@@ -237,7 +241,7 @@ public class UniversalNetworkClient {
                 @Override public void onFailure(Call call, IOException e) {
                     OmniRouter.getInstance().reportFailure(finalProvider, 0);
                     if (!activeCall.isCanceled()) {
-                        handleRetry(messages, callback, retryCount, keyRotationCount, "Koneksi tidak stabil: " + e.getMessage());
+                        handleRetry(messages, callback, retryCount, keyRotationCount, useFallbackModel, overrideProvider, overrideModel, "Koneksi tidak stabil: " + e.getMessage());
                     }
                 }
 
@@ -249,7 +253,7 @@ public class UniversalNetworkClient {
                         // 1. Fallback jika nama model tidak dikenal/didukung akun atau terjadi konflik (400, 404, 409, 422)
                         if ((code == 400 || code == 404 || code == 409 || code == 422) && !useFallbackModel) {
                             Log.w(TAG, "Model " + modelName + " return HTTP " + code + ", rotasi ke fallback model: " + getFallbackModel(provider));
-                            retryHandler.post(() -> executeCallWithRotation(messages, callback, retryCount, keyRotationCount, true));
+                            retryHandler.post(() -> executeCallWithRotation(messages, callback, retryCount, keyRotationCount, true, overrideProvider, overrideModel));
                             return;
                         }
 
@@ -262,17 +266,17 @@ public class UniversalNetworkClient {
                                 int nextKeyIdx = (currentIdx + 1) % keyList.size();
                                 currentKeyIndex.set(nextKeyIdx);
                                 Log.w(TAG, "Omni-Rotator: Key[" + currentIdx + "] return HTTP " + code + ". Beralih ke Key[" + nextKeyIdx + "]...");
-                                retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1, useFallbackModel));
+                                retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, keyRotationCount + 1, useFallbackModel, overrideProvider, overrideModel));
                                 return;
                             } else {
                                 com.novaagent.app.core.config.NovaConfigManager configMgr = com.novaagent.app.core.config.NovaConfigManager.getInstance(context);
                                 if (configMgr.isAutoFallbackEnabled()) {
                                     String nextProvider = OmniRouter.getInstance().getNextHealthyProvider(finalProvider);
                                     if (nextProvider != null && !nextProvider.equalsIgnoreCase(finalProvider)) {
-                                        Log.w(TAG, "Omni-Cascade: Provider " + finalProvider + " gagal. Otomatis beralih ke " + nextProvider);
+                                        Log.w(TAG, "Omni-Cascade: Provider " + finalProvider + " gagal. Otomatis beralih ke " + nextProvider + " (runtime only)");
                                         String nextModel = com.novaagent.app.core.config.NovaConfigManager.getPreferredModelForProvider(nextProvider);
-                                        prefs.edit().putString("ai_provider", nextProvider).putString("ai_model", nextModel).apply();
-                                        retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, 0, false));
+                                        // NET-02: Jangan timpa preferensi user di SharedPreferences!
+                                        retryHandler.post(() -> executeCallWithRotation(messages, callback, 0, 0, false, nextProvider, nextModel));
                                         return;
                                     }
                                 }
@@ -289,7 +293,7 @@ public class UniversalNetworkClient {
                         }
 
                         // 3. Error lainnya (500, 502, 503, dll) -> handle retry bertahap
-                        handleRetry(messages, callback, retryCount, keyRotationCount, "HTTP " + code);
+                        handleRetry(messages, callback, retryCount, keyRotationCount, useFallbackModel, overrideProvider, overrideModel, "HTTP " + code);
                         return;
                     }
 
@@ -398,11 +402,11 @@ public class UniversalNetworkClient {
         return raw.replace("\\n", " ").replace("\\\"", "\"");
     }
 
-    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, String reason) {
+    private void handleRetry(JSONArray messages, NetworkCallback callback, int currentRetry, int keyRotationCount, boolean useFallbackModel, String overrideProvider, String overrideModel, String reason) {
         if (currentRetry < MAX_RETRIES) {
             int nextRetry = currentRetry + 1;
             long delay = 1000 * (long) Math.pow(2, currentRetry);
-            retryHandler.postDelayed(() -> executeCallWithRotation(messages, callback, nextRetry, keyRotationCount, false), delay);
+            retryHandler.postDelayed(() -> executeCallWithRotation(messages, callback, nextRetry, keyRotationCount, useFallbackModel, overrideProvider, overrideModel), delay);
         } else {
             callback.onError(reason);
         }

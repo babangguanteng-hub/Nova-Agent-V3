@@ -10,39 +10,76 @@ public class SecureConfigManager {
     private static final String PREF_NAME_LEGACY = "nova_config";
     private static final String KEY_API_KEY = "api_key";
 
+    public static String getProviderKeyPrefix(String provider) {
+        if (provider == null || provider.trim().isEmpty()) return KEY_API_KEY;
+        String clean = provider.toLowerCase().replaceAll("[^a-z0-9]", "_");
+        return "api_key_" + clean;
+    }
+
     public static String getApiKey(Context context) {
+        SharedPreferences configPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
+        String provider = configPrefs.getString("ai_provider", "Groq");
+        return getApiKeyForProvider(context, provider);
+    }
+
+    public static String getApiKeyForProvider(Context context, String provider) {
+        String keyName = getProviderKeyPrefix(provider);
         try {
             SharedPreferences securePrefs = getSecurePrefs(context);
-            String key = securePrefs.getString(KEY_API_KEY, "");
+            String key = securePrefs.getString(keyName, "");
             if (!key.isEmpty()) return key;
+
+            // Fallback backward compatibility: jika belum ada key khusus provider, cek legacy global key
+            String globalKey = securePrefs.getString(KEY_API_KEY, "");
+            if (!globalKey.isEmpty()) {
+                saveApiKeyForProvider(context, provider, globalKey);
+                return globalKey;
+            }
         } catch (Exception ignored) {}
 
-        // Fallback & migrasi otomatis dari prefs lama (lalu hapus plaintext)
+        // Fallback dari legacy plaintext preferences jika hardware keystore gagal
         SharedPreferences legacyPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
-        String legacyKey = legacyPrefs.getString(KEY_API_KEY, "");
+        String legacyKey = legacyPrefs.getString(keyName, "");
+        if (legacyKey.isEmpty()) {
+            legacyKey = legacyPrefs.getString(KEY_API_KEY, "");
+        }
         if (!legacyKey.isEmpty()) {
-            saveApiKey(context, legacyKey);
+            saveApiKeyForProvider(context, provider, legacyKey);
         }
         return legacyKey;
     }
 
     public static void saveApiKey(Context context, String apiKey) {
+        SharedPreferences configPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
+        String provider = configPrefs.getString("ai_provider", "Groq");
+        saveApiKeyForProvider(context, provider, apiKey);
+    }
+
+    public static void saveApiKeyForProvider(Context context, String provider, String apiKey) {
+        if (apiKey == null) apiKey = "";
+        String keyName = getProviderKeyPrefix(provider);
         boolean encryptedSuccess = false;
+
         try {
             SharedPreferences securePrefs = getSecurePrefs(context);
-            securePrefs.edit().putString(KEY_API_KEY, apiKey).apply();
+            securePrefs.edit()
+                    .putString(keyName, apiKey)
+                    .putString(KEY_API_KEY, apiKey)
+                    .apply();
             encryptedSuccess = true;
         } catch (Exception ignored) {}
 
-        // Hapus kunci plaintext dari legacy prefs jika enkripsi berhasil
         SharedPreferences legacyPrefs = context.getSharedPreferences(PREF_NAME_LEGACY, Context.MODE_PRIVATE);
         if (encryptedSuccess) {
-            if (legacyPrefs.contains(KEY_API_KEY)) {
-                legacyPrefs.edit().remove(KEY_API_KEY).apply();
-            }
+            SharedPreferences.Editor editor = legacyPrefs.edit();
+            if (legacyPrefs.contains(keyName)) editor.remove(keyName);
+            if (legacyPrefs.contains(KEY_API_KEY)) editor.remove(KEY_API_KEY);
+            editor.apply();
         } else {
-            // Fallback darurat hanya jika Keystore hardware gagal total
-            legacyPrefs.edit().putString(KEY_API_KEY, apiKey).apply();
+            legacyPrefs.edit()
+                    .putString(keyName, apiKey)
+                    .putString(KEY_API_KEY, apiKey)
+                    .apply();
         }
     }
 

@@ -14,6 +14,7 @@ public class ActionCommandDto {
     public final String direction;
     public final String thought;
     public final String speech;
+    public final String memoryToSave;
     public final List<String> subTasks = new ArrayList<>();
     public final boolean stepComplete;
 
@@ -25,6 +26,7 @@ public class ActionCommandDto {
         this.y = y;
         this.thought = "";
         this.speech = speech != null ? speech : "";
+        this.memoryToSave = null;
         this.stepComplete = false;
     }
 
@@ -48,6 +50,7 @@ public class ActionCommandDto {
         this.thought = json.optString("thought", "");
         this.speech = json.optString("speech", "");
         this.stepComplete = json.optBoolean("stepComplete", false);
+        this.memoryToSave = json.isNull("memoryToSave") ? null : json.optString("memoryToSave", null);
 
         JSONArray tasks = json.optJSONArray("plan");
         if (tasks != null) {

@@ -64,6 +64,10 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         saveFact(fact, CAT_GENERAL);
     }
 
+    public synchronized void saveMemory(String category, String fact, float score) {
+        saveFact(fact, category);
+    }
+
     public synchronized void saveFact(String fact, String category) {
         if (fact == null || fact.trim().isEmpty()) return;
         String cleanFact = fact.trim();
@@ -75,8 +79,13 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
         values.put(COL_CATEGORY, safeCat);
         values.put(COL_TIMESTAMP, System.currentTimeMillis());
 
-        db.insertWithOnConflict(TABLE_MEMORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
-        db.close();
+        db.beginTransaction();
+        try {
+            db.insertWithOnConflict(TABLE_MEMORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
 
         pruneOldMemoriesIfExceeds(MAX_MEMORY_CAP);
         Log.i(TAG, "Fakta tersimpan [" + safeCat + "]: " + cleanFact);
@@ -128,30 +137,28 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
             selectionArgs[i] = "%" + words[i] + "%";
         }
 
-        Cursor cursor = db.query(TABLE_MEMORY,
-                new String[]{COL_FACT, COL_CATEGORY, COL_TIMESTAMP},
-                selection.toString(), selectionArgs, null, null, null, "25");
-
         List<ScoredFact> scoredList = new ArrayList<>();
-        if (cursor != null && cursor.moveToFirst()) {
-            do {
-                String factText = cursor.getString(0);
-                String cat = cursor.getString(1);
-                long time = cursor.getLong(2);
+        try (Cursor cursor = db.query(TABLE_MEMORY,
+                new String[]{COL_FACT, COL_CATEGORY, COL_TIMESTAMP},
+                selection.toString(), selectionArgs, null, null, null, "25")) {
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    String factText = cursor.getString(0);
+                    String cat = cursor.getString(1);
+                    long time = cursor.getLong(2);
 
-                int score = 0;
-                String lowerFact = factText.toLowerCase();
-                for (String w : words) {
-                    if (lowerFact.contains(w)) score += 2;
-                }
-                // Bonus relevansi tinggi untuk preferensi pengguna
-                if (CAT_PREFERENCE.equals(cat)) score += 3;
+                    int score = 0;
+                    String lowerFact = factText.toLowerCase();
+                    for (String w : words) {
+                        if (lowerFact.contains(w)) score += 2;
+                    }
+                    // Bonus relevansi tinggi untuk preferensi pengguna
+                    if (CAT_PREFERENCE.equals(cat)) score += 3;
 
-                scoredList.add(new ScoredFact(factText, cat, score, time));
-            } while (cursor.moveToNext());
-            cursor.close();
+                    scoredList.add(new ScoredFact(factText, cat, score, time));
+                } while (cursor.moveToNext());
+            }
         }
-        db.close();
 
         if (scoredList.isEmpty()) return "";
 
@@ -172,40 +179,63 @@ public class LongTermMemoryEngine extends SQLiteOpenHelper {
     private synchronized void pruneOldMemoriesIfExceeds(int maxLimit) {
         try {
             SQLiteDatabase db = this.getWritableDatabase();
-            Cursor countCursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_MEMORY, null);
             int count = 0;
-            if (countCursor != null && countCursor.moveToFirst()) {
-                count = countCursor.getInt(0);
-                countCursor.close();
+            try (Cursor countCursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_MEMORY, null)) {
+                if (countCursor != null && countCursor.moveToFirst()) {
+                    count = countCursor.getInt(0);
+                }
             }
 
             if (count > maxLimit) {
                 int toDelete = count - maxLimit;
-                // Hapus fakta terlama selain preference
-                db.execSQL("DELETE FROM " + TABLE_MEMORY + " WHERE id IN (" +
-                        "SELECT id FROM " + TABLE_MEMORY +
-                        " WHERE " + COL_CATEGORY + " != '" + CAT_PREFERENCE + "'" +
-                        " ORDER BY " + COL_TIMESTAMP + " ASC LIMIT " + toDelete + ")");
-                Log.i(TAG, "Pruning memori: " + toDelete + " fakta lama dibersihkan.");
+                db.beginTransaction();
+                try {
+                    // Hapus fakta terlama selain preference
+                    db.execSQL("DELETE FROM " + TABLE_MEMORY + " WHERE id IN (" +
+                            "SELECT id FROM " + TABLE_MEMORY +
+                            " WHERE " + COL_CATEGORY + " != '" + CAT_PREFERENCE + "'" +
+                            " ORDER BY " + COL_TIMESTAMP + " ASC LIMIT " + toDelete + ")");
+                    db.setTransactionSuccessful();
+                    Log.i(TAG, "Pruning memori: " + toDelete + " fakta lama dibersihkan.");
+                } finally {
+                    db.endTransaction();
+                }
             }
-            db.close();
         } catch (Exception e) {
             Log.w(TAG, "Gagal memangkas memori: " + e.getMessage());
         }
     }
 
     public synchronized void clearAllMemories() {
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.delete(TABLE_MEMORY, null, null);
-        db.close();
-        Log.i(TAG, "Seluruh memori jangka panjang dibersihkan.");
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransaction();
+            try {
+                db.delete(TABLE_MEMORY, null, null);
+                db.setTransactionSuccessful();
+                Log.i(TAG, "Seluruh memori jangka panjang dibersihkan.");
+            } finally {
+                db.endTransaction();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Gagal membersihkan memori: " + e.getMessage());
+        }
     }
 
     public synchronized void clearCategory(String category) {
         if (category == null) return;
-        SQLiteDatabase db = this.getWritableDatabase();
-        db.delete(TABLE_MEMORY, COL_CATEGORY + " = ?", new String[]{category.toLowerCase()});
-        db.close();
-        Log.i(TAG, "Kategori memori '" + category + "' dibersihkan.");
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransaction();
+            try {
+                db.delete(TABLE_MEMORY, COL_CATEGORY + " = ?", new String[]{category.toLowerCase()});
+                db.setTransactionSuccessful();
+                Log.i(TAG, "Kategori memori '" + category + "' dibersihkan.");
+            } finally {
+                db.endTransaction();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Gagal membersihkan kategori memori: " + e.getMessage());
+        }
     }
 }

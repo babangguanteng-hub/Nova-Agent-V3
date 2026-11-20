@@ -59,14 +59,29 @@ public class ConversationMemory {
     }
 
     private void addMessage(String role, String content) {
-        memory.add(new MessageEntry(role, content));
+        if (content == null || content.trim().isEmpty()) return;
 
-        // PRUNING CERDAS (FIMO): Jika memori penuh, pertahankan konteks pertama, buang yang tengah
-        if (memory.size() > MAX_MEMORY_PAIRS * 2) {
-            // Elemen 0 & 1 adalah percakapan pertama (sangat krusial untuk konteks awal)
-            // Buang elemen ke-2 dan ke-3 (percakapan di tengah)
-            memory.remove(2); 
-            memory.remove(2); 
+        // Cegah pesan berturut-turut dengan role yang sama
+        if (!memory.isEmpty() && memory.getLast().role.equals(role)) {
+            memory.getLast().content = memory.getLast().content + "\n\n" + content.trim();
+        } else {
+            memory.add(new MessageEntry(role, content.trim()));
+        }
+
+        // PRUNING CERDAS (FIMO & ALTERNATION SAFE): Pertahankan konteks awal (0 & 1), buang pasangan di tengah
+        while (memory.size() > MAX_MEMORY_PAIRS * 2) {
+            if (memory.size() >= 4) {
+                // Hapus 1 pasang (user + assistant) di tengah agar urutan tetap seimbang
+                memory.remove(2);
+                if (memory.size() > 2) memory.remove(2);
+            } else {
+                memory.removeFirst();
+            }
+        }
+
+        // Pastikan pesan awal setelah pruning selalu dari 'user'
+        while (!memory.isEmpty() && !"user".equals(memory.getFirst().role)) {
+            memory.removeFirst();
         }
     }
 
@@ -76,8 +91,20 @@ public class ConversationMemory {
 
     public synchronized JSONArray getMemoryAsJsonArray() {
         JSONArray array = new JSONArray();
+        String lastRole = null;
+        JSONObject lastObj = null;
+
         for (MessageEntry msg : memory) {
-            array.put(msg.toJson());
+            if (msg.role.equals(lastRole) && lastObj != null) {
+                try {
+                    lastObj.put("content", lastObj.getString("content") + "\n\n" + msg.content);
+                } catch (Exception ignored) {}
+            } else {
+                JSONObject obj = msg.toJson();
+                array.put(obj);
+                lastObj = obj;
+                lastRole = msg.role;
+            }
         }
         return array;
     }

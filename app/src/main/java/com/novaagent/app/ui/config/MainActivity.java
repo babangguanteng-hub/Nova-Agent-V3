@@ -73,13 +73,13 @@ public class MainActivity extends AppCompatActivity {
     };
 
     private final String[] models = {
-        "openai/gpt-oss-20b",
-        "gemini-3.5-flash",
-        "GPT-OSS / Qwen 3.8 27B",
-        "ministral-3b-latest",
-        "north-mini-code-1.0",
-        "@cf/google/gemma-4-26b-a4b-it",
-        "meta/llama-3.1-70b-instruct",
+        "llama-3.3-70b-versatile",
+        "gemini-2.5-flash",
+        "llama-3.3-70b",
+        "mistral-small-latest",
+        "command-r-plus-08-2024",
+        "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+        "meta/llama-3.3-70b-instruct",
         "meta-llama/llama-3.3-70b-instruct:free"
     };
 
