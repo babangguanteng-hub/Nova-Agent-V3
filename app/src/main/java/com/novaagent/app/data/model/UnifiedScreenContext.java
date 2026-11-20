@@ -36,6 +36,10 @@ public class UnifiedScreenContext {
         }
     }
 
+    public UnifiedScreenContext(String packageName, List<ScreenElement> elements) {
+        this(packageName, System.currentTimeMillis(), elements);
+    }
+
     public String getTextAtCoordinate(int x, int y) {
         for (ScreenElement el : elements) {
             if (x >= el.boundsLeft && x <= el.boundsRight && y >= el.boundsTop && y <= el.boundsBottom) {

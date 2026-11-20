@@ -25,6 +25,7 @@ public class BatterySkill implements NovaSkill {
     public boolean canHandle(String rawCommand) {
         if (rawCommand == null) return false;
         String c = rawCommand.toLowerCase();
+        if (c.matches(".*(menu daya|matikan daya|tombol daya).*")) return false;
         return c.matches(".*(baterai|daya|battery|persen baterai|sisa baterai).*") &&
                !c.matches(".*(jadwal|schedule|sentinel).*");
     }

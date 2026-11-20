@@ -46,6 +46,7 @@ public class AppLauncherSkill implements NovaSkill {
     public boolean canHandle(String rawCommand) {
         if (rawCommand == null) return false;
         String c = rawCommand.toLowerCase().trim();
+        if (c.matches(".*(menu daya|power menu|split screen|clipboard).*")) return false;
         return c.matches("^(buka|bka|bukka|open|jalankan|mainkan)\\s+.*");
     }
 

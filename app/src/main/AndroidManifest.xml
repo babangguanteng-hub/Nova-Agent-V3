@@ -68,5 +68,13 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".services.receiver.SentinelAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.novaagent.app.action.SENTINEL_TRIGGER" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -1,10 +1,13 @@
 package com.novaagent.app.core.proactive;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -13,6 +16,7 @@ import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.core.di.ServiceLocator;
 import com.novaagent.app.core.engine.AutonomousLoopEngine;
+import com.novaagent.app.services.receiver.SentinelAlarmReceiver;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -69,10 +73,27 @@ public class ConditionalSentinelEngine {
                                 executeTask(cmd);
                             });
                         } else {
-                            timeHandler.postDelayed(() -> {
-                                sp.edit().remove("task_" + cmd).apply();
-                                executeTask(cmd);
-                            }, remaining);
+                            try {
+                                AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                                if (alarmManager != null) {
+                                    Intent intent = new Intent(context, SentinelAlarmReceiver.class);
+                                    intent.setAction(SentinelAlarmReceiver.ACTION_SENTINEL_TRIGGER);
+                                    intent.putExtra(SentinelAlarmReceiver.EXTRA_COMMAND, cmd);
+                                    int requestCode = cmd.hashCode();
+                                    int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        flags |= PendingIntent.FLAG_IMMUTABLE;
+                                    }
+                                    PendingIntent pi = PendingIntent.getBroadcast(context, requestCode, intent, flags);
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                    } else {
+                                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Failed to restore alarm for " + cmd + ": " + e.getMessage());
+                            }
                         }
                     }
                 }
@@ -80,29 +101,53 @@ public class ConditionalSentinelEngine {
         } catch (Exception ignored) {}
     }
 
-    // --- 1. PENJADWALAN WAKTU (DELAY) ---
+    // --- 1. PENJADWALAN WAKTU (DELAY / EXACT ALARM) ---
     public void scheduleTimeTask(int delayMinutes, String command) {
         long delayMillis = delayMinutes * 60 * 1000L;
-        Log.i(TAG, "Menjadwalkan tugas: '" + command + "' dalam " + delayMinutes + " menit.");
+        long triggerAt = System.currentTimeMillis() + delayMillis;
+        Log.i(TAG, "Menjadwalkan tugas: '" + command + "' dalam " + delayMinutes + " menit (trigger at: " + triggerAt + ").");
         
         if (context != null) {
             try {
                 android.content.SharedPreferences sp = context.getSharedPreferences("nova_sentinel_tasks", Context.MODE_PRIVATE);
-                long triggerAt = System.currentTimeMillis() + delayMillis;
                 sp.edit().putLong("task_" + command, triggerAt).apply();
-            } catch (Exception ignored) {}
+
+                AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                if (alarmManager != null) {
+                    Intent intent = new Intent(context, SentinelAlarmReceiver.class);
+                    intent.setAction(SentinelAlarmReceiver.ACTION_SENTINEL_TRIGGER);
+                    intent.putExtra(SentinelAlarmReceiver.EXTRA_COMMAND, command);
+
+                    int requestCode = command.hashCode();
+                    int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        flags |= PendingIntent.FLAG_IMMUTABLE;
+                    }
+                    PendingIntent pendingIntent = PendingIntent.getBroadcast(context, requestCode, intent, flags);
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent);
+                    } else {
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to schedule exact alarm: " + e.getMessage(), e);
+            }
         }
         
         timeHandler.postDelayed(() -> {
-            Log.i(TAG, "Waktunya tiba! Mengeksekusi: " + command);
+            Log.i(TAG, "Handler fallback check for: " + command);
             if (context != null) {
                 try {
                     android.content.SharedPreferences sp = context.getSharedPreferences("nova_sentinel_tasks", Context.MODE_PRIVATE);
-                    sp.edit().remove("task_" + command).apply();
+                    if (sp.contains("task_" + command)) {
+                        sp.edit().remove("task_" + command).apply();
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Waktunya mengeksekusi tugas terjadwal bos."));
+                        executeTask(command);
+                    }
                 } catch (Exception ignored) {}
             }
-            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Waktunya mengeksekusi tugas terjadwal bos."));
-            executeTask(command);
         }, delayMillis);
     }
 

@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.media.projection.MediaProjectionManager;
@@ -447,6 +448,63 @@ public class MainActivity extends AppCompatActivity implements EventBus.EventLis
                           "• Arsitektur: " + Build.SUPPORTED_ABIS[0] + "\n" +
                           "• Jaringan: " + deviceController.getConnectivitySummary();
             tvDev.setText(info);
+        }
+
+        // Feature 4.6: Black-Box Crash Inspector
+        TextView tvCrashBadge = findViewById(R.id.tvCrashStatusBadge);
+        TextView tvCrashPreview = findViewById(R.id.tvCrashLogPreview);
+        View btnCopyCrash = findViewById(R.id.btnCopyCrashLog);
+        View btnClearCrash = findViewById(R.id.btnClearCrashLog);
+
+        Runnable refreshCrashUI = () -> {
+            String crash = com.novaagent.app.NovaApplication.getCrashLog(this);
+            if (crash != null && !crash.isEmpty()) {
+                if (tvCrashBadge != null) {
+                    tvCrashBadge.setText("Crash Terdeteksi");
+                    tvCrashBadge.setTextColor(Color.parseColor("#FF5252"));
+                    tvCrashBadge.setBackgroundResource(R.drawable.bg_badge_inactive);
+                }
+                if (tvCrashPreview != null) {
+                    tvCrashPreview.setText(crash);
+                }
+            } else {
+                if (tvCrashBadge != null) {
+                    tvCrashBadge.setText("Sistem Stabil");
+                    tvCrashBadge.setTextColor(Color.parseColor("#00E676"));
+                    tvCrashBadge.setBackgroundResource(R.drawable.bg_badge_green);
+                }
+                if (tvCrashPreview != null) {
+                    tvCrashPreview.setText("Tidak ada rekaman crash. Sistem beroperasi secara normal.");
+                }
+            }
+        };
+        refreshCrashUI.run();
+
+        if (btnCopyCrash != null) {
+            NeonMotionEngine.attachTouchFeedback(btnCopyCrash);
+            btnCopyCrash.setOnClickListener(v -> {
+                playClickSound();
+                String crash = com.novaagent.app.NovaApplication.getCrashLog(this);
+                if (crash != null && !crash.isEmpty()) {
+                    ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setPrimaryClip(ClipData.newPlainText("NovaCrashLog", crash));
+                        Toast.makeText(this, "Log crash berhasil disalin ke clipboard", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(this, "Tidak ada crash log untuk disalin", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (btnClearCrash != null) {
+            NeonMotionEngine.attachTouchFeedback(btnClearCrash);
+            btnClearCrash.setOnClickListener(v -> {
+                playClickSound();
+                com.novaagent.app.NovaApplication.clearCrashLog(this);
+                refreshCrashUI.run();
+                Toast.makeText(this, "Log crash dibersihkan", Toast.LENGTH_SHORT).show();
+            });
         }
     }
 

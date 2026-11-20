@@ -42,6 +42,7 @@ public class CalculatorSkill implements NovaSkill {
     public boolean canHandle(String rawCommand) {
         if (rawCommand == null) return false;
         String lower = rawCommand.toLowerCase().trim();
+        if (lower.contains("diskon") || lower.contains("potongan") || lower.contains("cashback")) return false;
         return PERCENT_PATTERN.matcher(lower).matches() ||
                CALC_PATTERN.matcher(lower).matches() ||
                (lower.contains("hitung") && lower.matches(".*\\d+.*"));

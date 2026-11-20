@@ -1235,6 +1235,91 @@
                     android:textSize="12sp"
                     android:lineSpacingExtra="4dp"/>
             </LinearLayout>
+
+            <!-- Kartu 4: Black-Box Crash Inspector (4.6) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_jarvis_card"
+                android:orientation="vertical"
+                android:padding="18dp"
+                android:layout_marginBottom="16dp">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Black-Box Crash Inspector"
+                        android:textColor="#FF5252"
+                        android:textSize="15sp"
+                        android:textStyle="bold"/>
+
+                    <TextView
+                        android:id="@+id/tvCrashStatusBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sistem Stabil"
+                        android:textColor="#00E676"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_badge_green"
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="2dp"
+                        android:layout_alignParentEnd="true"/>
+                </RelativeLayout>
+
+                <TextView
+                    android:id="@+id/tvCrashLogPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:maxLines="6"
+                    android:scrollbars="vertical"
+                    android:background="@drawable/bg_jarvis_input"
+                    android:padding="12dp"
+                    android:text="Tidak ada rekaman crash. Sistem beroperasi secara normal."
+                    android:textColor="#94A3B8"
+                    android:fontFamily="monospace"
+                    android:textSize="11sp"
+                    android:layout_marginBottom="12dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnCopyCrashLog"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_weight="1"
+                        android:text="Salin Log"
+                        android:textAllCaps="false"
+                        android:backgroundTint="@null"
+                        android:background="@drawable/bg_neon_pill_cyan"
+                        android:textColor="#00E5FF"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="6dp"/>
+
+                    <Button
+                        android:id="@+id/btnClearCrashLog"
+                        android:layout_width="0dp"
+                        android:layout_height="42dp"
+                        android:layout_weight="1"
+                        android:text="Bersihkan Log"
+                        android:textAllCaps="false"
+                        android:backgroundTint="@null"
+                        android:background="@drawable/bg_neon_pill_solid_cyan"
+                        android:textColor="#050811"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:layout_marginStart="6dp"/>
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

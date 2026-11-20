@@ -76,6 +76,7 @@ public void onCreate() {
     locator.register(CognitiveCore.class, cognitiveCore);
     locator.register(com.novaagent.app.core.brain.MemoryCoordinator.class, cognitiveCore.getMemoryCoordinator());
     locator.register(com.novaagent.app.core.brain.ConversationMemory.class, cognitiveCore.getMemoryCoordinator().getWorkingMemory());
+    locator.register(com.novaagent.app.core.brain.ContextManager.class, cognitiveCore.getContextManager());
     
     perceptionCoordinator = new PerceptionCoordinator();
     locator.register(PerceptionCoordinator.class, perceptionCoordinator);

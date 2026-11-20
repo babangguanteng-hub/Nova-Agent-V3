@@ -31,6 +31,7 @@ public class CognitiveCore {
 
     public TaskPlanner getPlanner() { return taskPlanner; }
     public MemoryCoordinator getMemoryCoordinator() { return memoryCoordinator; }
+    public ContextManager getContextManager() { return contextManager; }
     
     public void wipeMemory() { 
         memoryCoordinator.wipeShortTermMemory(); 
@@ -54,6 +55,16 @@ public class CognitiveCore {
                 taskPlanner.setMainGoal(userCommand);
             }
             if (userCommand != null && !userCommand.trim().isEmpty()) {
+                // Feature 4.3: Automated Semantic Fact Extraction (0 Token API)
+                LocalFactExtractor.ExtractedFact extracted = LocalFactExtractor.extractFact(userCommand);
+                if (extracted != null) {
+                    LongTermMemoryEngine ltm = ServiceLocator.getInstance().resolve(LongTermMemoryEngine.class);
+                    if (ltm != null) {
+                        ltm.saveFact(extracted.fact, extracted.category);
+                        Log.i(TAG, "Local fact extracted and saved: " + extracted.fact + " (" + extracted.category + ")");
+                    }
+                }
+
                 JSONArray history = memoryCoordinator.getRecentChatHistory();
                 boolean alreadyAdded = false;
                 if (history != null && history.length() > 0) {

@@ -65,6 +65,20 @@ public class SkillRegistry {
         registerSkill(new DeviceSettingsSkill());         // 31. Pengaturan hardware sistem terarah
         registerSkill(new WebSearchSkill());              // 32. Pencarian web & internet cerdas
 
+        // 6. Next-Gen V4 Hardware & Autonomous Skills (Feature 4.5: 33-44)
+        registerSkill(new MediaControlSkill());           // 33. Kontrol pemutaran media
+        registerSkill(new ContactDialerSkill());          // 34. Papan telepon & panggilan kontak
+        registerSkill(new ClipboardAssistantSkill());     // 35. Asisten papan klip (clipboard)
+        registerSkill(new InstantScreenshotSkill());      // 36. Tangkapan layar instan
+        registerSkill(new SplitScreenSkill());            // 37. Layar belah (Split Screen)
+        registerSkill(new StorageRamDiagnosticSkill());   // 38. Diagnostik RAM & Penyimpanan
+        registerSkill(new SosFlashlightSkill());          // 39. Senter darurat kode morse SOS
+        registerSkill(new DiscountCalculatorSkill());     // 40. Kalkulator diskon & belanja offline
+        registerSkill(new PowerDialogSkill());            // 41. Menu opsi daya perangkat
+        registerSkill(new AppUsageStatsSkill());          // 42. Statistik pemakaian aplikasi & screen time
+        registerSkill(new DirectDndSkill());              // 43. Mode Jangan Ganggu (DND)
+        registerSkill(new FindMyPhoneAlarmSkill());       // 44. Alarm pencari ponsel terselip
+
         Log.i(TAG, "SkillRegistry berhasil menginisialisasi " + skills.size() + " keahlian mandiri.");
     }
 

@@ -1,6 +1,7 @@
 package com.novaagent.app.services.notification;
 
 import android.app.Notification;
+import android.app.RemoteInput;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -31,6 +32,8 @@ public class NovaNotificationListenerService extends NotificationListenerService
         public final long timestamp;
         public final String packageName;
         public boolean isRead = false;
+        public Notification.Action quickReplyAction = null;
+        public RemoteInput quickRemoteInput = null;
 
         public ChatMessage(String sender, String text, long timestamp, String packageName) {
             this.sender = sender != null ? sender : "Pengirim Tidak Dikenal";
@@ -88,12 +91,29 @@ public class NovaNotificationListenerService extends NotificationListenerService
                 if (!content.isEmpty() && !content.toLowerCase().contains("memeriksa pesan baru") &&
                     !content.toLowerCase().contains("checking for new messages")) {
                     ChatMessage msg = new ChatMessage(sender, content, sbn.getPostTime(), pkg);
+
+                    // 4.1: Ekstraksi Direct Reply RemoteInput Action
+                    if (notification.actions != null) {
+                        for (Notification.Action act : notification.actions) {
+                            if (act != null && act.getRemoteInputs() != null) {
+                                for (RemoteInput ri : act.getRemoteInputs()) {
+                                    if (ri != null && ri.getResultKey() != null) {
+                                        msg.quickReplyAction = act;
+                                        msg.quickRemoteInput = ri;
+                                        break;
+                                    }
+                                }
+                                if (msg.quickReplyAction != null) break;
+                            }
+                        }
+                    }
+
                     unreadMessages.add(0, msg); // Simpan pesan terbaru di depan
                     // Batasi maksimal 20 pesan terakhir
                     while (unreadMessages.size() > 20) {
                         unreadMessages.remove(unreadMessages.size() - 1);
                     }
-                    Log.i(TAG, "Pesan WhatsApp baru ditangkap dari: " + sender);
+                    Log.i(TAG, "Pesan WhatsApp baru ditangkap dari: " + sender + (msg.quickReplyAction != null ? " (RemoteInput siap)" : ""));
                 }
             }
         }
@@ -132,6 +152,29 @@ public class NovaNotificationListenerService extends NotificationListenerService
     public void markAllAsRead() {
         for (ChatMessage m : unreadMessages) {
             m.isRead = true;
+        }
+    }
+
+    /**
+     * 4.1: Direct Notification RemoteInput Engine
+     * Mengirim balasan langsung tanpa membuka aplikasi WhatsApp (Background Reply).
+     */
+    public boolean sendDirectReply(ChatMessage message, String replyText) {
+        if (message == null || message.quickReplyAction == null || message.quickRemoteInput == null) {
+            return false;
+        }
+        try {
+            Intent replyIntent = new Intent();
+            Bundle bundle = new Bundle();
+            bundle.putCharSequence(message.quickRemoteInput.getResultKey(), replyText);
+            RemoteInput.addResultsToIntent(new RemoteInput[]{message.quickRemoteInput}, replyIntent, bundle);
+            message.quickReplyAction.actionIntent.send(this, 0, replyIntent);
+            message.isRead = true;
+            Log.i(TAG, "Direct Notification RemoteInput berhasil dikirim ke: " + message.sender);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal mengirim Direct RemoteInput reply: " + e.getMessage());
+            return false;
         }
     }
 }

@@ -120,6 +120,22 @@ public class WhatsAppMessageAssistant {
         String text = pendingDraft.replyText;
         pendingDraft = null;
 
+        // 4.1: Coba kirim via Direct Notification RemoteInput di background tanpa membuka UI WhatsApp
+        try {
+            NovaNotificationListenerService notifService = ServiceLocator.getInstance().resolve(NovaNotificationListenerService.class);
+            if (notifService != null) {
+                for (NovaNotificationListenerService.ChatMessage msg : notifService.getUnreadWhatsAppMessages()) {
+                    if (msg.sender.equalsIgnoreCase(recipient) && msg.quickReplyAction != null) {
+                        boolean ok = notifService.sendDirectReply(msg, text);
+                        if (ok) {
+                            return SkillResult.success("Pesan berhasil terkirim langsung ke " + recipient + " tanpa membuka aplikasi.");
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback: Luncurkan WhatsApp Intent
         try {
             String url = "https://api.whatsapp.com/send?text=" + URLEncoder.encode(text, "UTF-8");
             Intent sendIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));

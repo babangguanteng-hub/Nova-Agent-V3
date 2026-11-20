@@ -62,13 +62,39 @@ public void executeAction(ActionCommandDto cmd) {
             if (!success) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_RECEIVED, "Maaf bos, aplikasi " + cmd.textToType + " tidak ditemukan di sistem."));
             EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
             return;
-        case "quick_settings": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS); break;
-        case "notifications": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS); break;
-        case "recent_apps": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS); break;
-        case "home": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); break;
-        case "back": success = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK); break;
+        case "quick_settings": success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS); break;
+        case "notifications": success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS); break;
+        case "recent_apps": success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS); break;
+        case "home": success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); break;
+        case "back": success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK); break;
+        case "take_screenshot":
+            success = (service != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT);
+            break;
+        case "split_screen":
+            success = (service != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_TOGGLE_SPLIT_SCREEN);
+            break;
+        case "power_dialog":
+            success = service != null && service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG);
+            break;
         case "tap":
-        case "click": success = executeTap(service, cmd.x, cmd.y); break;
+        case "click":
+            int targetX = cmd.x;
+            int targetY = cmd.y;
+            if (targetX < 0 && targetY < 0 && cmd.textToType != null && cmd.textToType.startsWith("#")) {
+                try {
+                    int mark = Integer.parseInt(cmd.textToType.substring(1).trim());
+                    com.novaagent.app.core.brain.ContextManager cm = ServiceLocator.getInstance().find(com.novaagent.app.core.brain.ContextManager.class);
+                    if (cm != null) {
+                        com.novaagent.app.data.model.UnifiedScreenContext.ScreenElement el = cm.getElementByMark(mark);
+                        if (el != null) {
+                            targetX = el.centerX;
+                            targetY = el.centerY;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+            success = executeTap(service, targetX, targetY);
+            break;
         case "swipe":
         case "scroll": success = executeSwipe(service, cmd.direction); break;
         case "type":
