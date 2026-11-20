@@ -22,6 +22,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import com.novaagent.app.core.audio.fullduplex.StreamingSentenceChunker;
 import com.novaagent.app.core.bus.AgentEvent;
 import com.novaagent.app.core.bus.EventBus;
 import com.novaagent.app.data.network.omni.OmniRouter;
@@ -292,6 +293,10 @@ public class UniversalNetworkClient {
                         return;
                     }
 
+                    StreamingSentenceChunker sentenceChunker = new StreamingSentenceChunker((clause, isFirstClause) -> {
+                        EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, clause));
+                    });
+
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body().byteStream()))) {
                         String line;
                         StringBuilder fullResponse = new StringBuilder();
@@ -340,37 +345,19 @@ public class UniversalNetworkClient {
                                     fullResponse.append(chunk);
                                     String textSoFar = fullResponse.toString();
 
-                                    // STREAMING KLAUSA NATURAL CEPAT
+                                    // STREAMING KLAUSA NATURAL CEPAT MENGGUNAKAN STREAMING SENTENCE CHUNKER (AUDIO-04)
                                     String currentSpeechRaw = extractSpeechFromStream(textSoFar);
                                     if (currentSpeechRaw != null && currentSpeechRaw.length() > lastSpokenIndex) {
                                         String unqueued = currentSpeechRaw.substring(lastSpokenIndex);
-
-                                        int boundary = -1;
-                                        int[] stops = {unqueued.indexOf("."), unqueued.indexOf("?"), unqueued.indexOf("!"), unqueued.indexOf(","), unqueued.indexOf(";"), unqueued.indexOf("\n")};
-                                        for (int stop : stops) {
-                                            if (stop >= 6 && (boundary == -1 || stop < boundary)) boundary = stop;
-                                        }
-
-                                        if (boundary != -1 || (unqueued.length() > 55 && unqueued.contains(" "))) {
-                                            int cutIndex = boundary != -1 ? boundary + 1 : unqueued.lastIndexOf(" ");
-                                            String sentence = unqueued.substring(0, cutIndex).trim();
-                                            if (!sentence.isEmpty()) {
-                                                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, sentence));
-                                            }
-                                            lastSpokenIndex += cutIndex;
-                                        }
+                                        lastSpokenIndex = currentSpeechRaw.length();
+                                        sentenceChunker.feed(unqueued);
                                     }
                                 } catch (Exception ignored) { }
                             }
                         }
 
-                        // Sisa kalimat terakhir saat stream selesai
-                        String textSoFar = fullResponse.toString();
-                        String currentSpeechRaw = extractSpeechFromStream(textSoFar);
-                        if (currentSpeechRaw != null && currentSpeechRaw.length() > lastSpokenIndex) {
-                            String remaining = currentSpeechRaw.substring(lastSpokenIndex).trim();
-                            if (!remaining.isEmpty()) EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.VOICE_STREAM_CHUNK, remaining));
-                        }
+                        // Sisa kalimat terakhir saat stream selesai di-flush melalui chunker
+                        sentenceChunker.flush();
 
                         if (!activeCall.isCanceled()) {
                             long latency = System.currentTimeMillis() - callStartTime;
@@ -379,6 +366,10 @@ public class UniversalNetworkClient {
                         }
                     } catch (Exception e) {
                         if (!activeCall.isCanceled()) callback.onError("Gagal membaca aliran stream: " + e.getMessage());
+                    } finally {
+                        if (response != null) {
+                            try { response.close(); } catch (Exception ignored) {}
+                        }
                     }
                 }
             });

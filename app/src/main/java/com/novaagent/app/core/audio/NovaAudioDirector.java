@@ -50,6 +50,7 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     private final BargeInCoordinator bargeInCoordinator;
     private int audioErrorRetryCount = 0;
     private static final int MAX_AUDIO_ERROR_RETRIES = 3;
+    private float currentVoiceVolume = 0.8f;
 
     private final Runnable listeningWatchdog = () -> {
         if (!isCurrentlySpeaking) {
@@ -194,10 +195,24 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 } catch (Exception ignored) {}
             }
             recentSpokenBuffer.setLength(0);
-            abandonAudioFocus();
+
+            // SMART HYBRID: Matikan FullDuplexCoordinator agar hardware mic siap untuk SpeechRecognizer
             if (fullDuplexCoordinator != null) {
                 fullDuplexCoordinator.onAiSpeechFinished();
+                fullDuplexCoordinator.stop();
             }
+
+            // Kembalikan audio mode ke MODE_NORMAL
+            try {
+                AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.setMode(AudioManager.MODE_NORMAL);
+                }
+            } catch (Exception ignored) {}
+
+            abandonAudioFocus();
+            EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "INTERRUPT_TRIGGERED"));
+            mainHandler.postDelayed(() -> resumeListening(), 100);
         });
 
         this.fullDuplexCoordinator.setListener(new FullDuplexVoiceCoordinator.FullDuplexListener() {
@@ -225,7 +240,8 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             }
         });
 
-        fullDuplexCoordinator.start();
+        // SMART HYBRID AUDIO ARBITRATION: Jangan start fullDuplexCoordinator saat idle
+        // fullDuplexCoordinator hanya diaktifkan saat Nova mulai berbicara untuk barge-in detection.
 
         mainHandler.post(() -> {
             initMouth();
@@ -255,20 +271,45 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
             mouth.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) {
                     isCurrentlySpeaking = true;
-                    if (fullDuplexCoordinator != null) {
-                        fullDuplexCoordinator.onAiSpeechStarted();
-                    }
                     mainHandler.removeCallbacks(listeningWatchdog);
                     requestAudioFocus();
-                    // Jaga mikrofon tetap siaga mendengarkan interupsi user saat Nova bicara
-                    mainHandler.postDelayed(() -> resumeListening(), 180);
+
+                    // SMART HYBRID AUDIO ARBITRATION (AUDIO-01, AUDIO-02, AUDIO-03):
+                    // 1. Matikan SpeechRecognizer (ear) agar melepaskan hardware AudioRecord
+                    mainHandler.post(() -> {
+                        if (ear != null) {
+                            try { ear.cancel(); } catch (Exception ignored) {}
+                        }
+                    });
+
+                    // 2. Aktifkan MODE_IN_COMMUNICATION & Speakerphone agar AEC Hardware aktif
+                    try {
+                        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                            am.setSpeakerphoneOn(true);
+                        }
+                    } catch (Exception ignored) {}
+
+                    // 3. Nyalakan FullDuplex (PcmAudioEngine) dengan Hardware AEC untuk mendeteksi user barge-in VAD
+                    if (fullDuplexCoordinator != null) {
+                        fullDuplexCoordinator.start();
+                        fullDuplexCoordinator.onAiSpeechStarted();
+                    }
                 }
 
                 @Override public void onDone(String utteranceId) {
                     isCurrentlySpeaking = false;
                     if (fullDuplexCoordinator != null) {
                         fullDuplexCoordinator.onAiSpeechFinished();
+                        fullDuplexCoordinator.stop();
                     }
+                    try {
+                        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            am.setMode(AudioManager.MODE_NORMAL);
+                        }
+                    } catch (Exception ignored) {}
                     abandonAudioFocus();
                     mainHandler.postDelayed(() -> resumeListening(), 80);
                 }
@@ -277,7 +318,14 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                     isCurrentlySpeaking = false;
                     if (fullDuplexCoordinator != null) {
                         fullDuplexCoordinator.onAiSpeechFinished();
+                        fullDuplexCoordinator.stop();
                     }
+                    try {
+                        AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            am.setMode(AudioManager.MODE_NORMAL);
+                        }
+                    } catch (Exception ignored) {}
                     abandonAudioFocus();
                     mainHandler.post(() -> resumeListening());
                 }
@@ -319,10 +367,17 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
 
     public void applyVoiceProfile() {
         if (mouth == null) return;
-        SharedPreferences prefs = context.getSharedPreferences("nova_config", Context.MODE_PRIVATE);
-        String voiceModel = prefs.getString("custom_voice", "nova");
-        float pitch = prefs.getFloat("voice_pitch", 1.0f);
-        float speed = prefs.getFloat("voice_speed", 1.05f);
+        com.novaagent.app.core.config.NovaConfigManager configMgr = com.novaagent.app.core.config.NovaConfigManager.getInstance(context);
+        String voiceModel = configMgr.getVoicePersona();
+        float pitch = configMgr.getVoicePitch();
+        float speed = configMgr.getVoiceSpeed();
+        int volume = configMgr.getVoiceVolume();
+        int sensitivity = configMgr.getMicSensitivity();
+
+        this.currentVoiceVolume = Math.max(0.0f, Math.min(1.0f, volume / 100.0f));
+        if (fullDuplexCoordinator != null) {
+            fullDuplexCoordinator.setSensitivity(sensitivity);
+        }
 
         try {
             Set<Voice> voices = mouth.getVoices();
@@ -356,7 +411,9 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
         try {
             AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
             if (audioManager != null) {
-                audioManager.setMode(AudioManager.MODE_NORMAL);
+                if (!isCurrentlySpeaking) {
+                    audioManager.setMode(AudioManager.MODE_NORMAL);
+                }
                 if (audioManager.isMicrophoneMute()) audioManager.setMicrophoneMute(false);
             }
         } catch (Exception ignored) {}
@@ -392,24 +449,20 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
     }
 
     private boolean isGenuineUserInterruption(String heardText) {
-        String lower = heardText.toLowerCase();
-        if (lower.matches(".*\\b(stop|berhenti|diam|tunggu|batal|jangan|cukup|halo nova|hei nova|hentikan|cut)\\b.*")) {
-            return true;
-        }
-        String spokenSoFar = recentSpokenBuffer.toString().toLowerCase();
-        String[] words = lower.split("\\s+");
-        int nonEchoWords = 0;
-        for (String w : words) {
-            if (w.length() > 2 && !spokenSoFar.contains(w)) {
-                nonEchoWords++;
-            }
-        }
-        return nonEchoWords >= 2;
+        if (heardText == null) return false;
+        return bargeInCoordinator.isGenuineUserSpeech(heardText, recentSpokenBuffer.toString());
+    }
+
+    private Bundle createTtsParams() {
+        Bundle params = new Bundle();
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, currentVoiceVolume);
+        return params;
     }
 
     private void resumeListening() {
-        if (!isListeningAbadi) return;
+        if (!isListeningAbadi || isCurrentlySpeaking) return;
         mainHandler.post(() -> {
+            if (isCurrentlySpeaking) return;
             try {
                 AudioManager am = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
                 if (am != null && am.isMicrophoneMute()) {
@@ -464,16 +517,14 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 mainHandler.removeCallbacks(listeningWatchdog);
                 recentSpokenBuffer.append(cleanChunk).append(" ");
                 mainHandler.post(() -> {
+                    Bundle params = createTtsParams();
                     if (isStreamFirstChunk) {
                         isStreamFirstChunk = false;
                         isCurrentlySpeaking = true;
-                        if (fullDuplexCoordinator != null) {
-                            fullDuplexCoordinator.onAiSpeechStarted();
-                        }
                         EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_FLUSH, null, "chunk_" + System.currentTimeMillis());
+                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_FLUSH, params, "chunk_" + System.currentTimeMillis());
                     } else {
-                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_ADD, null, "chunk_" + System.currentTimeMillis());
+                        mouth.speak(cleanChunk, TextToSpeech.QUEUE_ADD, params, "chunk_" + System.currentTimeMillis());
                     }
                 });
             }
@@ -485,12 +536,10 @@ public class NovaAudioDirector implements EventBus.EventListener, TextToSpeech.O
                 recentSpokenBuffer.setLength(0);
                 recentSpokenBuffer.append(cleanSpeech);
                 mainHandler.post(() -> {
+                    Bundle params = createTtsParams();
                     isCurrentlySpeaking = true;
-                    if (fullDuplexCoordinator != null) {
-                        fullDuplexCoordinator.onAiSpeechStarted();
-                    }
                     EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "NOVA_SPEAKING_START"));
-                    mouth.speak(cleanSpeech, TextToSpeech.QUEUE_FLUSH, null, "nova_utterance_" + System.currentTimeMillis());
+                    mouth.speak(cleanSpeech, TextToSpeech.QUEUE_FLUSH, params, "nova_utterance_" + System.currentTimeMillis());
                 });
             }
         }

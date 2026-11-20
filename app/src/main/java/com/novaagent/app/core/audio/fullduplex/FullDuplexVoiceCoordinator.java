@@ -157,4 +157,6 @@ public class FullDuplexVoiceCoordinator implements ContinuousListeningEngine.Fra
     public PcmAudioEngine getPcmAudioEngine() { return pcmAudioEngine; }
     public ContinuousListeningEngine getListeningEngine() { return listeningEngine; }
     public AudioEffectsProcessor getAudioEffectsProcessor() { return audioEffectsProcessor; }
+    public AdaptiveEnergyVad getVad() { return vad; }
+    public void setSensitivity(int sensitivity1to10) { vad.setSensitivity(sensitivity1to10); }
 }

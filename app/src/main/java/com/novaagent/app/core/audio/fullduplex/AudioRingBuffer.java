@@ -23,22 +23,32 @@ public class AudioRingBuffer {
     /**
      * Menulis data audio baru ke dalam ring buffer.
      * Jika buffer penuh, data tertua akan digantikan secara sirkular.
+     * Menggunakan System.arraycopy untuk efisiensi CPU pada thread audio prioritas tinggi.
      */
     public void write(byte[] data, int offset, int length) {
         if (data == null || length <= 0) return;
 
         synchronized (lock) {
-            for (int i = 0; i < length; i++) {
-                buffer[head] = data[offset + i];
-                head = (head + 1) % capacity;
-
-                if (available < capacity) {
-                    available++;
-                } else {
-                    // Buffer penuh: geser tail untuk menimpa data paling usang
-                    tail = (tail + 1) % capacity;
-                }
+            if (length > capacity) {
+                offset += (length - capacity);
+                length = capacity;
             }
+
+            int overflow = (available + length) - capacity;
+            if (overflow > 0) {
+                tail = (tail + overflow) % capacity;
+                available = capacity;
+            } else {
+                available += length;
+            }
+
+            int firstPart = Math.min(length, capacity - head);
+            System.arraycopy(data, offset, buffer, head, firstPart);
+            int secondPart = length - firstPart;
+            if (secondPart > 0) {
+                System.arraycopy(data, offset + firstPart, buffer, 0, secondPart);
+            }
+            head = (head + length) % capacity;
         }
     }
 
@@ -51,10 +61,15 @@ public class AudioRingBuffer {
 
         synchronized (lock) {
             int bytesToRead = Math.min(maxBytesToRead, available);
-            for (int i = 0; i < bytesToRead; i++) {
-                destination[offset + i] = buffer[tail];
-                tail = (tail + 1) % capacity;
+            if (bytesToRead <= 0) return 0;
+
+            int firstPart = Math.min(bytesToRead, capacity - tail);
+            System.arraycopy(buffer, tail, destination, offset, firstPart);
+            int secondPart = bytesToRead - firstPart;
+            if (secondPart > 0) {
+                System.arraycopy(buffer, 0, destination, offset + firstPart, secondPart);
             }
+            tail = (tail + bytesToRead) % capacity;
             available -= bytesToRead;
             return bytesToRead;
         }
@@ -69,10 +84,14 @@ public class AudioRingBuffer {
 
         synchronized (lock) {
             int bytesToPeek = Math.min(length, available);
+            if (bytesToPeek <= 0) return 0;
+
             int startPos = (head - bytesToPeek + capacity) % capacity;
-            for (int i = 0; i < bytesToPeek; i++) {
-                int idx = (startPos + i) % capacity;
-                destination[i] = buffer[idx];
+            int firstPart = Math.min(bytesToPeek, capacity - startPos);
+            System.arraycopy(buffer, startPos, destination, 0, firstPart);
+            int secondPart = bytesToPeek - firstPart;
+            if (secondPart > 0) {
+                System.arraycopy(buffer, 0, destination, firstPart, secondPart);
             }
             return bytesToPeek;
         }
