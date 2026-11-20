@@ -102,6 +102,10 @@ public class MediaProjectionWrapper {
             virtualDisplay = null;
             Log.i(TAG, "FASE 4: Mata Visual DIMATIKAN (VirtualDisplay dilepas - Hemat Baterai & RAM).");
         }
+        try {
+            com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().find(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
+            if (watchdog != null) watchdog.setVisionActive(false);
+        } catch (Exception ignored) {}
     }
 
     public void resumeVision() {
@@ -114,6 +118,10 @@ public class MediaProjectionWrapper {
                     null, backgroundHandler
             );
             Log.i(TAG, "FASE 4: Mata Visual DIHIDUPKAN (Nalar Daring sedang butuh gambar layar).");
+            try {
+                com.novaagent.app.infrastructure.system.NovaWatchdog watchdog = com.novaagent.app.core.di.ServiceLocator.getInstance().find(com.novaagent.app.infrastructure.system.NovaWatchdog.class);
+                if (watchdog != null) watchdog.setVisionActive(true);
+            } catch (Exception ignored) {}
         }
     }
     // ------------------------------------

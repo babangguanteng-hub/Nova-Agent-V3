@@ -24,10 +24,16 @@ public class NovaWatchdog implements EventBus.EventListener {
     private Handler handler;
     private boolean isRunning = false;
     private boolean isTaskActive = false;
+    private volatile boolean isVisionActive = false;
 
     private long lastA11yPing = SystemClock.elapsedRealtime();
     private long lastEnginePing = SystemClock.elapsedRealtime();
     private long lastVisionPing = SystemClock.elapsedRealtime();
+
+    public void setVisionActive(boolean active) {
+        this.isVisionActive = active;
+        if (active) lastVisionPing = SystemClock.elapsedRealtime();
+    }
 
     public NovaWatchdog() {
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
@@ -88,16 +94,18 @@ public class NovaWatchdog implements EventBus.EventListener {
 
             long now = SystemClock.elapsedRealtime();
             
-            // Evaluasi spesifik per modul
-            if ((now - lastA11yPing) > TIMEOUT_A11Y_MS) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "A11Y_DEAD"));
-                resetPings();
-            } else if (isTaskActive && (now - lastVisionPing) > TIMEOUT_VISION_MS) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "VISION_TIMEOUT"));
-                resetPings();
-            } else if (isTaskActive && (now - lastEnginePing) > TIMEOUT_ENGINE_MS) {
-                EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "ENGINE_TIMEOUT"));
-                resetPings();
+            // SYS-01 & SYS-04: Hanya evaluasi timeout modul saat ada tugas aktif yang berjalan
+            if (isTaskActive) {
+                if ((now - lastA11yPing) > TIMEOUT_A11Y_MS) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "A11Y_DEAD"));
+                    resetPings();
+                } else if (isVisionActive && (now - lastVisionPing) > TIMEOUT_VISION_MS) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "VISION_TIMEOUT"));
+                    resetPings();
+                } else if ((now - lastEnginePing) > TIMEOUT_ENGINE_MS) {
+                    EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.RECOVERY_TRIGGERED, "ENGINE_TIMEOUT"));
+                    resetPings();
+                }
             }
 
             handler.postDelayed(this, 5000); 

@@ -59,10 +59,16 @@ public class NovaForegroundService extends Service implements EventBus.EventList
     private long sessionStartTime = System.currentTimeMillis();
     private boolean isMuted = false;
     private String currentVoiceStatus = "Mendengarkan ucapan Anda...";
+    private static volatile boolean isServiceRunning = false;
+
+    public static boolean isRunning() {
+        return isServiceRunning;
+    }
 
 @Override
 public void onCreate() {
     super.onCreate();
+    isServiceRunning = true;
     createNotificationChannel();
     
     ServiceLocator locator = ServiceLocator.getInstance();
@@ -84,7 +90,7 @@ public void onCreate() {
     locator.register(TaskCompletionVerifier.class, new TaskCompletionVerifier());
     locator.register(SemanticVisionEngine.class, new SemanticVisionEngine());
     locator.register(ProactiveTriggerEngine.class, new ProactiveTriggerEngine());
-    locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine());
+    locator.register(ProactiveConversationEngine.class, new ProactiveConversationEngine(this));
     locator.register(ConditionalSentinelEngine.class, new ConditionalSentinelEngine(this));
     locator.register(LongTermMemoryEngine.class, new LongTermMemoryEngine(this));
 
@@ -252,6 +258,7 @@ public void onEvent(AgentEvent event) {
 
 @Override
 public void onDestroy() {
+    isServiceRunning = false;
     super.onDestroy();
     EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     ServiceLocator locator = ServiceLocator.getInstance();
@@ -260,7 +267,7 @@ public void onDestroy() {
     if (floatingBubbleView != null) floatingBubbleView.remove();
     if (mediaProjectionWrapper != null) mediaProjectionWrapper.stop();
     if (watchdog != null) watchdog.stop();
-    if (loopEngine != null) loopEngine.stopTask();
+    if (loopEngine != null) loopEngine.destroy();
     if (audioDirector != null) audioDirector.destroy();
     if (perceptionCoordinator != null) perceptionCoordinator.destroy();
     

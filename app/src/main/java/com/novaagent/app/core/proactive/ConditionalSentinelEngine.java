@@ -47,6 +47,37 @@ public class ConditionalSentinelEngine {
     public ConditionalSentinelEngine(Context context) {
         this.context = context;
         this.timeHandler = new Handler(Looper.getMainLooper());
+        restorePendingTasks();
+    }
+
+    private void restorePendingTasks() {
+        if (context == null) return;
+        try {
+            android.content.SharedPreferences sp = context.getSharedPreferences("nova_sentinel_tasks", Context.MODE_PRIVATE);
+            java.util.Map<String, ?> all = sp.getAll();
+            if (all != null) {
+                long now = System.currentTimeMillis();
+                for (java.util.Map.Entry<String, ?> entry : all.entrySet()) {
+                    if (entry.getKey().startsWith("task_") && entry.getValue() instanceof Long) {
+                        String cmd = entry.getKey().substring(5);
+                        long triggerAt = (Long) entry.getValue();
+                        long remaining = triggerAt - now;
+                        if (remaining <= 0) {
+                            sp.edit().remove(entry.getKey()).apply();
+                            timeHandler.post(() -> {
+                                Log.i(TAG, "Restored past-due sentinel task: " + cmd);
+                                executeTask(cmd);
+                            });
+                        } else {
+                            timeHandler.postDelayed(() -> {
+                                sp.edit().remove("task_" + cmd).apply();
+                                executeTask(cmd);
+                            }, remaining);
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     // --- 1. PENJADWALAN WAKTU (DELAY) ---

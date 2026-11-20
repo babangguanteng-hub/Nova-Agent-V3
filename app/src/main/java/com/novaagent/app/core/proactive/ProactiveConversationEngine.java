@@ -1,5 +1,6 @@
 package com.novaagent.app.core.proactive;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -13,6 +14,7 @@ import com.novaagent.app.core.bus.EventBus;
  */
 public class ProactiveConversationEngine implements EventBus.EventListener {
     private static final String TAG = "ProactiveConvEngine";
+    private final Context context;
     private final Handler handler = new Handler(Looper.getMainLooper());
     
     private long lastInteractionTime = System.currentTimeMillis();
@@ -20,11 +22,38 @@ public class ProactiveConversationEngine implements EventBus.EventListener {
     private boolean hasGreeted30Min = false;
     private boolean isProactiveMode = true; // Mode bawaan aktif
 
+    private boolean isSafeToSpeak() {
+        if (context == null) return true;
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            if (pm != null && !pm.isInteractive()) {
+                return false; // Layar mati / terkunci -> jangan bicara proaktif
+            }
+            android.media.AudioManager am = (android.media.AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                int mode = am.getMode();
+                if (mode == android.media.AudioManager.MODE_IN_CALL || mode == android.media.AudioManager.MODE_IN_COMMUNICATION) {
+                    return false; // Pengguna sedang telepon -> dilarang bicara
+                }
+                if (am.isMusicActive()) {
+                    return false; // Musik sedang berputar -> dilarang interupsi
+                }
+            }
+        } catch (Exception ignored) {}
+        return true;
+    }
+
     private final Runnable idleCheckRunnable = new Runnable() {
         @Override
         public void run() {
             if (!isProactiveMode) {
                 handler.postDelayed(this, 60 * 1000); // Cek lagi menit depan
+                return;
+            }
+
+            // SYS-02: Guardrails Anti-Bocor: Jangan bersuara proaktif jika telepon/musik/layar mati
+            if (!isSafeToSpeak()) {
+                handler.postDelayed(this, 60 * 1000);
                 return;
             }
 
@@ -48,6 +77,11 @@ public class ProactiveConversationEngine implements EventBus.EventListener {
     };
 
     public ProactiveConversationEngine() {
+        this(null);
+    }
+
+    public ProactiveConversationEngine(Context context) {
+        this.context = context != null ? context.getApplicationContext() : null;
         EventBus.getInstance().subscribe(AgentEvent.EventType.USER_INTERACTION, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         handler.postDelayed(idleCheckRunnable, 60 * 1000);

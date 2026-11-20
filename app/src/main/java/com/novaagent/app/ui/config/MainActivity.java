@@ -55,7 +55,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements EventBus.EventListener {
     private static final int REQUEST_MEDIA_PROJECTION = 1001;
     private static final int REQUEST_PERMISSIONS = 101;
 
@@ -270,6 +270,7 @@ public class MainActivity extends AppCompatActivity {
             btnMicTrigger.setPowerSaveMode(prefs.getBoolean("power_save", false));
             btnMicTrigger.setOnClickListener(v -> {
                 playClickSound();
+                ensureServiceStarted();
                 btnMicTrigger.setListening(true);
                 if (heroOrbView != null) {
                     heroOrbView.setOrbState(NovaHeroOrbView.OrbState.LISTENING);
@@ -288,6 +289,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(this, "Masukkan perintah teks terlebih dahulu", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                ensureServiceStarted();
                 if (heroOrbView != null) {
                     heroOrbView.setOrbState(NovaHeroOrbView.OrbState.THINKING);
                 }
@@ -715,9 +717,40 @@ public class MainActivity extends AppCompatActivity {
         tvNetwork.setTextColor(0xFFFFAB00);
     }
 
+    private void ensureServiceStarted() {
+        if (!NovaForegroundService.isRunning()) {
+            Intent serviceIntent = new Intent(this, NovaForegroundService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                androidx.core.content.ContextCompat.startForegroundService(this, serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+        }
+    }
+
+    public static boolean isAccessibilityServiceEnabled(Context context) {
+        try {
+            int accessibilityEnabled = Settings.Secure.getInt(
+                context.getContentResolver(),
+                Settings.Secure.ACCESSIBILITY_ENABLED, 0
+            );
+            if (accessibilityEnabled == 1) {
+                String settingValue = Settings.Secure.getString(
+                    context.getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                );
+                if (settingValue != null) {
+                    return settingValue.contains(context.getPackageName());
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
         if (heroOrbView != null) heroOrbView.pauseAnimation();
         if (btnMicTrigger != null) btnMicTrigger.setPowerSaveMode(true);
     }
@@ -725,6 +758,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
         boolean pwrSave = prefs.getBoolean("power_save", false);
         if (heroOrbView != null) {
             heroOrbView.setPowerSaveMode(pwrSave);
@@ -744,9 +778,39 @@ public class MainActivity extends AppCompatActivity {
             tvOverlay.setBackgroundResource(overlayOn ? R.drawable.bg_jarvis_badge_active : R.drawable.bg_jarvis_input);
             tvOverlay.setTextColor(overlayOn ? 0xFF00E676 : 0xFFFFAB00);
         }
+        // UI-01: Verifikasi riil izin Accessibility Service Android
+        boolean a11yOn = isAccessibilityServiceEnabled(this);
         if (tvA11y != null) {
-            tvA11y.setText("✔ Terverifikasi");
-            tvA11y.setBackgroundResource(R.drawable.bg_jarvis_badge_active);
+            tvA11y.setText(a11yOn ? "✔ Terverifikasi" : "Aktifkan");
+            tvA11y.setBackgroundResource(a11yOn ? R.drawable.bg_jarvis_badge_active : R.drawable.bg_jarvis_input);
+            tvA11y.setTextColor(a11yOn ? 0xFF00E676 : 0xFFFFAB00);
+        }
+    }
+
+    @Override
+    public void onEvent(AgentEvent event) {
+        if (event.type == AgentEvent.EventType.STATE_CHANGED) {
+            String state = String.valueOf(event.payload);
+            runOnUiThread(() -> {
+                TextView tvStatus = findViewById(R.id.tvAiStateTitle);
+                if ("USER_SPEAKING".equals(state) || "LISTENING_READY".equals(state) || "RESUME_LISTENING".equals(state)) {
+                    if (heroOrbView != null) heroOrbView.setOrbState(NovaHeroOrbView.OrbState.LISTENING);
+                    if (btnMicTrigger != null) btnMicTrigger.setListening(true);
+                    if (tvStatus != null) tvStatus.setText("MENDENGARKAN PERINTAH...");
+                } else if ("PROCESSING_AUDIO".equals(state) || "THINKING".equals(state)) {
+                    if (heroOrbView != null) heroOrbView.setOrbState(NovaHeroOrbView.OrbState.THINKING);
+                    if (btnMicTrigger != null) btnMicTrigger.setListening(false);
+                    if (tvStatus != null) tvStatus.setText("SEDANG BERPIKIR...");
+                } else if ("NOVA_SPEAKING_START".equals(state)) {
+                    if (heroOrbView != null) heroOrbView.setOrbState(NovaHeroOrbView.OrbState.SPEAKING);
+                    if (btnMicTrigger != null) btnMicTrigger.setListening(false);
+                    if (tvStatus != null) tvStatus.setText("NOVA BERBICARA...");
+                } else if ("IDLE".equals(state) || "INTERRUPT_TRIGGERED".equals(state)) {
+                    if (heroOrbView != null) heroOrbView.setOrbState(NovaHeroOrbView.OrbState.IDLE);
+                    if (btnMicTrigger != null) btnMicTrigger.setListening(false);
+                    if (tvStatus != null) tvStatus.setText("SIAP MENERIMA PERINTAH");
+                }
+            });
         }
     }
 
