@@ -159,21 +159,26 @@ public class YouTubeControlEngine {
     }
 
     private boolean isProbableVideoTitle(String text) {
-        String lower = text.toLowerCase();
+        if (text == null) return false;
+        String lower = text.toLowerCase().trim();
         if (lower.equals("youtube") || lower.equals("search") || lower.equals("cari") ||
             lower.equals("shorts") || lower.equals("subscriptions") || lower.equals("library") ||
             lower.equals("beranda") || lower.equals("eksplorasi") || lower.equals("koleksi") ||
-            lower.equals("notifikasi") || lower.contains("skip ad") || lower.length() < 5) {
+            lower.equals("notifikasi") || lower.contains("skip ad") || lower.equals("trending") ||
+            lower.equals("bagikan") || lower.equals("download") || lower.length() < 5) {
             return false;
         }
+        // Abaikan durasi waktu murni seperti "3:45" atau "1:20:30"
+        if (lower.matches("^\\d{1,2}:\\d{2}(:\\d{2})?$")) return false;
         return true;
     }
 
     public static String cleanSearchQuery(String rawCommand) {
         if (rawCommand == null) return "";
-        return rawCommand.replaceAll("(?i)^(?:tolong\\s+)?(?:buka\\s+youtube\\s+)?(?:cari|carikan|putar|putarkan|cari\\s+lagu|cari\\s+video)\\s+", "")
+        return rawCommand.replaceAll("(?i)^(?:tolong\\s+)?(?:buka\\s+youtube\\s*,?\\s*)?(?:cari|carikan|putar|putarkan|cari\\s+lagu|cari\\s+video)\\s+", "")
                          .replaceAll("(?i)\\s+(?:di\\s+youtube|lewat\\s+youtube)$", "")
                          .replaceAll("(?i)^(?:video|lagu)\\s+", "")
+                         .replaceAll("\\s+", " ")
                          .trim();
     }
 }

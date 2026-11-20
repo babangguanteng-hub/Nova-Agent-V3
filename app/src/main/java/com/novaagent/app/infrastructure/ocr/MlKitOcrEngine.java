@@ -55,6 +55,10 @@ public class MlKitOcrEngine {
     }
 
     public void processImage(Bitmap incomingBitmap) {
+        processImage(incomingBitmap, 1.0f);
+    }
+
+    public void processImage(Bitmap incomingBitmap, float scaleFactor) {
         if (incomingBitmap == null || incomingBitmap.isRecycled()) return;
 
         ocrThread.execute(() -> {
@@ -78,12 +82,13 @@ public class MlKitOcrEngine {
                                         UnifiedScreenContext.ScreenElement el = new UnifiedScreenContext.ScreenElement();
                                         el.type = "OCR_TEXT";
                                         el.text = line.getText();
-                                        el.boundsLeft = bounds.left;
-                                        el.boundsTop = bounds.top;
-                                        el.boundsRight = bounds.right;
-                                        el.boundsBottom = bounds.bottom;
-                                        el.centerX = bounds.centerX();
-                                        el.centerY = bounds.centerY();
+                                        // VISION-02: Normalisasi skala balik ke koordinat fisik layar perangkat asli
+                                        el.boundsLeft = Math.round(bounds.left * scaleFactor);
+                                        el.boundsTop = Math.round(bounds.top * scaleFactor);
+                                        el.boundsRight = Math.round(bounds.right * scaleFactor);
+                                        el.boundsBottom = Math.round(bounds.bottom * scaleFactor);
+                                        el.centerX = Math.round(bounds.centerX() * scaleFactor);
+                                        el.centerY = Math.round(bounds.centerY() * scaleFactor);
                                         el.isActionable = true;
                                         ocrElements.add(el);
                                     }

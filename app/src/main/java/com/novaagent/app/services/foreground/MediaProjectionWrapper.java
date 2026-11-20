@@ -38,6 +38,7 @@ public class MediaProjectionWrapper {
     private int width;
     private int height;
     private int density;
+    private float inverseScale = 1.0f;
 
     private volatile boolean isCaptureRequested = false;
     private MediaProjection.Callback projectionCallback;
@@ -52,6 +53,7 @@ public class MediaProjectionWrapper {
         this.width = Math.round(metrics.widthPixels * scale);
         this.height = Math.round(metrics.heightPixels * scale);
         this.density = metrics.densityDpi;
+        this.inverseScale = width > 0 ? ((float) metrics.widthPixels / (float) width) : 1.0f;
     }
 
     public void start() {
@@ -135,7 +137,7 @@ public class MediaProjectionWrapper {
             croppedBitmap = Bitmap.createBitmap(rawBitmap, 0, 0, width, height);
 
             if (!screenCache.isDuplicate(croppedBitmap)) {
-                ocrEngine.processImage(croppedBitmap); 
+                ocrEngine.processImage(croppedBitmap, inverseScale); 
             } else {
                 croppedBitmap.recycle(); 
             }

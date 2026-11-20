@@ -15,7 +15,25 @@ public class UnifiedScreenContext {
     public UnifiedScreenContext(String packageName, long timestampMs, List<ScreenElement> elements) {
         this.packageName = packageName != null ? packageName : "unknown";
         this.timestampMs = timestampMs;
-        this.elements = elements != null ? new ArrayList<>(elements) : new ArrayList<>();
+        // VISION-01: Deep-copy ScreenElement untuk mencegah kerusakan memori (use-after-free) saat ObjectPool di-recycle
+        this.elements = new ArrayList<>();
+        if (elements != null) {
+            for (ScreenElement el : elements) {
+                if (el != null) {
+                    ScreenElement copy = new ScreenElement();
+                    copy.type = el.type;
+                    copy.text = el.text;
+                    copy.boundsLeft = el.boundsLeft;
+                    copy.boundsTop = el.boundsTop;
+                    copy.boundsRight = el.boundsRight;
+                    copy.boundsBottom = el.boundsBottom;
+                    copy.centerX = el.centerX;
+                    copy.centerY = el.centerY;
+                    copy.isActionable = el.isActionable;
+                    this.elements.add(copy);
+                }
+            }
+        }
     }
 
     public String getTextAtCoordinate(int x, int y) {

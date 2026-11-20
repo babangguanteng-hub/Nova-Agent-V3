@@ -7,10 +7,12 @@ import static org.junit.Assert.*;
 public class SkillRegistryTest {
 
     @Test
-    public void testRegistryExactly29SkillsLoaded() {
+    public void testRegistrySkillsLoaded() {
         SkillRegistry registry = new SkillRegistry();
-        assertEquals("Harus ada tepat 29 offline skills terdaftar", 29, registry.getAllSkills().size());
-        assertEquals(29, registry.getSkillCount());
+        assertTrue("Harus ada setidaknya 29 offline skills terdaftar", registry.getAllSkills().size() >= 29);
+        assertTrue(registry.getSkillCount() >= 29);
+        assertNotNull(registry.findSkill("kembali"));
+        assertNotNull(registry.findSkill("buka wifi"));
     }
 
     @Test

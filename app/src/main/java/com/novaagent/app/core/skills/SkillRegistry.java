@@ -60,7 +60,12 @@ public class SkillRegistry {
         registerSkill(new LocalChatHistorySkill());       // 28. Riwayat percakapan lokal
         registerSkill(new NovaStatusDiagnosticSkill());   // 29. Diagnostik sistem NOVA
 
-        Log.i(TAG, "SkillRegistry berhasil menginisialisasi tepat " + skills.size() + " keahlian luring mandiri.");
+        // 5. Navigasi Sistem & Intelijen Web (ENGINE-03: 30-32)
+        registerSkill(new SystemNavigationSkill());       // 30. Navigasi sistem & gesture layar
+        registerSkill(new DeviceSettingsSkill());         // 31. Pengaturan hardware sistem terarah
+        registerSkill(new WebSearchSkill());              // 32. Pencarian web & internet cerdas
+
+        Log.i(TAG, "SkillRegistry berhasil menginisialisasi " + skills.size() + " keahlian mandiri.");
     }
 
     public void registerSkill(NovaSkill skill) {

@@ -44,6 +44,16 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
         EventBus.getInstance().subscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
         EventBus.getInstance().subscribe(AgentEvent.EventType.ACTION_EXECUTED, this);
+        EventBus.getInstance().subscribe(AgentEvent.EventType.STATE_CHANGED, this);
+    }
+
+    public void destroy() {
+        stopTask();
+        loopHandler.removeCallbacksAndMessages(null);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.SCREEN_UPDATED, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.ACTION_VALIDATED, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.ACTION_EXECUTED, this);
+        EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 
     private void resolveDependencies() {
@@ -202,8 +212,20 @@ public class AutonomousLoopEngine implements EventBus.EventListener {
                 break;
                 case SCREEN_UPDATED:
                     if (!isRunning) return;
+                    // ENGINE-02: Batalkan timer fail-safe untuk mencegah request ganda ke server AI
+                    loopHandler.removeCallbacksAndMessages(null);
+
                     UnifiedScreenContext newContext = (UnifiedScreenContext) event.payload;
                     resolveDependencies();
+
+                    // ENGINE-05: Deteksi Canvas/Game/Reels tanpa node A11y -> Minta OCR Visual tunggal
+                    if (newContext != null && (newContext.elements == null || newContext.elements.isEmpty())) {
+                        Log.i(TAG, "Layar minim A11y (Canvas/Game/Reels terdeteksi). Meminta OCR Visual...");
+                        try {
+                            MediaProjectionWrapper vision = ServiceLocator.getInstance().resolve(MediaProjectionWrapper.class);
+                            if (vision != null) vision.requestSingleFrame();
+                        } catch (Exception ignored) {}
+                    }
                     
                     if (proactiveEngine != null) {
                         proactiveEngine.evaluateScreen(newContext);

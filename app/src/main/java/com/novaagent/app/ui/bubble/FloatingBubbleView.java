@@ -102,12 +102,20 @@ public class FloatingBubbleView implements EventBus.EventListener {
             if (isListeningMode) {
                 jellyBg.setAlpha(1.0f); jellyFace.setAlpha(1.0f);
                 if (pulseAnimator != null) pulseAnimator.resume();
+                try {
+                    com.novaagent.app.core.audio.NovaAudioDirector audio = ServiceLocator.getInstance().resolve(com.novaagent.app.core.audio.NovaAudioDirector.class);
+                    if (audio != null) audio.setListeningMode(true);
+                } catch (Exception ignored) {}
                 EventBus.getInstance().publish(new AgentEvent(AgentEvent.EventType.STATE_CHANGED, "RESUME_LISTENING"));
                 setStatus("MENDENGARKAN...");
             } else {
                 jellyBg.setAlpha(0.35f); jellyFace.setAlpha(0.35f);
                 if (pulseAnimator != null) pulseAnimator.pause();
                 setStatus("NOVA TIDUR");
+                try {
+                    com.novaagent.app.core.audio.NovaAudioDirector audio = ServiceLocator.getInstance().resolve(com.novaagent.app.core.audio.NovaAudioDirector.class);
+                    if (audio != null) audio.setListeningMode(false);
+                } catch (Exception ignored) {}
                 try { ServiceLocator.getInstance().resolve(AutonomousLoopEngine.class).stopTask(); } catch (Exception ignored) {}
             }
         });
@@ -323,8 +331,17 @@ public class FloatingBubbleView implements EventBus.EventListener {
             try { windowManager.removeView(bubbleView); } catch (Exception ignored) {}
             isAdded = false;
         }
-        if (pulseAnimator != null) pulseAnimator.cancel();
-        if (rgbColorAnimator != null) rgbColorAnimator.cancel();
+        if (closeTargetView != null && closeTargetView.getParent() != null) {
+            try { windowManager.removeView(closeTargetView); } catch (Exception ignored) {}
+        }
+        if (pulseAnimator != null) {
+            pulseAnimator.cancel();
+            pulseAnimator = null;
+        }
+        if (rgbColorAnimator != null) {
+            rgbColorAnimator.cancel();
+            rgbColorAnimator = null;
+        }
         EventBus.getInstance().unsubscribe(AgentEvent.EventType.STATE_CHANGED, this);
     }
 

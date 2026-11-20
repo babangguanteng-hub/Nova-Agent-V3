@@ -34,11 +34,19 @@ public class VisualChangeTracker {
 
     private String computeActionableHash(UnifiedScreenContext ctx) {
         StringBuilder sb = new StringBuilder();
-        for (ScreenElement el : ctx.elements) {
-            // Hanya hash elemen yang bisa diintervensi (Button, Input) atau punya teks signifikan
-            if ("Button".equals(el.type) || "Input".equals(el.type) || (el.text != null && el.text.length() > 15)) {
-                sb.append(el.type).append(el.text).append(el.centerX).append(el.centerY);
+        if (ctx.elements != null) {
+            for (ScreenElement el : ctx.elements) {
+                if (el == null) continue;
+                // VISION-04: Sertakan seluruh elemen interaktif atau teks penting terlepas dari panjang kata
+                if (el.isActionable || "Button".equals(el.type) || "Input".equals(el.type) || (el.text != null && !el.text.trim().isEmpty())) {
+                    sb.append(el.type != null ? el.type : "")
+                      .append(el.text != null ? el.text.trim() : "")
+                      .append(el.centerX).append(",").append(el.centerY).append(";");
+                }
             }
+        }
+        if (ctx.ocrText != null && !ctx.ocrText.isEmpty()) {
+            sb.append("OCR:").append(ctx.ocrText.hashCode());
         }
         return getMd5(sb.toString()); // Kompresi hash ringan
     }

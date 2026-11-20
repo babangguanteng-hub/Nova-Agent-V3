@@ -30,9 +30,11 @@ public class DeviceInfoSkill implements NovaSkill {
     public boolean canHandle(String rawCommand) {
         if (rawCommand == null) return false;
         String lower = rawCommand.toLowerCase().trim();
-        return lower.matches(".*\\b(merek|merk|tipe|model|versi\\s+android|spesifikasi|informasi\\s+perangkat|info\\s+perangkat)\\b.*") ||
-               lower.matches(".*\\b(merek|merk|tipe|model|versi\\s+android|spesifikasi)\\b.*\\b(hp|ponsel|perangkat|telepon|ini)\\b.*") ||
-               lower.matches(".*\\b(hp|ponsel)\\b.*\\b(ini|apa)\\b.*");
+        // ENGINE-04: Cegah pembajakan perintah buka aplikasi atau pencarian web
+        if (lower.startsWith("buka") || lower.startsWith("cari") || lower.contains("google")) return false;
+        return lower.matches(".*\\b(merek|merk|tipe|model|versi\\s+android|spesifikasi\\s+hp|informasi\\s+perangkat|info\\s+perangkat|spek\\s+hp)\\b.*") ||
+               lower.matches(".*\\b(apa\\s+merek|apa\\s+merk|apa\\s+tipe|apa\\s+model|apa\\s+spek)\\b.*\\b(hp|ponsel|perangkat|ini)\\b.*") ||
+               lower.matches("^(hp|ponsel)\\s+(ini\\s+)?(apa|tipe\\s+apa|merek\\s+apa)$");
     }
 
     @Override
